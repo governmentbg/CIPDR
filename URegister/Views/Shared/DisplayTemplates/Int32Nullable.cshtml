@@ -1,0 +1,12 @@
+﻿@using URegister.Extensions
+@model int?
+@{
+    var val = Model?.ToString();
+    var add_class = ((string?)ViewData["class"] ?? "");
+}
+<div class="form-group">
+    <label asp-for="@Model" class="form-label"></label>
+    <p class="@add_class">
+        @val
+    </p>
+</div>

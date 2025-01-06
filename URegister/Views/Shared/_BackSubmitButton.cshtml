@@ -1,0 +1,14 @@
+﻿@model string
+@Html.AntiForgeryToken()
+<div class="ui fluid container basic clearing segment"></div>
+<div class="ui buttons right floated">
+    <a href="@Model" class="ui button">
+        <i class="arrow left icon"></i> 
+        Назад
+    </a>
+    <button class="ui primary button" type="submit" style="margin-left:0.2rem;">
+        <i class="save icon"></i>
+        Запис
+    </button>
+
+</div>

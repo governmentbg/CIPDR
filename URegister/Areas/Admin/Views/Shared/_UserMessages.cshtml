@@ -1,0 +1,10 @@
+﻿@using URegister.Infrastructure.Constants
+
+<input type="hidden" id="ServerErrorMessage" value="@TempData[MessageConstant.ErrorMessage]?.ToString()" />
+<input type="hidden" id="ServerWarningMessage" value="@TempData[MessageConstant.WarningMessage]?.ToString()" />
+<input type="hidden" id="ServerSuccessMessage" value="@TempData[MessageConstant.SuccessMessage]?.ToString()" />
+<input type="hidden" id="SwalServerErrorMessage" value="@TempData[MessageConstant.SwalErrorMessage]?.ToString()" />
+<input type="hidden" id="SwalServerWarningMessage" value="@TempData[MessageConstant.SwalWarningMessage]?.ToString()" />
+<input type="hidden" id="SwalServerSuccessMessage" value="@TempData[MessageConstant.SwalSuccessMessage]?.ToString()" />
+
+<script src="~/js/userMessages.js" asp-append-version="true"></script>

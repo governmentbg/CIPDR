@@ -1,0 +1,18 @@
+﻿@model int[]
+
+@{
+    //Името на полето, на което е приложен шаблона
+    var fieldName = ViewData.TemplateInfo.HtmlFieldPrefix.Replace(".", "_") + "_ddl";
+}
+
+@if (ViewData[fieldName] != null)
+{
+    var list = (ViewData[fieldName] as IEnumerable<SelectListItem>).ToList();    
+    <div class="ui form">
+        <div class="field">
+            <label asp-for="@Model"></label>
+            @Html.ListBoxFor(model => model, list.SetSelected(Model), new { multiple = String.Empty, @class = "ui fluid search selection dropdown multi-select" })
+            <span asp-validation-for="@Model" class="validation-error" tabindex="-1"></span>            
+        </div>
+    </div>
+}

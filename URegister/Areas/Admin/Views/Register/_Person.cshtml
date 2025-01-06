@@ -1,0 +1,40 @@
+﻿@using URegister.Core.Models.CurrentRegister
+@using URegister.Infrastructure.Extensions
+@model PersonVM
+@{
+    var currentHtmlPrefix = ViewData.TemplateInfo.HtmlFieldPrefix;
+    var indexPath = currentHtmlPrefix.GetIndexPath();
+}
+
+<div class="ui sixteen wide field content item-template">
+    <input type="hidden" name="@indexPath" value="@Model.Index" />
+    @Html.HiddenFor(model => model.Type)
+    <div class="column ui segment green">
+        <div class="ui form">
+            <div class="fields">
+                <div class='four wide field'>
+                    @Html.EditorFor(model => model.FirstName, "String")
+                </div>
+                <div class='four wide field'>
+                    @Html.EditorFor(model => model.MiddleName, "String")
+                </div>
+                <div class='four wide field'>
+                    @Html.EditorFor(model => model.LastName, "String")
+                </div>
+                <div class='four wide field'>
+                    @Html.EditorFor(model => model.Position, "String")
+                </div>
+            </div>
+
+            <div class="fields">
+                <div class='eight wide field'>
+                    @Html.EditorFor(model => model.Phone, "String")
+                </div>
+                <div class='eight wide field'>
+                    @Html.EditorFor(model => model.Email, "String")
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>

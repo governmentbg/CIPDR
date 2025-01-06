@@ -1,0 +1,113 @@
+﻿@using URegister.Infrastructure.Model.KeyCloak
+@model UserViewModel
+<a href="@Url.Action("Index")" class="ui button">
+    <i class="arrow left icon"></i>
+    Назад
+</a>
+<div class="ui top attached tabular menu">
+    <a class="item active" data-tab="userDetails">Потребител</a>
+    <a class="item" data-tab="userRoles">Роли</a>
+    <a class="item" data-tab="userGroups">Групи</a>
+</div>
+
+<div class="ui bottom attached tab segment active" data-tab="userDetails">
+    <div class="ui form">
+        <form class="ui sixteen wide column" action="@Url.Action("Edit", "User")" method="post" enctype="multipart/form-data" onsubmit="beforeSubmit();">
+            <div class="content">
+                <div class="column ui segment green">
+                    <div class="ui form">
+                        <div class="fields">
+                            <div class='sixteen wide field'>
+                                <h3>Потребител @Model.Username</h3>
+                            </div>
+                        </div>
+                        <div class="fields">
+                            <div class="four wide field">
+                                @Html.EditorFor(model => model.Id, "StringDisabled")
+                            </div>
+                            <div class="four wide field">
+                                @Html.HiddenFor(model => model.CreatedTimestamp)
+                                @Html.EditorFor(model => model.CreatedAtStr, "StringDisabled")
+                            </div>
+                            <div class="four wide field">
+                                @Html.EditorFor(model => model.Enabled, "CheckBoxBoolean")
+                            </div>
+                        </div>
+                        <div class="fields">
+                            <div class="four wide field">
+                                @Html.EditorFor(model => model.Username, "StringDisabled")
+                            </div>
+                            <div class="four wide field">
+                                @Html.EditorFor(model => model.FirstName, "String")
+                            </div>
+                            <div class="four wide field">
+                                @Html.EditorFor(model => model.LastName, "String")
+                            </div>
+                        </div>
+                        <div class="fields">
+                            <div class="four wide field">
+                                @Html.EditorFor(model => model.Email, "String")
+                            </div>
+                            <div class="four wide field">
+                                @Html.EditorFor(model => model.EmailVerified, "CheckBoxBoolean")
+                            </div>
+                            <div class="four wide field">
+                                @Html.EditorFor(model => model.AdministrationId, "String")
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button class="ui primary button" type="submit">
+                    <i class="save outline icon"></i>
+                    Запис
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="ui bottom attached tab segment" data-tab="userRoles">
+    <table id="userRoles" class="ui celled striped very compact table" style="width:100%; padding:0px;" data-userid="@Model.Id" 
+        data-url="@Url.Action("GetUserRoles", "User")">
+    </table>
+</div>
+
+<div class="ui bottom attached tab segment" data-tab="userGroups">
+    <table id="userGroups" class="ui celled striped very compact table" style="width:100%; padding:0px;" data-userid="@Model.Id"
+           data-url="@Url.Action("GetUserGroups", "User")">
+    </table>
+</div>
+
+<div id="rolesModal" class="ui modal">
+    <div class="header">Избери роля</div>
+    <div class="content">
+        <div class="ui form">
+            <label for="rolesMultiselect">Роли</label>
+            <select id="rolesMultiselect" class="ui fluid dropdown" multiple>
+            </select>
+        </div>
+    </div>
+    <div class="actions">
+        <button class="ui button" id="cancelRolesButton">Затвори</button>
+        <button class="ui primary button" id="submitAddRoleButton" data-url="@Url.Action("AddRoleToUser", "User")">Запази</button>
+    </div>
+</div>
+
+<div id="groupsModal" class="ui modal">
+    <div class="header">Избери група</div>
+    <div class="content">
+        <div class="ui form">
+            <label for="groupsMultiselect">Групи</label>
+            <select id="groupsMultiselect" class="ui fluid dropdown" multiple>
+            </select>
+        </div>
+    </div>
+    <div class="actions">
+        <button class="ui button" id="cancelGroupButton">Затвори</button>
+        <button class="ui primary button" id="submitAddGroupButton" data-url="@Url.Action("AddGroupToUser", "User")">Запази</button>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/user/userDetails.js"></script>
+}

@@ -1,0 +1,61 @@
+﻿@using URegister.Infrastructure.Model.RegisterForms
+@model List<FormField>
+@{
+    const int TotalColumns = 4;
+    const int FomanticColumnsForUserColumn = 4;
+    int columnsFilled = 0;
+
+    var numberNames = new Dictionary<int, string>
+    {
+        { 1, "one" },
+        { 2, "two" },
+        { 3, "three" },
+        { 4, "four" },
+        { 5, "five" },
+        { 6, "six" },
+        { 7, "seven" },
+        { 8, "eight" },
+        { 9, "nine" },
+        { 10, "ten" },
+        { 11, "eleven" },
+        { 12, "twelve" },
+        { 13, "thirteen" },
+        { 14, "fourteen" },
+        { 15, "fifteen" },
+        { 16, "sixteen" }
+    };
+}
+
+<div class="ui form">
+    <div class="fields">        
+        @for(int i = 0; i < Model.Count; i++)
+        {            
+            if (Model[i].IsHidden)
+            {
+                <input type="hidden" id="@Model[i].Identifier" name="@Model[i].Name" value="@Model[i].Value">
+                continue;
+            }
+
+            if (columnsFilled + Model[i].Columns > TotalColumns)
+            {   
+                @:</div><div class="fields">                
+                columnsFilled = Model[i].Columns;
+            }
+            else
+            {                
+                columnsFilled = columnsFilled + Model[i].Columns;
+            }
+
+            if (Model[i].IsLastInRow)
+            {
+                columnsFilled = TotalColumns;
+            }
+
+            <div class="@numberNames[Model[i].Columns * FomanticColumnsForUserColumn] wide field">
+                @{                
+                    await Html.RenderPartialAsync("FormField", Model[i]);
+                }
+            </div>
+        }        
+    </div>
+</div>

@@ -1,0 +1,87 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>aspnet-URegister-f4e89a1a-c572-4ee3-9f1c-306dec465f21</UserSecretsId>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" Version="2.66.0" />
+    <PackageReference Include="IdStampITAuthentication" Version="6.0.1" />
+    <PackageReference Include="IO.EAuthIntegration" Version="1.0.6" />
+    <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.10">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.2.1" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
+    <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.6" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />
+    <PackageReference Include="System.Net.Http" Version="4.3.4" />
+    <PackageReference Include="System.Text.Encodings.Web" Version="9.0.0" />
+    <PackageReference Include="System.Text.Json" Version="9.0.0" />
+    <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\URegister.Core\URegister.Core.csproj" />
+    <ProjectReference Include="..\URegister.ServiceDefaults\URegister.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Areas\Admin\Data\" />
+    <Folder Include="Areas\Admin\Extensions\" />
+    <Folder Include="Areas\Admin\Models\" />
+    <Folder Include="Areas\Admin\Views\Shared\EditorTemplates\" />
+    <Folder Include="Areas\Public\Data\" />
+    <Folder Include="Areas\Public\Models\" />
+    <Folder Include="wwwroot\css\assets\css\scss\basics\" />
+    <Folder Include="wwwroot\css\assets\css\scss\components\" />
+    <Folder Include="wwwroot\css\assets\css\scss\layout\" />
+    <Folder Include="wwwroot\css\assets\css\scss\pages\" />
+    <Folder Include="wwwroot\css\assets\fonts\" />
+    <Folder Include="wwwroot\css\assets\html\components\" />
+    <Folder Include="wwwroot\css\assets\images\base\" />
+    <Folder Include="wwwroot\css\assets\images\buttons\" />
+    <Folder Include="wwwroot\css\assets\images\control-panel\" />
+    <Folder Include="wwwroot\css\assets\images\documents\" />
+    <Folder Include="wwwroot\css\assets\images\footer\" />
+    <Folder Include="wwwroot\css\assets\images\general\" />
+    <Folder Include="wwwroot\css\assets\images\user\" />
+    <Folder Include="wwwroot\css\assets\img\" />
+    <Folder Include="wwwroot\css\assets\scripts\" />
+    <Folder Include="wwwroot\css\NewFolder\" />
+    <Folder Include="wwwroot\fonts\montserrat\" />
+    <Folder Include="wwwroot\library\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="wwwroot\images\general\.DS_Store" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="Areas\Admin\Views\Shared\FormFieldArranger.cshtml">
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Update="Areas\Admin\Views\Shared\FormFieldBoolean.cshtml">
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Update="wwwroot\js\userMessages.js">
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+	<ItemGroup>
+		<!--<Protobuf Include="..\Protos\nomenclature.proto" GrpcServices="Client" />-->
+		<!--<Protobuf Include="..\Protos\object.proto" GrpcServices="Client" />-->
+	</ItemGroup>
+
+</Project>

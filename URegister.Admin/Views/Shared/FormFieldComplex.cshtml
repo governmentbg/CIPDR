@@ -1,0 +1,27 @@
+﻿@using URegister.Infrastructure.Model.RegisterForms
+@model URegister.Infrastructure.Model.RegisterForms.FormField
+@{    
+    string toolTip = string.IsNullOrEmpty(Model.Tooltip) ? string.Empty : Model.Tooltip;
+
+    if (Model.IsReadonly)
+    {
+        foreach (FormField subField in Model.Fields)
+        {
+            subField.IsReadonly = true;
+        }
+    }
+}
+<div class="ui form">
+    <div class="field">
+        <fieldset class="person-fieldset @(Model.IsReadonly ? "readonly-fieldset" : "")">
+            <legend class="person-tooltip"
+                    @if (!string.IsNullOrEmpty(toolTip))
+                    {
+                        <text>data-content="@toolTip"</text>
+                    }>@Model.Label</legend>
+            @{
+                await Html.RenderPartialAsync("FormFieldArranger", Model.Fields?.ToList());
+            }
+        </fieldset>
+    </div>
+</div>

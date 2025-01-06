@@ -1,0 +1,20 @@
+﻿@using URegister.Helper
+@using URegister.Infrastructure.Extensions
+@model long?
+@{
+    var ddl = Utils.GetDropDownDdl(ViewData).SetSelected(Model);
+    var onchange = (string)(ViewData["onchange"] ?? String.Empty);
+    var class_css = (string)(ViewData["class"] ?? String.Empty);
+    var reqClass = ViewData.ModelMetadata.GetIOReqClass();
+    var container_css = (string)(ViewData["container_css"] ?? String.Empty);
+}
+
+<div class="form-group @container_css">
+    <label asp-for="@Model" class="form-label @reqClass"></label>
+    @Html.DropDownListFor(model => model, ddl, new { 
+        @class = $"form-control form-select {class_css}", 
+        onchange = $"{onchange}",
+        placeholder = "Изберете"
+    })
+    <span asp-validation-for="@Model" class="text-danger"></span>
+</div>

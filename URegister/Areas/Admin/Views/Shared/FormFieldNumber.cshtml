@@ -1,0 +1,25 @@
+﻿@using System.Globalization
+@model URegister.Infrastructure.Model.RegisterForms.FormField
+@{
+    string placeHolder = string.IsNullOrEmpty(Model.Placeholder) ? string.Empty : Model.Placeholder;
+    string toolTip = string.IsNullOrEmpty(Model.Tooltip) ? string.Empty : Model.Tooltip;
+    string step = Model.NumberOfDigitsAfterDelimiter.HasValue ? (1 / Math.Pow(10, Model.NumberOfDigitsAfterDelimiter.Value))
+        .ToString(NumberFormatInfo.InvariantInfo) 
+    : 
+        "1";
+}
+<div class="ui form">
+    <div class="field @(Model.IsRequired ? "required" : string.Empty)">
+        <label for="@Model.Identifier">@Model.Label</label>
+        <div class="ui input" @if (!string.IsNullOrEmpty(toolTip))
+        {
+            <text>data-tooltip="@toolTip"</text>
+        }>
+        <input id="@Model.Identifier" name="@Model.Name" value="@Model.Value" type="number" step="@step" min="@Model.MinValue?.ToString(CultureInfo.InvariantCulture)" max="@Model.MaxValue?.ToString(CultureInfo.InvariantCulture)" placeholder="@placeHolder" class="@(Model.IsReadonly ? "ui disabled input" : "ui input")"
+            @(Model.IsReadonly ? "readonly" : "") @(Model.IsRequired ? "required" : "")/>
+        </div>
+        @{
+            await Html.RenderPartialAsync("ValidationErrorSpan", Model.ValidationError);
+        }
+    </div>
+</div>

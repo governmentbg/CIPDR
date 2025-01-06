@@ -1,0 +1,64 @@
+﻿@model URegister.Infrastructure.Model.RegisterForms.FormField
+@using URegister.Common
+@using URegister.Core.Contracts
+@using URegister.Infrastructure.Constants
+@using URegister.NomenclaturesCatalog;
+@inject NomenclatureGrpc.NomenclatureGrpcClient NomenclatureGrpcClient;
+@inject IRegisterService RegisterService
+@{
+    NomenclaturePublicRequest getNomenclaturesRequest = new NomenclaturePublicRequest
+    {
+        RegisterId = await RegisterService.GetCurrentRegisterId(),
+        NomenclatureTypes = { Model.NomenclatureType }
+    };
+
+    NomenclaturePublicResponse nomenclatureResult = null;
+    List<SelectListItem> list = new List<SelectListItem>();
+
+    try
+    {
+        nomenclatureResult =
+            await NomenclatureGrpcClient.GetNomenclaturePublicAsync(getNomenclaturesRequest);
+
+        if (nomenclatureResult.ResultStatus.Code != ResultCodes.Ok)
+        {
+            //Logger.LogError($"Проблем при зареждане на номенклатура {Model.NomenclatureType} в FormFieldSelect)");
+            TempData[MessageConstant.ErrorMessage] = "Проблем с връзката, презаредете страницата";
+        }
+        else
+        {
+            list = nomenclatureResult.NomenclatureTypes
+                .First()
+                .CodeableConcepts.Select(concept => new SelectListItem(concept.Value, concept.Code)).ToList();
+        }
+    }
+    catch (Exception ex)
+    {
+        //Logger.LogError(ex, $"Проблем при зареждане на номенклатура {Model.NomenclatureType} в FormFieldSelect)");
+        TempData[MessageConstant.ErrorMessage] = "Проблем с връзката, презаредете страницата";
+    }
+
+    string placeHolder = string.IsNullOrEmpty(Model.Placeholder) ? string.Empty : Model.Placeholder;
+    string toolTip = string.IsNullOrEmpty(Model.Tooltip) ? string.Empty : Model.Tooltip;   
+}
+<div class="ui form">
+    <div class="field @(Model.IsRequired ? "required" : string.Empty)">
+        <label for="@Model.Identifier">@Model.Label</label> 
+        <div class="ui fluid search selection dropdown @(Model.IsReadonly ? "disabled" : string.Empty)" @if (!string.IsNullOrEmpty(toolTip))
+        {
+            <text>data-tooltip="@toolTip"</text>
+        }>
+            <input type="hidden" id="@Model.Identifier" name="@Model.Name" value="@Model.Value"><i class="dropdown icon"></i>
+            <div class="default text">@placeHolder</div>
+            <div class="menu">
+                @foreach (SelectListItem item in list)
+                {
+                    <div class="item" data-value="@item.Value">@item.Text</div>
+                }
+            </div>
+        </div>
+        @{
+            await Html.RenderPartialAsync("ValidationErrorSpan", Model.ValidationError);
+        }        
+    </div>
+</div>

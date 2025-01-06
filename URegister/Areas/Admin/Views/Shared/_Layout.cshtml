@@ -1,0 +1,58 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+
+    <link rel="stylesheet" href="~/library/datatables/se/datatables.semanticui.min.css" />
+    <link rel="stylesheet" href="~/library/datatables/buttons-se/buttons.semanticui.css" />
+
+    <link rel="stylesheet" href="~/lib/fomantic-ui/semantic.min.css" />
+    <link rel="stylesheet" href="~/css/admin/site.css" asp-append-version="true" />
+</head>
+<body>
+    @{
+        await Html.RenderPartialAsync("~/Areas/Admin/Views/Shared/_Menu.cshtml");
+    }
+    <div class="ui main fluid container">
+        <h1 class="ui centered header">@ViewData["Title"]</h1>
+        @* <main role="main" class="pb-3"> *@
+            @* <div class="ui segments"> *@
+                @* <div class="ui segment">
+                    
+                </div>     *@            
+                @RenderBody()
+            @* </div> *@
+        @* </main> *@
+    </div>
+
+    @* <footer class="ui footer">
+    <div class="ui container">
+    &copy; 2024 - URegister.Admin - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+    </div>
+    </footer> *@
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/fomantic-ui/semantic.min.js"></script>
+    <script src="~/library/datatables/dataTables.min.js"></script>
+    <script src="~/library/pdfmake/pdfmake.min.js"></script>
+    <script src="~/library/pdfmake/vfs_fonts.min.js"></script>
+    <script src="~/library/jszip/jszip.min.js"></script>
+    <script src="~/library/datatables/se/dataTables.semanticui.min.js"></script>
+    <script src="~/library/datatables/buttons/js/datatables.buttons.js"></script>
+    <script src="~/library/datatables/buttons-se/buttons.semanticui.js"></script>
+    <script src="~/library/datatables/buttons/js/buttons.colvis.js"></script>
+    <script src="~/library/datatables/buttons/js/buttons.html5.js"></script>
+    <script src="~/library/datatables/buttons/js/buttons.print.js"></script>
+ 
+    <script src="~/js/data-tables-init.js" asp-append-version="true"></script>
+    <script src="~/js/common.js" asp-append-version="true"></script>
+    <script src="~/js/admin/site.js" asp-append-version="true"></script>
+
+    @{
+        await Html.RenderPartialAsync("_UserMessages");
+    }
+    @await RenderSectionAsync("Scripts", required: false)
+    @await RenderSectionAsync("Styles", required: false)
+</body>
+</html>

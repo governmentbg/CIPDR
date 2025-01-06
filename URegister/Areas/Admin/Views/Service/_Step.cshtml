@@ -1,0 +1,30 @@
+﻿@using URegister.Core.Models.Service
+@using URegister.Infrastructure.Extensions
+@model ServiceStepVM
+
+@{
+    var currentHtmlPrefix = ViewData.TemplateInfo.HtmlFieldPrefix;
+    var indexPath = currentHtmlPrefix.GetIndexPath();
+}
+<div class="ui sixteen wide field content item-template draggable" data-id="@Model.OrderNum">
+    <input type="hidden" name="@indexPath" value="@Model.Index" />
+    <div class="column ui segment green">
+        <div class="ui form">
+            <div class="fields">
+                @Html.HiddenFor(model => model.Id)
+                @Html.TextBoxFor(model => model.OrderNum, new { type = "hidden", @class = "order-input" })
+                
+                <div class='eight wide field'>
+                    @Html.EditorFor(model => model.StepId, "DropDownInt")
+                </div>
+                <div class='seven wide field'>
+                    @Html.EditorFor(model => model.FormParentId, "DropDownInt")
+                </div>
+                <div class="one wide field center-item-container">
+                    @await Html.PartialAsync("_RemoveItem")
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

@@ -1,0 +1,13 @@
+﻿@using URegister.Infrastructure.Extensions
+@model string?
+@{
+    var val = Model?.Decode();
+    var add_class = ((string?)ViewData["class"] ?? "");
+    var containerClass = ViewData["container_class"] ?? "form-group";
+}
+<div class="@containerClass">
+    <label asp-for="@Model" class="form-label"></label>
+    <p class="@add_class">
+        @val
+    </p>
+</div>

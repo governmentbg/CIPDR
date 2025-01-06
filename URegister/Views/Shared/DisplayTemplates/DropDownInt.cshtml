@@ -1,0 +1,19 @@
+﻿@using URegister.Extensions
+@using URegister.Helper
+@using URegister.Infrastructure.Extensions
+@model int?
+@{
+    var ddl = Utils.GetDropDownDdl(ViewData).SetSelected(Model);
+    var val = ddl.Where(x => x.Value == Model?.ToString()).Select(x => x.Text).FirstOrDefault();
+    var add_class = ((string?)ViewData["class"] ?? "");
+    var container_css = (string)(ViewData["container_css"] ?? String.Empty);
+}
+
+<div class="ui form @container_css">
+    <div class="field">
+        <label asp-for="@Model" class="form-label"></label>
+    <p class="@add_class">
+        @val
+    </p>
+    </div>
+</div>

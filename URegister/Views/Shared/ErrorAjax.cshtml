@@ -1,0 +1,11 @@
+﻿@model ErrorViewModel
+<p>
+    @Model.Message
+</p>
+
+@if (Model.ShowRequestId)
+{
+    <p>
+        <strong>Request ID:</strong> <code>@Model.RequestId</code>
+    </p>
+}

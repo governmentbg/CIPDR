@@ -1,0 +1,52 @@
+﻿@using URegister.Core.Models.CurrentRegister
+@using URegister.Infrastructure.Constants
+@model RegisterVM
+
+@{
+    ViewBag.Title = "Редакция на регистър";
+    var htmlFieldPrefix = ViewData.TemplateInfo.HtmlFieldPrefix;
+}
+<div class="ui grid">
+    <form class="ui sixteen wide column" action="@Url.Action("Edit")" method="post" enctype="multipart/form-data">
+        <div class="content">
+            @Html.HiddenFor(model => model.Id)
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class='four wide field'>
+                            @Html.EditorFor(model => model.Code, "StringDisabled")
+                        </div>
+                        <div class='twelve wide field'>
+                            @Html.EditorFor(model => model.Name, "StringDisabled")
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class="sixteen wide field">
+                            @Html.EditorFor(model => model.Description)
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class="sixteen wide field">
+                            @Html.EditorFor(model => model.LegalBasis, "TextAreaDisabled")
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='four wide field'>
+                            @Html.EditorFor(model => model.Type, "DropDownDisabled", new { Ddl = ViewData[$"{InternalNomenclatureTypes.RegisterType}_ddl"] })
+                        </div>
+                        <div class='four wide field'>
+                            @Html.EditorFor(model => model.TypeEntry, "DropDownDisabled", new { Ddl = ViewData[$"{InternalNomenclatureTypes.RegisterEntryType}_ddl"] })
+                        </div>
+                        <div class='eight wide field'>
+                            @Html.EditorFor(model => model.IdentitySecurityLevel, "DropDownDisabled", new { Ddl = ViewData[$"{InternalNomenclatureTypes.RegisterIdentitySecurityLevel}_ddl"] })
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @await Html.PartialAsync("_BackSubmitButton", @Url.Action("Index", "Home", new { area = "" }))
+        </div>
+    </form>
+</div>
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

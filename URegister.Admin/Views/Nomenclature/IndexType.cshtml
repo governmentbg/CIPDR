@@ -1,0 +1,53 @@
+﻿@using URegister.Core.Models.Nomenclature
+@model NomenclatureTypeFilterVM
+@{
+    ViewData["Title"] = "Типове номенклатури";
+}
+
+<div class="ui grid">
+    <div class="column">
+        <div class="ui fluid container basic clearing">
+            <div class="ui accordion">
+                <div class="title">
+                    <i class="dropdown icon"></i>
+                    Филтър
+                </div>
+                <div class="content">
+                    <div class="column ui segment green">
+                        <div class="ui form">
+                            <div class="fields">
+                                <div class="seven wide field">
+                                    @Html.EditorFor(model => model.Type)
+                                </div>
+                                <div class="seven wide field">
+                                    @Html.EditorFor(model => model.Name)
+                                </div>
+                                <div class="ui two wide right aligned field custom buttons">
+                                        <div class="ui fluid container basic clearing">
+                                        <a href="javascript:LoadNomenclatureTypes()" class="ui primary button right floated" style="margin-top:1.5rem">
+                                                <i class="icon search"></i>
+                                                Търси
+                                            </a>
+                                        </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="column">
+            <table 
+                id="nomenclatureTypes" 
+                class="ui celled striped very compact table" style="width:100%; padding:0px;"
+                data-url="@Url.Action("GetNomenclatureTypeList", "Nomenclature")"
+                data-add-url="@Url.Action("AddNomenclatureType", "Nomenclature")">
+             </table>
+        </div>
+    </div>
+</div>
+@await Html.PartialAsync("_ConfirmDelete")
+@section Scripts
+{
+    <script src="~/js/nomenclature/nomenclatureType.js" asp-append-version="true"></script>
+}

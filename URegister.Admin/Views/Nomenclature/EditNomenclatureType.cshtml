@@ -1,0 +1,44 @@
+﻿@using URegister.Core.Models.Nomenclature
+@model NomenclatureTypeVM
+
+@{
+    ViewBag.Title = Model.IsInsert ? "Добавяне на  тип номенклатура" : "Редакция на тип номенклатура" ;
+    var htmlFieldPrefix = ViewData.TemplateInfo.HtmlFieldPrefix;
+    var typeEditor = Model.IsInsert ? "String" : "StringDisabled";
+    var action = Model.IsInsert ? "AddNomenclatureType" : "EditNomenclatureType";
+}
+<div class="ui grid">   
+    <form class="ui sixteen wide column" action="@Url.Action(action)" method="post" enctype="multipart/form-data">
+        <div class="content">           
+            <div class="column ui segment green">
+                <div class="ui form">
+                    @Html.HiddenFor(model => model.IsInsert)
+                    <div class="fields">
+                        <div class='eight wide field'>
+                            @Html.EditorFor(model => model.Type, typeEditor)
+                        </div>
+                        <div class='eight wide field'>
+                            @Html.EditorFor(model => model.HolderType)
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class="sixteen wide field">
+                            @Html.EditorFor(model => model.Name)
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class="sixteen wide field">
+                            @Html.EditorFor(model => model.IsPublic, "CheckBoxBoolean")
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            @await Html.PartialAsync("_BackSubmitButton", @Url.Action("IndexType"))
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

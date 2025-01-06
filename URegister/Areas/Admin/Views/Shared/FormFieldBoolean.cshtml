@@ -1,0 +1,22 @@
+﻿@model URegister.Infrastructure.Model.RegisterForms.FormField
+@{
+    string toolTip = string.IsNullOrEmpty(Model.Tooltip) ? string.Empty : Model.Tooltip;
+}
+<div class="ui form">
+    <div class="field @(Model.IsRequired ? "required" : string.Empty)">
+        <div class="@(Model.Value == "true" ? "ui checkbox checked" : "ui checkbox") @(Model.IsReadonly ? "disabled" : "")">
+            <div class="checkbox-tooltip" @if (!string.IsNullOrEmpty(toolTip))
+                 {
+                     <text>data-content="@toolTip"</text>
+                 }>
+                <input @(Model.IsReadonly ? "disabled = 'disabled'" : string.Empty) type="checkbox" class="checkbox-template" @(Model.Value == "true" ? "checked=''" : "") @(Model.IsRequired ? "required" : "")>
+                <input value="@(string.IsNullOrWhiteSpace(Model.Value) ? "false" : Model.Value)" id="@Model.Identifier" name="@Model.Name" type="hidden" />
+                <label for="@Model.Identifier">@Model.Label</label>
+            </div>
+        </div>
+        <div> </div>
+        @{
+            await Html.RenderPartialAsync("ValidationErrorSpan", Model.ValidationError);
+        }
+    </div>
+</div>

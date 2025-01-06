@@ -1,0 +1,56 @@
+﻿@using URegister.Core.Models.Register
+@model RegisterFilterVM
+@{
+    ViewData["Title"] = "Регистри";
+}
+
+<div class="ui grid">
+    <div class="column">
+        <div class="ui fluid container basic clearing">
+            <div class="ui accordion">
+                <div class="title">
+                    <i class="dropdown icon"></i>
+                    Филтър
+                </div>
+                <div class="content">
+                    <div class="column ui segment green">
+                        <div class="ui form">
+                            <div class="fields">
+                                <div class="two wide field">
+                                    @Html.EditorFor(model => model.Code)
+                                </div>
+                                <div class="six wide field">
+                                    @Html.EditorFor(model => model.Name)
+                                </div>
+                                <div class="six wide field">
+                                    @Html.EditorFor(model => model.Description)
+                                </div>
+                                <div class="ui two wide right aligned field custom buttons">
+                                        <div class="ui fluid container basic clearing">
+                                        <a href="javascript:LoadRegisters()" class="ui primary button right floated" style="margin-top:1.5rem">
+                                                <i class="icon search"></i>
+                                                Търси
+                                            </a>
+                                        </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="column">
+            <table 
+                id="registers" 
+                class="ui celled striped very compact table" style="width:100%; padding:0px;"
+                data-url="@Url.Action("GetRegisterList", "Register")"
+                   data-add-url="@Url.Action("Add", "Register")">
+             </table>
+        </div>
+    </div>
+</div>
+@await Html.PartialAsync("_ConfirmDelete")
+@section Scripts
+{
+    <script src="~/js/register/registerList.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,15 @@
+﻿@* @using Microsoft.AspNetCore.Identity
+@inject SignInManager<IdentityUser> SignInManager
+@inject UserManager<IdentityUser> UserManager *@
+
+@* @if (SignInManager.IsSignedIn(User))
+    {*@
+<div class="right menu">
+    <div class="ui simple dropdown item">
+        Тестов потребител <i class="dropdown icon"></i>
+        <div class="menu">
+            <a asp-action="LogOff" asp-controller="Account" class="item">Изход</a>
+        </div>
+    </div>
+</div>
+@* } *@

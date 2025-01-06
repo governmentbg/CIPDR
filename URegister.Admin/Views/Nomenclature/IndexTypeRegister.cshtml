@@ -1,0 +1,57 @@
+﻿@using URegister.Core.Models.Nomenclature
+@model NomenclatureTypeRegisterFilterVM
+@{
+    ViewData["Title"] = "Типове номенклатури за регистър";
+}
+
+<div class="ui grid">
+    <div class="column">
+        <div class="ui fluid container basic clearing">
+            <div class="ui accordion">
+                <div class="title">
+                    <i class="dropdown icon"></i>
+                    Филтър
+                </div>
+                <div class="content">
+                    <div class="column ui segment green">
+                        <div class="ui form">
+                            <div class="fields">
+                                <div class="six wide field">
+                                    @Html.AntiForgeryToken()
+                                    @Html.EditorFor(model => model.RegisterId, "GenericDropDown")
+                                </div>
+                                <div class="four wide field">
+                                    @Html.EditorFor(model => model.Type)
+                                </div>
+                                <div class="four wide field">
+                                    @Html.EditorFor(model => model.Name)
+                                </div>
+                                <div class="ui two wide right aligned field custom buttons">
+                                        <div class="ui fluid container basic clearing">
+                                        <a href="javascript:LoadNomenclatureTypeRegisters()" class="ui primary button right floated" style="margin-top:1.5rem">
+                                                <i class="icon search"></i>
+                                                Търси
+                                            </a>
+                                        </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="column" id="nomenclatureTypeRegisterContainer">
+            <table 
+                id="nomenclatureTypeRegister" 
+                class="ui celled striped very compact table" style="width:100%; padding:0px;"
+                data-url="@Url.Action("GetNomenclatureTypeRegisterList", "Nomenclature")">
+             </table>
+        </div>
+    </div>
+</div>
+@await Html.PartialAsync("_BackButton", @Url.Action("Index", "Register"))
+@await Html.PartialAsync("_ConfirmDelete")
+@section Scripts
+{
+    <script src="~/js/nomenclature/nomenclatureTypeRegister.js" asp-append-version="true"></script>
+}

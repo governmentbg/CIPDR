@@ -1,0 +1,17 @@
+﻿@model int?
+
+@{
+    var fieldName = ViewData.TemplateInfo.HtmlFieldPrefix.Replace(".", "_") + "_ddl";
+}
+
+@if (ViewData[fieldName] != null)
+{
+    var list = (ViewData[fieldName] as IEnumerable<SelectListItem>).ToList();
+    <div class="ui form">
+        <div class="field">
+            <label asp-for="@Model"></label>
+            @Html.DropDownListFor(model => model, list.SetSelected(Model))
+            <span asp-validation-for="@Model" class="validation-error" tabindex="-1"></span>
+        </div>
+    </div>
+}

@@ -1,0 +1,23 @@
+﻿@using URegister.Core.Models.CurrentRegister
+@model PersonFilterVM
+@{
+    ViewData["Title"] = "Оторозирани лица";
+}
+@Html.HiddenFor(x => x.AdministrationId)
+<div class="ui grid">
+    <div class="column">
+         <div class="column">
+            <table 
+                id="persons" 
+                class="ui celled striped very compact table" style="width:100%; padding:0px;"
+                data-url="@Url.Action("GetPersonList", "Register")">
+             </table>
+        </div>
+    </div>
+</div>
+@await Html.PartialAsync("_BackButton", @Url.Action("IndexAdministration"))
+@await Html.PartialAsync("_ConfirmDelete")
+@section Scripts
+{
+    <script src="~/js/register/personList.js" asp-append-version="true"></script>
+}

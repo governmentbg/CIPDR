@@ -1,0 +1,64 @@
+﻿@using URegister.Core.Models.CurrentRegister
+@using URegister.Infrastructure.Constants
+@model AdministrationVM
+
+@{
+    ViewBag.Title = "Добавяне на регистър";
+    var htmlFieldPrefix = ViewData.TemplateInfo.HtmlFieldPrefix;
+}
+<div class="ui grid">
+    <form class="ui sixteen wide column" action="@Url.Action("EditAdministration")" method="post" enctype="multipart/form-data">
+        <div class="content">
+            @Html.HiddenFor(model => model.Id)
+            @Html.HiddenFor(model => model.Manager.Type)
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class="four wide field">
+                            @Html.EditorFor(model => model.Uic, "StringDisabled")
+                        </div>
+                        <div class="twelve wide field">
+                            @Html.EditorFor(model => model.Name, "StringDisabled")
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class="sixteen wide field">
+                            @Html.EditorFor(model => model.LegalBasis, "TextAreaDisabled")
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            <h3>Ръководител</h3>
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='four wide field'>
+                            @Html.EditorFor(model => model.Manager.FirstName, "String")
+                        </div>
+                        <div class='four wide field'>
+                            @Html.EditorFor(model => model.Manager.MiddleName, "String")
+                        </div>
+                        <div class='four wide field'>
+                            @Html.EditorFor(model => model.Manager.LastName, "String")
+                        </div>
+                        <div class='four wide field'>
+                            @Html.EditorFor(model => model.Manager.Position, "String")
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='eight wide field'>
+                            @Html.EditorFor(model => model.Manager.Phone, "String")
+                        </div>
+                        <div class='eight wide field'>
+                            @Html.EditorFor(model => model.Manager.Email, "String")
+                        </div>
+                    </div>
+                </div>
+             </div>
+            @await Html.PartialAsync("_BackSubmitButton", @Url.Action("IndexAdministration"))
+        </div>
+    </form>
+</div>
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

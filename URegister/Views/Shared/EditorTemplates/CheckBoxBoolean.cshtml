@@ -1,0 +1,6 @@
+﻿@model bool
+
+<div class="ui toggle checkbox four wide column">
+    <input asp-for="@Model" class="center" type="checkbox" />
+    <label asp-for="@Model"><b>@Html.DisplayNameFor(model => model)</b></label>
+</div>

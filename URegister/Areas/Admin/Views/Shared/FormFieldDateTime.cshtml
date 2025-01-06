@@ -1,0 +1,26 @@
+﻿@using System.Globalization
+@model URegister.Infrastructure.Model.RegisterForms.FormField
+
+@{
+    string placeHolder = string.IsNullOrEmpty(Model.Placeholder) ? string.Empty : Model.Placeholder;
+    string toolTip = string.IsNullOrEmpty(Model.Tooltip) ? string.Empty : Model.Tooltip;
+}
+
+<div class="ui form">
+    <div class="field @(Model.IsRequired ? "required" : string.Empty)">
+        <label for="@Model.Identifier">@Model.Label</label>
+        <div class="ui calendar datetime-calendar">
+            <div class="ui input left icon" @if (!string.IsNullOrEmpty(toolTip))
+            {
+                <text>data-tooltip="@toolTip"</text>
+            }>
+              <i class="calendar icon"></i>
+                <input id="@Model.Identifier" name="@Model.Name" type="text" placeholder="@placeHolder" value="@Model.Value" class="@(Model.IsReadonly ? "ui disabled input" : "")"
+                @(Model.IsReadonly ? "readonly" : "") @(Model.IsRequired ? "required" : "")>
+            </div>
+        </div>
+        @{
+            await Html.RenderPartialAsync("ValidationErrorSpan", Model.ValidationError);
+        }
+    </div>
+</div>

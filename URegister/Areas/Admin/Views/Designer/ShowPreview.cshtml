@@ -1,0 +1,32 @@
+﻿@model URegister.Infrastructure.Model.RegisterForms.FormViewModel
+@{
+    ViewData["Title"] = $"Изглед на '{Model.FormTitle}'";
+}
+
+<div class="ui segments">
+    <div class="ui green clearing segment">
+        <form action="@Url.Action("ShowPreview", "Designer", new { area = "Admin" })" method="post" id="submit" novalidate enctype="multipart/form-data">
+            @Html.HiddenFor(m => m.FormParentId)
+            @Html.HiddenFor(m => m.SelectedType)
+            @Html.AntiForgeryToken()
+            @{
+                await Html.RenderPartialAsync("FormFieldArranger", Model.FormFields);
+            }
+            <div class="fields">
+                <input class="ui primary right floated button" type="submit" value="Изпрати" />
+                <a href="@Url.Action("Index", "Designer", new { area = "Admin", formParentId = @Model.FormParentId })" class="ui right floated button"><i class="arrow left icon"></i> Назад</a>
+            </div>
+        </form>
+    </div>
+    <div class="ui segment">
+        <div class="ui toggle checked checkbox">
+            <input type="checkbox" onclick="frontEndValidation(this)">
+            <label>Front-end валидация</label>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/uuid/uuidv4.min.js"></script>
+    <script src="~/js/admin/designer/showPreview.js"></script>
+}

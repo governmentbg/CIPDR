@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsAspireHost>true</IsAspireHost>
+    <UserSecretsId>31a8009b-db9a-421f-bc27-a51b75259d3d</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="8.2.1" />
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.2.1" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />
+    <PackageReference Include="System.Text.Encodings.Web" Version="9.0.0" />
+    <PackageReference Include="System.Text.Json" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\URegister.Admin\URegister.Admin.csproj" />
+    <ProjectReference Include="..\URegister.ApiGateway\URegister.ApiGateway.csproj" />
+    <ProjectReference Include="..\URegister.IntegrationsCatalog\URegister.IntegrationsCatalog.csproj" />
+    <ProjectReference Include="..\URegister.NomenclaturesCatalog\URegister.NomenclaturesCatalog.csproj" />
+    <ProjectReference Include="..\URegister.NumberGenerator\URegister.NumberGenerator.csproj" />
+    <ProjectReference Include="..\URegister.ObjectsCatalog\URegister.ObjectsCatalog.csproj" />
+    <ProjectReference Include="..\URegister.RegistersCatalog\URegister.RegistersCatalog.csproj" />
+    <ProjectReference Include="..\Uregister.Users\Uregister.Users.csproj" />
+    <ProjectReference Include="..\URegister\URegister.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,37 @@
+﻿@using URegister.Infrastructure.Model.RegisterForms
+@model URegister.Infrastructure.Model.RegisterForms.FormViewModel
+@{
+    ViewData["Title"] = $"Стойности само за четене на формата '{Model.FormTitle}'";
+    foreach (FormField modelFormField in Model.FormFields)
+    {
+        modelFormField.IsReadonly = true;
+        if (modelFormField.Repetitions != null)
+        {
+            foreach (FormField modelFormFieldRep in modelFormField.Repetitions)
+            {
+                modelFormFieldRep.IsReadonly = true;
+            }
+        }
+    }
+}
+
+<div class="ui segments">
+    <div class="ui green clearing segment">
+        <div>
+            @Html.HiddenFor(m => m.FormParentId)
+            @Html.HiddenFor(m => m.SelectedType)
+            @Html.AntiForgeryToken()
+            @{
+                await Html.RenderPartialAsync("FormFieldArranger", Model.FormFields);
+            }
+            <div class="fields">
+                <a href="@Url.Action("ShowPreview", "Designer", new { formParentId = Model.FormParentId})" class="ui right floated button"><i class="arrow left icon"></i> Назад</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/uuid/uuidv4.min.js"></script>
+    <script src="~/js/admin/designer/showPreview.js"></script>
+}

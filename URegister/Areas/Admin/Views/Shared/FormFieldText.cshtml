@@ -1,0 +1,24 @@
+﻿@model URegister.Infrastructure.Model.RegisterForms.FormField
+@{
+    string placeHolder = string.IsNullOrEmpty(Model.Placeholder) ? string.Empty : Model.Placeholder;
+    string toolTip = string.IsNullOrEmpty(Model.Tooltip) ? string.Empty : Model.Tooltip;    
+    string pattern = string.IsNullOrEmpty(Model.Pattern) ? string.Empty : Model.Pattern;
+}
+<div class="ui form">
+    <div class="field @(Model.IsRequired ? "required" : string.Empty)">
+        <label for="@Model.Identifier">@Model.Label</label> 
+        <div class="ui input" @if (!string.IsNullOrEmpty(toolTip)) 
+        {
+            <text>data-tooltip="@toolTip"</text>
+        }>
+        <input id="@Model.Identifier" name="@Model.Name" value="@Model.Value" type="text" placeholder="@placeHolder" class="@(Model.IsReadonly ? "ui disabled input" : "ui input")"
+            @(Model.IsReadonly ? "readonly" : "") @(Model.IsRequired ? "required" : "") @if (!string.IsNullOrEmpty(pattern))
+            {
+                <text>pattern="@pattern"</text>
+            }/>
+        </div>
+        @{
+            await Html.RenderPartialAsync("ValidationErrorSpan", Model.ValidationError);
+        }        
+    </div>
+</div>

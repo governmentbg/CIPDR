@@ -1,0 +1,27 @@
+﻿@using URegister.Core.Models.Nomenclature
+@model NomenclatureTypeFilterVM
+@{
+    ViewData["Title"] = "Номенклатурни стойности към " + Model.Name;
+}
+
+@Html.HiddenFor(x => x.Type)
+@Html.HiddenFor(x => x.Name)
+<div class="ui grid">    
+    <div class="column">
+        <div class="column">
+            <table 
+                id="codeableConcepts" 
+                class="ui celled striped very compact table" 
+                style="width:100%; padding:0px;" 
+                data-url="@Url.Action("GetCodeableConceptList", "Nomenclature")"
+                data-add-url="@Url.Action("Add", "Nomenclature", new { nomenclatureType = Model.Type })">
+            </table>
+        </div>
+    </div>
+</div>
+@await Html.PartialAsync("_BackButton", @Url.Action("IndexType"))
+@await Html.PartialAsync("_ConfirmDelete")
+@section Scripts
+{
+    <script src="~/js/nomenclature/codeableConcept.js" asp-append-version="true"></script>
+}
