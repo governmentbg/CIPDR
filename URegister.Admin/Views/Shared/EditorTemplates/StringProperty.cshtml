@@ -1,0 +1,10 @@
+﻿@using Microsoft.AspNetCore.Mvc.TagHelpers
+@model string
+
+<div class="ui form">
+    <div class="field">
+        <label asp-for="@Model"></label>
+        @Html.TextBox(String.Empty, Model.Decode())
+        <span asp-validation-for="@Model" class="validation-error" tabindex="-1"></span>
+    </div>
+</div>

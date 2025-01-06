@@ -1,0 +1,59 @@
+﻿@using URegister.Core.Models.Process
+@model ProcessFilterVM 
+@{
+    ViewData["Title"] = "Заявени услуги";
+}
+
+<div class="ui grid">
+    <div class="column">
+        <div class="ui fluid container basic clearing">
+            <div class="ui accordion">
+                <div class="title">
+                    <i class="dropdown icon"></i>
+                    Филтър
+                </div>
+                <div class="content">
+                    <div class="column ui segment green">
+                        <div class="ui form">
+                            <div class="fields">
+                                <div class="three wide field">
+                                    @Html.EditorFor(model => model.IncomingNumber)
+                                </div>
+                                <div class="three wide field">
+                                    @Html.EditorFor(model => model.IncomingDate, "DateTime")
+                                </div>
+                                <div class="three wide field">
+                                    @Html.EditorFor(model => model.RegisterNumber)
+                                </div>
+                                <div class="three wide field">
+                                    @Html.EditorFor(model => model.ServiceId, "DropDownInt")
+                                </div>
+                                <div class="three wide field">
+                                    @Html.EditorFor(model => model.StepId, "DropDownInt")
+                                </div>
+                                <div class="ui two wide right aligned field custom buttons">
+                                    <div class="ui fluid container basic clearing">
+                                        <a href="javascript:LoadProcesses()" class="ui primary button right floated" style="margin-top:1.5rem">
+                                            <i class="icon search"></i>
+                                            Търси
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <table id="processes"
+               class="ui celled striped very compact table" style="width:100%; padding:0px;"
+               data-url="@Url.Action("GetProcessList", "Process")"
+               data-add-url="@Url.Action("Add", "Process")">
+        </table>
+    </div>
+</div>
+@await Html.PartialAsync("_BackButton", @Url.Action("Index", "Home", new { area = "" }))
+@section Scripts
+{
+    <script src="~/js/Admin/Process/processList.js" asp-append-version="true"></script>
+}

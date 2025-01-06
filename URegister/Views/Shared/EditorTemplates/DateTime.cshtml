@@ -1,0 +1,17 @@
+﻿@model DateTime?
+@using URegister.Infrastructure.Extensions
+@{
+    var reqClass = ViewData.ModelMetadata.GetIOReqClass();
+ }
+<div class="ui form">
+    <div class="field @reqClass">
+        <label asp-for="@Model"></label>
+          <div class="ui calendar dateonly-calendar">
+            <div class="ui input left icon">
+              <i class="calendar icon"></i>
+                <input asp-for="@Model" type="text" placeholder="Дата" value="@(Model.HasValue && Model.Value > DateTime.MinValue ? Model.Value.ToString("dd.MM.yyyy") : String.Empty)">
+            </div>
+          </div>
+        <span asp-validation-for="@Model" class="validation-error" tabindex="-1"></span>    
+    </div>
+</div>

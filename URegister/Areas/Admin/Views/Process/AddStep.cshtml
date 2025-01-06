@@ -1,0 +1,28 @@
+﻿@using URegister.Core.Models.Process
+@model ProcessStepVM
+@{
+    ViewData["Title"] = Model.FormTitle;
+}
+
+<div class="ui segments">
+    <div class="ui green clearing segment">
+        <form action="@Url.Action("AddStep")" method="post" id="submit" novalidate enctype="multipart/form-data">
+            @Html.HiddenFor(m => m.ProcessId)
+            @Html.HiddenFor(m => m.ServiceStepId)
+            @Html.HiddenFor(m => m.OrderNum)
+            @Html.HiddenFor(m => m.FormParentId)
+            @Html.HiddenFor(m => m.SelectedType)
+            @Html.AntiForgeryToken()
+            @{
+                await Html.RenderPartialAsync("FormFieldArranger", Model.FormFields);
+            }
+            @await Html.PartialAsync("_BackSubmitButton", @Url.Action("Index"))
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/uuid/uuidv4.min.js"></script>
+    <script src="~/js/admin/designer/showPreview.js"></script>
+}
+

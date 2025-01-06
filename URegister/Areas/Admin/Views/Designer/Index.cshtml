@@ -1,0 +1,307 @@
+﻿@model URegister.Infrastructure.Model.RegisterForms.DesignerViewModel;
+@{
+    ViewData["Title"] = $"Дизайнер за '{Model.FormTitle}'";
+}
+@Html.AntiForgeryToken()
+@Html.HiddenFor(m => m.FormTitle)
+@Html.HiddenFor(m => m.FormParentId)
+<div class="ui segments">
+    <div class="ui green segment">
+        <div class="ui menu">
+            <a class="item" id="backToFormIndex" href="@Url.Action("FormIndex", "Catalog", new { area = "Admin" })">
+                <i class="arrow left icon"></i>
+                Назад
+            </a>
+            <a class="item" id="loadConfigurationButton">
+                <i class="redo icon"></i>
+                Презареди
+            </a>
+            <a class="item" id="previewButton">
+                <i class="eye icon"></i>
+                Запис и преглед
+            </a>
+            <a class="item" id="saveButton">
+                <i class="save icon"></i>
+                Запис
+            </a>
+            <a class="item" id="clearAllButton">
+                <i class="trash icon"></i>
+                Изтрий всичко
+            </a>
+            <a class="ui right item" id="addField">
+                <i class="plus icon"></i>
+                Добави поле
+            </a>
+        </div>
+    </div>
+    <div class="ui green segment">
+        <div class="ui grid">
+            <div class="ui twelve wide column">
+                <div class="ui form" id="preview-hidden-fields" style="display: none;">
+                    <fieldset>
+                        <legend>Скрити полета:</legend>
+                        <div id="hidden-fields-wrapper" class="ui stackable seven column grid"></div>
+                    </fieldset>
+                    <div class="ui hidden divider"></div>
+                </div>
+                <div class="ui form" id="preview-container"></div>
+            </div>
+            <div class="right attached four wide column">
+                <div id="fieldProperties" class="ui vertical menu field-properties transition hidden">
+                    <div class="item">
+                        <h3 class="ui header">Настройки на поле</h3>
+                    </div>
+                    <div class="item">
+                        <div class="ui mini form">
+                            <div class="field">
+                                <label for="type">Тип на поле</label>
+                                <div class="ui fluid search selection dropdown">
+                                    <input id="type" type="hidden" name="Type">
+                                    <i class="dropdown icon"></i>
+                                    <div class="default text"></div>
+                                    <div class="menu">
+                                        @foreach (SelectListItem item in ViewBag.DesignerFieldTypes_ddl as List<SelectListItem>)
+                                        {
+                                            <div class="item" data-value="@item.Value">@item.Text</div>
+                                        }
+                                    </div>
+                                </div>
+                                <span for="type" class="validation-error" tabindex="-1"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="item" data-specific-for="Select,MultiSelect,Autocomplete">
+                        <div class="ui mini form">
+                            <div class="field">
+                                <label for="nomenclatureType">Вид номенклатура</label>
+                                <div class="ui fluid search selection dropdown">
+                                    <input id="nomenclatureType" type="hidden" name="NomenclatureType">
+                                    <i class="dropdown icon"></i>
+                                    <div class="default text"></div>
+                                    <div class="menu">
+                                        @foreach (SelectListItem item in ViewBag.NomenclatureTypes_ddl as List<SelectListItem>)
+                                        {
+                                            <div class="item" data-value="@item.Value">@item.Text</div>
+                                        }
+                                    </div>
+                                </div>
+                                <span for="nomenclatureType" class="validation-error" tabindex="-1"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="item">
+                        <div class="ui mini form">
+                            <div class="field">
+                                <label for="label">Име на поле</label>
+                                <div class="ui input">
+                                    <input id="label" type="text" placeholder="Моля въведете на кирилица">
+                                </div>
+                                <span for="label" class="validation-error" tabindex="-1"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="item">
+                        <div class="ui mini form">
+                            <div class="field">
+                                <label for="name">Име на поле в базата данни</label>
+                                <div class="ui input">
+                                    <input id="name" type="text" placeholder="Моля въведете на латиница">
+                                </div>
+                                <span for="name" class="validation-error" tabindex="-1"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="item">
+                        <div class="ui mini form">
+                            <div class="fields">
+                                <div class="eight wide field ui checkbox">
+                                    <input id="isRequired" type="checkbox" class="center" />
+                                    <label for="isRequired">Задължително поле</label>
+                                </div>
+                                <div class="eight wide field ui checkbox">
+                                    <input id="isPublic" type="checkbox" class="center" />
+                                    <label for="isPublic">Публично поле</label>
+                                </div>
+                            </div>
+                            <div class="fields">
+                                <div class="eight wide field ui checkbox">
+                                    <input id="isReadonly" type="checkbox" class="center" />
+                                    <label for="isReadonly">Само за четене</label>
+                                </div>
+                                <div class="eight wide field ui checkbox">
+                                    <input id="isHidden" type="checkbox" class="center" />
+                                    <label for="isHidden">Скрито поле</label>
+                                </div>
+                            </div>                           
+                        </div>
+                    </div>
+                    <div class="item" data-specific-for="Text,Phone,Email,Url,TextArea">
+                        <div class="ui mini form">
+                            <div class="field">
+                                <label for="pattern">Регулярен израз за валидация</label>
+                                <div class="ui input">
+                                    <input id="pattern" type="text">
+                                </div>
+                                <span for="pattern" class="validation-error" tabindex="-1"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="item" data-specific-for="Number">
+                        <div class="ui mini form">
+                            <div class="three fields">
+                                <div class="responsive-tooltip">
+                                    <div class="ui field compact-tooltip" data-content="Брой цифри след десетичната запетая. За цяло число оставете празно или 0">
+                                        <label for="numberOfDigitsAfterDelimiter">Дробни цифри</label>
+                                        <input id="numberOfDigitsAfterDelimiter" type="number" step="1" min="0" value="0" class="center" />
+                                        <span for="numberOfDigitsAfterDelimiter" class="validation-error" tabindex="-1"></span>
+                                    </div>
+                                </div>
+                                <div class="field ui">
+                                    <label for="minValue">Мин. стойност</label>
+                                    <input id="minValue" type="number" step="0.01" class="center" />
+                                    <span for="minValue" class="validation-error" tabindex="-1"></span>
+                                </div>
+                                <div class="field ui">
+                                    <label for="maxValue">Макс. стойност</label>
+                                    <input id="maxValue" type="number" step="0.01" class="center" />
+                                    <span for="maxValue" class="validation-error" tabindex="-1"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="item" data-specific-for="File">
+                        <div class="ui mini form">
+                            <div class="field">
+                                <label for="allowedFileSizeInMB">Допустим размер в MB</label>
+                                <input id="allowedFileSizeInMB" type="number" />
+                                <span for="allowedFileSizeInMB" class="validation-error" tabindex="-1"></span>
+                            </div>
+                            <div class="field">
+                                <label for="allowedFileExtensions">Допустимо разширение</label>
+                                <select id="allowedFileExtensions" class="ui fluid multiple search selection dropdown" multiple="">
+                                    <option value=".doc">.doc</option>
+                                    <option value=".gif">.gif</option>
+                                    <option value=".j2k">.j2k</option>
+                                    <option value=".jp2">.jp2</option>
+                                    <option value=".jpeg">.jpeg</option>
+                                    <option value=".jpg">.jpg</option>
+                                    <option value=".jpx">.jpx</option>
+                                    <option value=".pdf">.pdf</option>
+                                    <option value=".png">.png</option>
+                                    <option value=".p7s">.p7s</option>
+                                    <option value=".rtf">.rtf</option>
+                                    <option value=".sxw">.sxw</option>
+                                    <option value=".tiff">.tiff</option>
+                                    <option value=".txt">.txt</option>
+                                    <option value=".xml">.xml</option>
+                                </select>
+                                <span for="allowedFileExtensions" class="validation-error" tabindex="-1"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="item hidden" data-specific-for="Date">
+                        <div class="ui mini form">
+                            <div class="fields">
+                                <div class="five wide field ui checkbox">
+                                    <input id="allowPastDates" type="checkbox" class="center" checked />
+                                    <label for="allowPastDates">Позволи отминали дати</label>
+                                    <span for="allowPastDates" class="validation-error" tabindex="-1"></span>
+                                </div>
+                                <div class="five wide field ui checkbox">
+                                    <input id="allowFutureDates" type="checkbox" class="center" checked />
+                                    <label for="allowFutureDates">Позволи бъдещи дати</label>
+                                    <span for="allowFutureDates" class="validation-error" tabindex="-1"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="item">
+                        <div class="ui mini form">
+                            <div class="field">
+                                <label for="tooltip">Подсказка посочване</label>
+                                <div class="ui input">
+                                    <input id="tooltip" type="text">
+                                </div>
+                                <span for="tooltip" class="validation-error" tabindex="-1"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="item hidden" data-specific-for="Text,TextArea,Phone,Email,Url,Autocomplete,Date,DateTime,MultiSelect,Number,Select,PersonIdentifier">
+                        <div class="ui mini form">
+                            <div class="field">
+                                <label for="placeholder">Подсказка в поле</label>
+                                <div class="ui input">
+                                    <input id="placeholder" type="text">
+                                </div>
+                                <span for="placeholder" class="validation-error" tabindex="-1"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="item" style="display: none;">
+                        <div class="ui mini form">
+                            <div class="field">
+                                <label for="columns">Брой колони</label>
+                                <div class="ui input">
+                                    <input id="columns" type="number" min="1" max="4" step="1">
+                                </div>
+                                <span for="columns" class="validation-error" tabindex="-1"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="item">
+                        <div class="ui mini form">
+                            <div class="fields">
+                                <div class="responsive-tooltip">
+                                    <div class="ui field compact-tooltip" data-content="Дали крайният потребител да може да добавя още полета от същия тип във формата">
+                                        <div class="sixteen wide field ui checkbox">
+                                            <input id="canBeRepeated" type="checkbox" class="center" />
+                                            <label for="canBeRepeated">Позволява повторения</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div> 
+                    <div class="item" data-specific-for="Person,Company">
+                        <div class="ui mini form">
+                            <div class="fields">
+                                <div class="responsive-tooltip">
+                                    <div class="ui field compact-tooltip" data-content="Физическото или юридическо лице собственик ли е на партидата">
+                                        <div class="sixteen wide field ui checkbox">
+                                            <input id="isBatchOwner" type="checkbox" class="center" />
+                                            <label for="isBatchOwner">Собсвеник на партида</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="item">
+                        <div class="ui small primary button" id="ok">ОК</div>
+                        <div class="ui small button" id="close">Затвори</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="confirmModal" class="ui basic modal">
+        <div class="ui icon header">
+        </div>
+        <div class="center aligned content">
+        </div>
+        <div class="center aligned actions">
+            <div class="ui red basic cancel inverted button">
+                <i class="remove icon"></i>
+                Не
+            </div>
+            <div class="ui green ok inverted button">
+                <i class="checkmark icon"></i>
+                Да
+            </div>
+        </div>
+    </div>
+
+    @section Scripts {
+        <script src="~/js/uuid/uuidv4.min.js"></script>
+        <script src="~/js/admin/designer/index.js"></script>
+    }

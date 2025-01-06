@@ -1,0 +1,10 @@
+﻿@model string
+
+<div class="ui form">
+    <div class="field">
+        @Html.HiddenFor(x=> x) 
+        <label asp-for="@Model"></label>
+        @Html.TextBox(String.Empty, Model.Decode(),  new { @disabled = "disabled" })
+        <span asp-validation-for="@Model" class="validation-error" tabindex="-1"></span>
+    </div>
+</div>

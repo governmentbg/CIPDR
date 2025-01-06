@@ -1,0 +1,429 @@
+:root {
+    --gridview-color-body: #e8f9fc;
+    --gridview-color-focus: #013145;
+    --gridview-color-main: #19a2c0;
+    --gridview-color-form: #44585c;
+}
+
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+a:hover,
+a:focus,
+a:active {
+    color: var(--gridview-color-focus);
+}
+
+.section {
+    margin-bottom: 2rem;
+}
+
+.section-header {
+    margin-bottom: 0.5rem;
+}
+
+.section-header .row>* {
+    display: flex;
+    align-items: center;
+}
+
+.section-header a {
+    color: var(--gridview-color-main);
+    font-weight: 700;
+}
+
+.section-header a:hover,
+.section-header a:focus,
+.section-header a:active {
+    text-decoration: underline;
+}
+
+.section-header .form-select {
+    padding: 0.375rem 2.25rem 0.375rem 0.75rem;
+}
+
+.section-title {
+    margin-bottom: 1rem;
+}
+
+.section:last-of-type {
+    border-bottom: 0;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.section .list {
+    margin-bottom: 0;
+}
+
+.u-form-cell {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.u-form-cell label,
+.u-form-cell small {
+    color: var(--gridview-color-form);
+    font-size: 1rem;
+    flex: 0 0 auto;
+}
+
+.pagination {
+    gap: 0.5rem;
+    margin-bottom: 0;
+}
+
+.pagination .page-item {
+    display: flex;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+}
+
+.pagination .active {
+    color: var(--gridview-color-main);
+    background-color: white;
+}
+
+.pagination .page-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    border: 1px solid transparent;
+    color: var(--gridview-color-form);
+    line-height: 1.1;
+}
+
+.pagination .page-link:hover,
+.pagination .page-link:focus {
+    font-weight: 700;
+    background-color: white;
+    border-bottom: 1px solid var(--gridview-color-main);
+}
+
+.pagination .page-next .page-link {
+    background-image: url(images/pagerarrowsright-State=normal_Type=navigation.svg);
+}
+
+.pagination .page-next .page-link:hover,
+.pagination .page-next .page-link:focus {
+    background-image: url(images/pagerarrowsright-State=hover_Type=navigation.svg);
+}
+
+.pagination .page-next .page-link:active {
+    background-image: url(images/pagerarrowsright-State=active_Type=navigation.svg);
+}
+
+.pagination .page-first .page-link {
+    background-image: url(images/State=normal_Type=navigation-2.svg);
+}
+
+.pagination .page-first .page-link:hover,
+.pagination .page-first .page-link:focus {
+    background-image: url(images/State=hover_Type=navigation-2.svg);
+}
+
+.pagination .page-first .page-link:active {
+    background-image: url(images/State=active_Type=navigation-2.svg);
+}
+
+.pagination .page-last .page-link {
+    background-image: url(images/State=normal_Type=navigation-2_Direction=right.svg);
+}
+
+.pagination .page-last .page-link:hover,
+.pagination .page-last .page-link:focus {
+    background-image: url(images/State=hover_Type=navigation-2_Direction=right.svg);
+}
+
+.pagination .page-last .page-link:active {
+    background-image: url(images/State=active_Type=navigation-2_Direction=right.svg);
+}
+
+.pagination .page-prev .page-link {
+    background-image: url(images/pagerarrows-State=normal_Type=navigation.svg);
+}
+
+.pagination .page-prev .page-link:hover,
+.pagination .page-prev .page-link:focus {
+    background-image: url(images/pagerarrows-State=hover_Type=navigation.svg);
+}
+
+.pagination .page-prev .page-link:active {
+    background-image: url(images/pagerarrows-State=active_Type=navigation.svg);
+}
+
+.pagination .page-prev .page-link,
+.pagination .page-first .page-link,
+.pagination .page-last .page-link,
+.pagination .page-next .page-link {
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 34px;
+    border-radius: 0;
+}
+
+.pagination .page-inactive .page-link {
+    opacity: 0.3;
+}
+
+.pagination .page-inactive .page-link:hover,
+.pagination .page-inactive .page-link:focus,
+.pagination .page-inactive .page-link:active {
+    border-bottom: 1px solid transparent;
+}
+
+.pagination .active .page-link {
+    color: inherit;
+    font-weight: 700;
+    color: var(--gridview-color-main);
+    background-color: white;
+    border: 1px solid transparent;
+}
+
+.pagination .active .page-link:hover,
+.pagination .active .page-link:focus,
+.pagination .active .page-link:active {
+    background-color: white;
+    border-bottom: 1px solid var(--gridview-color-focus);
+}
+
+.pagination .page-location {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gridview-color-form);
+}
+
+.page-pagination .pagination li:first-child {
+    margin-left: auto;
+}
+
+
+
+.list {
+    list-style: none;
+    padding-left: 0;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+.list__item {
+    margin-bottom: 0.25rem;
+    border-radius: 4px;
+}
+
+.list__item .row {
+    --bs-gutter-x: 0;
+}
+
+.list__item .row div[class*=col] {
+    padding: 0.5rem 0.5rem;
+}
+
+.list__cell {
+    margin-bottom: 0.5rem;
+}
+
+.list__output {
+    font-weight: 600;
+    font-size: 1rem;
+    text-transform: none;
+    margin-bottom: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.list__output--main {
+    font-size: 1.2rem;
+    font-weight: 800;
+    text-decoration: underline;
+    text-transform: uppercase;
+}
+
+.list__output--main-sm {
+    font-size: 1rem;
+    font-weight: 800;
+    text-decoration: underline;
+}
+
+.list__title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    text-transform: none;
+    line-height: 1.1;
+}
+
+.list__title span {
+    display: block;
+    font-weight: 400;
+    font-size: 1rem;
+    color: #828f92;
+}
+
+.list__label {
+    display: block;
+    font-size: 0.75rem;
+    line-height: 1.33;
+    margin-bottom: 0.1rem;
+}
+
+
+.gridview-card {
+    display: block;
+    color: var(--gridview-color-focus);
+    background-color: var(--gridview-color-body);
+    transition: all 0.5s ease;
+}
+
+.gridview-card__header {
+    border-radius: 4px 4px 0 0;
+    color: var(--gridview-color-focus);
+    font-weight: 700;
+    font-size: 1.125rem;
+    transition: all 0.5s ease;
+}
+
+.gridview-card__header h2,
+.gridview-card__header h3,
+.gridview-card__header h4 {
+    all: unset;
+}
+
+.gridview-card__body {
+    background-color: var(--gridview-color-body);
+    transition: all 0.5s ease;
+    border-radius: 4px;
+    min-height: 4rem;
+}
+
+.gridview-card__body-acr,
+.gridview-card__body-lang {
+    width: 15%;
+}
+
+.gridview-card__body-date {
+    width: 10%;
+}
+
+.gridview-card__body-init::before {
+    display: inline-block;
+    content: "";
+    width: 24px;
+    height: 24px;
+    background: url(images/favorite.svg) center no-repeat;
+    background-size: 24px;
+}
+
+.gridview-card:hover .gridview-card__header,
+.gridview-card:focus .gridview-card__header,
+.gridview-card:active .gridview-card__header {
+    background-color: var(--gridview-color-focus);
+    color: white;
+    transition: all 0.5s ease;
+}
+
+.gridview-card:hover .gridview-card__body,
+.gridview-card:focus .gridview-card__body,
+.gridview-card:active .gridview-card__body {
+    background-color: var(--gridview-color-focus);
+    color: white;
+    transition: all 0.5s ease;
+}
+
+/* .gridview-card:hover .gridview-card__body--declined:hover,
+.gridview-card:hover .gridview-card__body--declined:focus,
+.gridview-card:hover .gridview-card__body--declined:active,
+.gridview-card:focus .gridview-card__body--declined:hover,
+.gridview-card:focus .gridview-card__body--declined:focus,
+.gridview-card:focus .gridview-card__body--declined:active,
+.gridview-card:active .gridview-card__body--declined:hover,
+.gridview-card:active .gridview-card__body--declined:focus,
+.gridview-card:active .gridview-card__body--declined:active {
+    background-color: #e7e5e3;
+} */
+
+.gridview-card__content {
+    justify-content: space-between;
+    align-items: center;
+}
+
+.gridview-card__btn {
+    display: flex;
+    background-color: transparent;
+    border: none;
+    text-align: left;
+}
+
+.gridview-card__collapse {
+    padding: 0 !important;
+    background-color: white;
+    border-color: transparent;
+}
+
+.gridview-card__collapse .card {
+    border-color: transparent;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+}
+
+.gridview-card__collapse .card .section-title {
+    font-size: 1.25rem;
+}
+
+.gridview-card--alert .gridview-card__body {
+    background-color: var(--gridview-color-main);
+}
+
+.gridview-card--alert:hover .gridview-card__body {
+    background-color: var(--gridview-color-main);
+}
+
+.gridview-card .list__output a {
+    color: var(--gridview-color-main);
+    text-decoration: underline;
+}
+
+.gridview-card .list__output--lang {
+    display: flex;
+    justify-content: space-between;
+    text-align: left;
+}
+
+/* .gridview-card__icon {
+    width: 34px;
+    height: 100%;
+    background-size: 120%;
+    background-repeat: no-repeat;
+    background-position: center center;
+} */
+/* 
+.gridview-card__icon--bell {
+    background-image: url(images/receives-notifications.svg);
+} */
+
+.details .list__label {
+    color: var(--gridview-color-focus);
+}
+
+.details .list__output {
+    white-space: wrap;
+}
+
+@media (max-width: 74.9em) {
+    .gridview-card__body {
+        height: auto;
+    }
+
+    .gridview-card__body-acr,
+    .gridview-card__body-lang,
+    .gridview-card__body-date {
+        width: 100%;
+    }
+}

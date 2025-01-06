@@ -1,0 +1,21 @@
+﻿@model URegister.Infrastructure.Model.RegisterForms.AddFieldTypeViewModel
+@{
+    ViewData["Title"] = "Добавяне на тип поле";
+}
+
+<form asp-action="AddFieldType" method="post" enctype="multipart/form-data" id="Add">
+    @Html.AntiForgeryToken()
+    <div class="ui form">
+        <div class="fields">
+            <div class="four wide field">@Html.EditorFor(m => m.Label, "StringProperty")</div>
+            <div class="four wide field">@Html.EditorFor(m => m.Type, "StringProperty")</div>
+        </div>
+    </div>
+    <div class="fields">
+        <button class="ui right floated primary button" type="submit">
+            <i class="save icon"></i>
+            Запис
+        </button>
+        <a href="@Url.Action("FieldTypeList", "Designer")" class="ui right floated button"><i class="arrow left icon"></i> Назад</a>
+    </div>
+</form>

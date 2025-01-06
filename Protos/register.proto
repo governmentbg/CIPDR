@@ -1,0 +1,146 @@
+syntax = "proto3";
+
+import "common.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+
+option csharp_namespace = "URegister.RegistersCatalog";
+
+package register;
+
+service RegistersCatalogGrpc {
+  rpc GetRegisterList(google.protobuf.Empty) returns (RegisterListResponse);
+  rpc GetRegisterFullList(RegisterListRequest) returns (RegisterFullListResponse);
+  rpc GetRegisterNotStartedList(google.protobuf.Empty) returns (RegisterListResponse);
+  rpc AddRegister(RegisterItem) returns (common.ResultStatus);
+  rpc GetRegisterAndMarkAsStarted(GetRegisterRequest) returns (GetRegisterResponse);
+  rpc GetRegisterForAddAdministration(GetRegisterRequest) returns (GetRegisterResponse);
+  rpc GetAdministrationList(AdministrationListRequest) returns (AdministrationListResponse);
+  rpc GetPersonList(PersonListRequest) returns (PersonListResponse);
+  rpc CreateRegister(google.protobuf.Empty) returns (GetRegisterResponse);
+  rpc AddMasterPersonRecordsIndex(MasterPersonRecordsIndexAddMessage) returns (MasterPersonRecordsIndexAddResponse);
+}
+
+// The response message containing the number.
+message RegisterListResponse {
+  common.ResultStatus status = 1;
+  repeated common.ListItem data = 2;
+}
+
+message GetRegisterRequest {
+   int32 register_id = 1;
+}
+
+message GetRegisterResponse{
+	common.ResultStatus status = 1;
+    RegisterItem data = 2;
+}
+
+message RegisterItem {
+	int32 id = 1;
+	string code = 2;
+	string name = 3;
+	google.protobuf.StringValue description = 4;
+	string legal_basis = 5;
+	string type = 6;
+	string identity_security_level = 7;
+	string entry_type = 8;
+	repeated AdministrationItem administrations = 9;
+}
+
+message AdministrationItem {
+	string id = 1;
+	string uic = 2;
+	string name = 3;
+	string legal_basis = 4;
+	repeated PersonItem persons = 5;
+}
+
+message PersonItem {
+	int32 id = 1;
+	string type = 2;
+    string first_name = 3;
+    google.protobuf.StringValue middle_name = 4;
+    string LastName  = 5;
+    google.protobuf.StringValue position =6;
+    google.protobuf.StringValue phone = 7;
+	google.protobuf.StringValue email = 8;
+}
+
+message RegisterFullListResponse{
+    common.ResultStatus status = 1;
+    repeated RegisterListItem data = 2;
+    int32 count_all = 3;
+}
+
+message RegisterListItem {
+	int32 id = 1;
+	string code = 2;
+	string name = 3;
+	google.protobuf.StringValue description = 4;
+	string legal_basis = 5;
+	google.protobuf.StringValue type = 6;
+	google.protobuf.StringValue entry_type = 7;
+    google.protobuf.StringValue identity_security_level = 8;
+}
+
+message RegisterListRequest{
+	common.DatatableRequest data_table_request = 1;
+	google.protobuf.StringValue code = 2;
+	google.protobuf.StringValue name = 3;
+	google.protobuf.StringValue description = 4;
+}
+
+message AdministrationListRequest{
+	common.DatatableRequest data_table_request = 1;
+	int32 register_id = 2;
+}
+
+message AdministrationListItem {
+	string id = 1;
+	string uic = 2;
+	string name = 3;
+	string legal_basis = 4;
+}
+
+message AdministrationListResponse{
+    common.ResultStatus status = 1;
+    repeated AdministrationListItem data = 2;
+    int32 count_all = 3;
+}
+
+message PersonListRequest{
+	common.DatatableRequest data_table_request = 1;
+	string administration_id = 2;
+}
+
+message PersonListItem {
+	string type = 1;
+    string first_name = 2;
+    google.protobuf.StringValue middle_name = 3;
+    string LastName  = 4;
+    google.protobuf.StringValue position =5;
+    google.protobuf.StringValue phone = 6;
+	google.protobuf.StringValue email = 7;
+	int32 id = 10;
+}
+
+message PersonListResponse{
+    common.ResultStatus status = 1;
+    repeated PersonListItem data = 2;
+    int32 count_all = 3;
+}
+
+
+message MasterPersonRecordsIndexAddMessage{
+	string pid_type = 1;
+	string pid = 2;
+    string name = 3;
+	int32 register_id = 4;
+}
+
+
+message MasterPersonRecordsIndexAddResponse{
+	common.ResultStatus status = 1;
+	string id = 2;
+}

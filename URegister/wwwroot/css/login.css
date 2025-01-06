@@ -1,0 +1,80 @@
+﻿@font-face {
+    font-family: "Sofia Sans";
+    src: url(../fonts/SofiaSans-Regular.ttf) format("truetype");
+    font-weight: 400;
+}
+
+@font-face {
+    font-family: "Sofia Sans";
+    src: url(../fonts/SofiaSans-SemiBold.ttf) format("truetype");
+    font-weight: 600;
+}
+
+@font-face {
+    font-family: "Sofia Sans";
+    src: url(../fonts/SofiaSans-Bold.ttf) format("truetype");
+    font-weight: 700;
+}
+
+@font-face {
+    font-family: "Sofia Sans";
+    src: url(../fonts/SofiaSans-ExtraBold.ttf) format("truetype");
+    font-weight: 800;
+}
+
+.login-box-wrapper {
+    width: 480px;
+    margin: 50px auto 50px auto;
+}
+
+    .login-box-wrapper .title {
+        color: var(--text-text-secondary, #66747C);
+        font-family: "Sofia Sans";
+        font-size: 20px;
+        font-style: normal;
+        font-weight: 400;
+        line-height: 50px; /* 250% */
+    }
+
+    .login-box-wrapper .brand-login {
+        color: var(--text-text-brand, #0077B6);
+        font-family: "Sofia Sans";
+        font-size: 40px;
+        font-style: normal;
+        font-weight: 800;
+        line-height: 40px;
+    }
+
+.login-picture {
+    background: url('../images/login_picture.jfif');
+    background-size: cover;
+    height: 100vh;
+}
+
+.login-picture-body {
+    background-image: linear-gradient(90deg, white 50%, transparent 50%), url(../images/login_picture.jfif);
+    background-repeat: no-repeat;
+    background-position: center, right 50%;
+    background-size: contain;
+}
+
+.login-page1 {
+    background-image: linear-gradient(90deg, white 50%, transparent 50%), url(../images/base/848a770929c2918404ccec5b3b39f93a.jpg);
+    background-repeat: no-repeat;
+    background-position: center, right 50%;
+    background-size: contain;
+}
+.login-page2 {
+    background-image: -webkit-gradient(linear, left top, right top, color-stop(50%, white), color-stop(50%, transparent)), url(../images/random/1.jpg);
+    background-image: linear-gradient(90deg, white 50%, transparent 50%), url(../images/random/1.jpg);
+    background-repeat: no-repeat;
+    background-position: center, right center;
+    background-size: contain;
+}
+
+.login-footer-container {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+}
+

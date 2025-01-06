@@ -1,0 +1,32 @@
+﻿@using URegister.Core.Models.Process
+@model ProcessVM
+@{
+    ViewData["Title"] = "Стартиране на процес";
+}
+
+<div class="ui segments">
+    <form action="@Url.Action("Add")" method="post" id="submit" novalidate enctype="multipart/form-data">
+        @Html.HiddenFor(m => m.Id)
+        <div class="ui green clearing segment">
+            <div class="ui form">
+                @Html.AntiForgeryToken()
+                <div class="fields">
+                    <div class="four wide field">
+                        @Html.EditorFor(model => model.IncomingNumber, "String")
+                    </div>
+                    <div class="four wide field">
+                        @Html.EditorFor(model => model.IncomingDate, "DateTime")
+                    </div>
+                </div>
+                <div class="fields">
+                    <div class='sixteen wide field'>
+                        @Html.EditorFor(model => model.ServiceId, "DropDownInt")
+                    </div>
+                </div>
+                @await Html.PartialAsync("_BackSubmitButton", @Url.Action("Index"))
+            </div>
+        </div>
+    </form>
+
+</div>
+

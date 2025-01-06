@@ -1,0 +1,74 @@
+﻿
+@using Microsoft.AspNetCore.Localization
+@using Microsoft.Extensions.Localization
+@{
+    var requestCulture = Context.Features.Get<IRequestCultureFeature>();
+}
+<!DOCTYPE html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/select2/css/select2.min.css" />
+    <link rel="stylesheet" href="~/lib/select2-bootstrap-5-theme/select2-bootstrap-5-theme.min.css" />
+    <link rel="stylesheet" href="~/lib/tempus-dominus/dist/css/tempus-dominus.css" />
+    <link href="~/lib/font-awesome/css/all.css" rel="stylesheet" />
+    <link href="~/lib/sweetalert2/sweetalert2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="~/assets/css/main.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/assets/css/secondary.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/colors.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/steps.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/accessibility/accessibility.css" asp-append-version="true" />
+
+    @await RenderSectionAsync("Styles", required: false)
+
+</head>
+<body>
+    <header class="page-header">
+        <div class="container-fluid">
+            <a class="brand">
+                <span class="small-title-text">SmallTitle</span>
+                <span class="title-text">Title</span>
+            </a>
+            <partial name="_LoginPartial" />
+         
+        </div>
+    </header>
+    @{
+        await Html.RenderPartialAsync("_ModalDialog");
+    }
+    <div class="main-container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+   
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/jquery-validate/jquery.validate.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.js"></script>
+    <script src="~/lib/jquery-validate/additional-methods.js"></script>
+    <script src="~/lib/jquery-validate/localization/messages_bg.js"></script>
+    <script src="~/lib/select2/js/select2.full.min.js"></script>
+    <script src="~/lib/select2/js/i18n/bg.js"></script>
+    <script src="~/lib/sweetalert2/sweetalert2.all.min.js"></script>
+    @* <script src="~/lib/tempus-dominus/dist/plugins/customDateFormat.js"></script> *@
+    <script src="~/lib/tempus-dominus/dist/plugins/fa-five.js"></script>
+    <script src="~/js/tempus-dominus.bg.js"></script>
+    <script src="~/lib/jquery-form/jquery.form.js"></script>
+    <script src="~/lib/moment/moment-with-locales.js"></script>
+
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/common.js" asp-append-version="true"></script>
+    <script src="~/js/uic-validation.js" asp-append-version="true"></script>
+    <script src="~/accessibility/accessibility.js" asp-append-version="true"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+    @{
+        await Html.RenderPartialAsync("_UserMessages");
+    }
+
+</body>
+</html>

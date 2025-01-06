@@ -1,0 +1,26 @@
+﻿@model URegister.Infrastructure.Model.RegisterForms.FormField
+@{
+    string allowedFileExtensions = (Model.AllowedFileExtensions != null && Model.AllowedFileExtensions.Any())
+        ? String.Join(',', Model.AllowedFileExtensions) 
+        : String.Empty;
+}
+<div class="ui form">
+    <div class="field @(Model.IsRequired ? "required" : string.Empty)">
+        <label for="@Model.Identifier">@Model.Label</label>
+        <div class="ui file action input">
+            <label for="@Model.Identifier" class="ui blue icon button">
+                <i class="upload icon"></i>
+                Изберете файл
+            </label>
+            <input hidden id="@Model.Identifier" name="@Model.Name" type="file" accept="@allowedFileExtensions" class="upload-file-input"
+            @(Model.IsReadonly ? "readonly" : "")>
+            <div class='ui icon button' for="@Model.File" style="max-width: calc(100% - 140px);">
+                <span for="@Model.File" class='selected-file' style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; padding-right: 2px;"></span>
+                <i class="delete icon remove-file"></i>
+            </div>
+        </div>
+        @{
+            await Html.RenderPartialAsync("ValidationErrorSpan", Model.ValidationError);
+        }
+    </div>
+</div>

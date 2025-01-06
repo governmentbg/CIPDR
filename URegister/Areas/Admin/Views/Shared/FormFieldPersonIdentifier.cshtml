@@ -1,0 +1,76 @@
+﻿@model URegister.Infrastructure.Model.RegisterForms.FormField
+@using URegister.Common
+@using URegister.Core.Contracts
+@using URegister.Infrastructure.Constants
+@using URegister.NomenclaturesCatalog;
+@inject NomenclatureGrpc.NomenclatureGrpcClient NomenclatureGrpcClient;
+@inject IRegisterService RegisterService
+@{
+    NomenclaturePublicRequest getNomenclaturesRequest = new NomenclaturePublicRequest
+    {
+        RegisterId = await RegisterService.GetCurrentRegisterId(),
+        NomenclatureTypes = { NomenclatureTypes.PidType }
+    };
+
+    NomenclaturePublicResponse nomenclatureResult = null;
+    List<SelectListItem> list = new List<SelectListItem>();
+    int typeId = string.IsNullOrWhiteSpace(Model.Value) ? 0 : int.Parse(Model.Value.Split(':')[0]);
+    string pid = string.IsNullOrWhiteSpace(Model.Value) ? String.Empty : Model.Value.Split(':')[1];
+
+    try
+    {
+        nomenclatureResult =
+            await NomenclatureGrpcClient.GetNomenclaturePublicAsync(getNomenclaturesRequest);
+
+        if (nomenclatureResult.ResultStatus.Code != ResultCodes.Ok)
+        {
+            //Logger.LogError($"Проблем при зареждане на номенклатура {Model.NomenclatureType} в FormFieldSelect)");
+            TempData[MessageConstant.ErrorMessage] = "Проблем с връзката, презаредете страницата";
+        }
+        else
+        {
+            list = nomenclatureResult.NomenclatureTypes
+                .First()
+                .CodeableConcepts.Select(concept => new SelectListItem(concept.Value, concept.Code)).ToList();
+        }
+    }
+    catch (Exception ex)
+    {
+        //Logger.LogError(ex, $"Проблем при зареждане на номенклатура {Model.NomenclatureType} в FormFieldSelect)");
+        TempData[MessageConstant.ErrorMessage] = "Проблем с връзката, презаредете страницата";
+    }
+
+    string placeHolder = string.IsNullOrEmpty(Model.Placeholder) ? string.Empty : Model.Placeholder;
+    string toolTip = string.IsNullOrEmpty(Model.Tooltip) ? string.Empty : Model.Tooltip;   
+}
+<div class="ui form pid">
+    <div class="field">
+        <input id="@Model.Identifier" type="hidden" name="@Model.Name" value="@Model.Value"/>
+        <div class="field @(Model.IsRequired ? "required" : string.Empty)">
+            <label for="@Model.Identifier">@Model.Label</label>
+            <div class="ui left labeled input"
+                 @if (!string.IsNullOrEmpty(toolTip))
+                 {
+                     <text>data-tooltip="@toolTip"</text>
+                 }>
+                <div class="ui dropdown label @(Model.IsReadonly ? "disabled" : string.Empty)">
+                    @* <div class="pid-dropdown text">Тип</div> *@
+                    <div class="text pid-text">Тип</div>
+                    <i class="dropdown icon"></i>
+                    <input type="hidden" value="@typeId">
+                    <div class="menu">
+                        @foreach (SelectListItem item in list)
+                        {
+                            <div class="item" data-value="@item.Value">@item.Text</div>
+                        }
+                    </div>
+                </div>
+                <input class="@(Model.IsReadonly ? "ui disabled input" : "ui input")" @(Model.IsReadonly ? "readonly" : String.Empty) type="text" placeholder="@placeHolder" value="@pid" @(Model.IsRequired ? "required" : String.Empty)>
+            </div>
+            
+        </div>
+    </div>
+    @{
+        await Html.RenderPartialAsync("ValidationErrorSpan", Model.ValidationError);
+    }
+</div>

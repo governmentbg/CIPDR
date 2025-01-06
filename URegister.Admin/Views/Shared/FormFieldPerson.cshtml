@@ -1,0 +1,15 @@
+﻿@model URegister.Infrastructure.Model.RegisterForms.FormField
+@{
+    string toolTip = string.IsNullOrEmpty(Model.Tooltip) ? string.Empty : Model.Tooltip;
+}
+<div class="ui form">
+    <fieldset class="person-fieldset @(Model.IsReadonly ? "readonly-fieldset" : "")">
+        <legend class="person-tooltip" @if (!string.IsNullOrEmpty(toolTip))
+        {
+            <text>data-content="@toolTip"</text>
+        }>@Model.Label</legend>
+        @{
+            await Html.RenderPartialAsync("FormFieldArranger", Model.Fields?.ToList());
+        }
+    </fieldset>
+</div>

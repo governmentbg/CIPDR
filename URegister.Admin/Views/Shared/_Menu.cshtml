@@ -1,0 +1,27 @@
+﻿<div class="ui fixed menu">
+    <div class="ui fluid container">
+        <a href="#" class="header item">
+            @* <img class="logo" src="~/img/Branding-NZIS.png"> *@
+            ИСЦИПР
+        </a>
+        <a href="\" class="item"><i class="home icon"></i> Начало</a>
+        <div class="ui simple dropdown item">
+            <i class="sliders horizontal icon"></i> Управление <i class="dropdown icon"></i>
+            <div class="menu">
+                <a class="item" href="/User/Index"><i class="user edit icon"></i> Потребители</a>
+                <a class="item" href="/Register/Index"><i class="list alternate outline icon"></i> Регистри</a>
+            </div>
+        </div>
+        <div class="ui simple dropdown item">
+            <i class="list alternate outline icon"></i> Каталози <i class="dropdown icon"></i>
+            <div class="menu">
+                <a class="item" href="@Url.Action("FieldTypeList", "Designer")"><i class="object group outline icon"></i> Полета</a>
+                <a class="item" href="@Url.Action("Index", "Service")"><i class="handshake outline icon"></i> Типове услуги</a>
+                <a class="item" href="@Url.Action("IndexStep", "Service")"><i class="bezier curve icon"></i> Стъпки</a>
+                <a class="item" href="#"><i class="exchange alternate icon"></i> Интеграции</a>
+            </div>
+        </div>
+        <a asp-action="IndexType" asp-controller="Nomenclature" class="brown item"><i class="list ol icon"></i> Номенклатури</a>
+        <partial name="_LoginPartial" />
+    </div>
+</div>

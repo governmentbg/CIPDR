@@ -1,0 +1,30 @@
+﻿@using URegister.Core.Models.Nomenclature
+@model List<AdditionalColumnVM>
+@{
+    var htmlFieldPrefix = ViewData.TemplateInfo.HtmlFieldPrefix;
+    var dataIndex = Model.Count;
+}
+<div class="ui form">
+    <fieldset>
+        <legend>
+            <b>&nbsp; Допълнителни колони &nbsp;</b>
+        </legend>
+        <div id="AdditionalColumnList" class="ui compact grid dynamic-form-container contacts-container" data-index="@dataIndex" data-prefix="@htmlFieldPrefix">
+            @for (int i = 0; i < Model.Count; i++)
+            {
+                Model[i].Index = i;
+                ViewData.TemplateInfo.HtmlFieldPrefix = $"{htmlFieldPrefix}.AdditionalColumns[{i}]";
+                await Html.RenderPartialAsync("_AdditionalColumn", Model[i]);
+                ViewData.TemplateInfo.HtmlFieldPrefix = htmlFieldPrefix;
+            }
+        </div>
+        <div class="ui fluid container basic clearing segment"></div>
+        <div class="ui buttons right floated">
+            <button type="button" class=" ui button add-item" data-url="@Url.Action("AddAdditionalColumn")" data-container-id="AdditionalColumnList">
+                <i class="add icon"></i>
+                Добави
+            </button>
+        </div>
+
+    </fieldset>
+</div>

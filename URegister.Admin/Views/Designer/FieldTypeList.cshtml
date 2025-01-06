@@ -1,0 +1,19 @@
+﻿@{
+    ViewData["Title"] = "Списък на типовете полета";
+}
+
+@* <div class="ui segments"> *@
+    @* <div class="ui green clearing segment">
+        <a href="@Url.Action("ConfigureFields", "Designer")">Към конфигуриране на полета</a>       
+    </div> *@
+    @* <div class="ui green segment"> *@
+        <table id="field-types" class="ui celled striped very compact table" style="width:100%; padding:0px;"
+               data-url="@Url.Action("GetFieldTypes", "Designer")"
+               data-add-url="@Url.Action("AddFieldType", "Designer")">           
+        </table>
+    @* </div> *@
+@* </div> *@
+
+@section Scripts {
+    <script src="~/js/designer/fieldTypeList.js"></script>
+}

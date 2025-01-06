@@ -1,0 +1,33 @@
+﻿@using URegister.Core.Models.Nomenclature
+@using URegister.Infrastructure.Extensions
+@model AdditionalColumnVM
+@{
+    var currentHtmlPrefix = ViewData.TemplateInfo.HtmlFieldPrefix;
+    var indexPath = currentHtmlPrefix.GetIndexPath();
+}
+
+<div class="ui sixteen wide field content item-template">
+    <input type="hidden" name="@indexPath" value="@Model.Index" />
+    <div class="column ui segment green">
+        <div class="ui form">
+            <div class="fields">
+                <div class="eight wide field">
+                    @Html.EditorFor(model => model.Name)
+                </div>
+                <div class="eight wide field">
+                    @await Html.PartialAsync("_RemoveItem")
+                </div>
+            </div>
+            <div class="fields">
+                <div class="sixteen wide field">
+                    @Html.EditorFor(model => model.Value)
+                </div>
+            </div>
+            <div class="fields">
+                <div class="sixteen wide field">
+                    @Html.EditorFor(model => model.ValueEn)
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

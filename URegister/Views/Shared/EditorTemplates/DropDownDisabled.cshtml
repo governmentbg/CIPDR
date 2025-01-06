@@ -1,0 +1,29 @@
+﻿@using URegister.Infrastructure.Extensions
+
+@model string?
+@{
+    var ddl = ViewData.GetDropDownDdl().SetSelected(Model);
+    var class_css = (string)(ViewData["class"] ?? String.Empty);
+    var reqClass = ViewData.ModelMetadata.GetIOReqClass();
+    var container_css = (string)(ViewData["container_css"] ?? String.Empty);
+}
+
+@if (ddl != null)
+{
+    <div class="ui form @container_css">
+        <div class="field">
+            <label asp-for="@Model"></label>
+            @Html.HiddenFor(model => model)
+            
+            @Html.DropDownListFor(
+                model => model, 
+                ddl, 
+                new {
+                    @class = $"{class_css}",
+                     placeholder = "Изберете",
+                     disabled = "disabled"
+                   })
+            <span asp-validation-for="@Model" class="validation-error" tabindex="-1"></span>
+        </div>
+    </div>
+    }

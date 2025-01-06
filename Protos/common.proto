@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+import "google/protobuf/wrappers.proto";
+
+option csharp_namespace = "URegister.Common";
+
+package common;
+
+enum ResultCodes {
+	NOT_SET = 0;
+	OK = 200;
+	BAD_REQUEST = 400;
+	NOT_FOUND = 404;
+	INTERNAL_SERVER_ERROR = 500;
+}
+
+message ResultStatus {
+  ResultCodes code = 1;
+  optional string message = 2;
+}
+
+message CheckListItem {
+  int32 id = 1;
+  string label = 2;
+  bool value = 3;
+}
+
+message ListItem {
+  int32 id = 1;
+  string label = 2;
+}
+
+message DatatableRequest{
+	int32 length = 1;
+	int32 start = 2;
+	google.protobuf.StringValue filter = 3;
+	repeated string search_column = 4;
+	repeated DatatableSortColumn order_by = 5;
+}
+
+message DatatableSortColumn{ 
+    string name = 1;
+	int32 direction = 2;
+}

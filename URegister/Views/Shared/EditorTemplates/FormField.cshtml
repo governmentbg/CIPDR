@@ -1,0 +1,42 @@
+﻿@using URegister.Infrastructure.Model.RegisterForms
+@model FormField
+
+@{
+    // string templateName = string.Empty;
+    // switch (Model.Type)
+    // {
+    //     case FormFieldType.Text:            
+    //     {                
+    //         templateName = "FormFieldText";
+    //         break;
+    //     }
+    //     case FormFieldType.Number:
+    //     {
+    //         templateName = "FormFieldNumber";
+    //         break;
+    //     }
+    //     case FormFieldType.Date:
+    //     {
+    //         templateName = "FormFieldDate";
+    //         break;
+    //     }
+    //     case FormFieldType.DateTime:
+    //     {
+    //         templateName = "FormFieldDateTime";
+    //         break;
+    //     }        
+    // }
+
+    string templateName = "FormField" + Model.Type.ToString();
+
+    try
+    {                
+        await Html.RenderPartialAsync(templateName, Model);
+    }
+    catch (InvalidOperationException ex)
+    {
+        <div class="ui error message">
+            <strong>Error:</strong> Partial view за '@templateName' не е открито.
+        </div>
+    }
+}

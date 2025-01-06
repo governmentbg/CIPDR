@@ -1,0 +1,15 @@
+﻿@model DateTime?
+@{
+    var val = "";
+    if (Model.HasValue)
+    {
+        val = Model.Value.ToString("dd.MM.yyyy");
+    }
+    var containerClass = ViewData["container_class"] ?? "form-group"; 
+}
+<div class="@containerClass">
+    <label asp-for="@Model" class="form-label"></label>
+    <p class="">
+        @val
+    </p>
+</div>

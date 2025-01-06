@@ -1,0 +1,46 @@
+﻿@using URegister.Core.Services
+@using URegister.Infrastructure.Model.RegisterForms
+@using URegister.ObjectsCatalog
+@inject ObjectsCatalogGrpc.ObjectsCatalogGrpcClient objectCatalogGrpcClient
+@model FormField
+@{
+    try
+    {
+        var fieldTypes = await FieldTypeCatalogService.GetAllFieldType(objectCatalogGrpcClient);
+        string modelTemplateName = fieldTypes.First(t => t.Type == Model.Type).TemplateName;
+
+        if (!Model.CanBeRepeated)
+        {
+            await Html.RenderPartialAsync(modelTemplateName, Model);
+        }
+        else
+        {
+            <div class="ui form">
+                <fieldset class="person-fieldset">
+                    <legend>Списък</legend>
+                    @{
+                        await Html.RenderPartialAsync(modelTemplateName, Model);
+                        if (Model.Repetitions != null)
+                        {
+                            foreach (FormField modelRepetition in Model.Repetitions)
+                            {
+                                await Html.RenderPartialAsync(modelTemplateName, modelRepetition);
+                            }
+                        }
+                    }
+                    @if (!Model.IsReadonly)
+                    {
+                        <div class="circular ui mini icon button repeat-field"><i class="plus icon"></i></div>
+                        <div class="circular ui mini icon button delete-field" style="@(Model.Repetitions.Any() ? "" : "display: none;")"><i class="minus icon"></i></div>
+                    }
+                </fieldset>
+            </div>
+        }
+    }
+    catch (InvalidOperationException ex)
+    {
+        <div class="ui error message">
+            <strong>Error:</strong> Partial view за '@Model.Type.ToString()' не е открито.
+        </div>
+    }
+}

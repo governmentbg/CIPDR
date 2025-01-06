@@ -1,0 +1,26 @@
+﻿@using URegister.Core.Models.Common
+@model List<ChecklistItemViewModel>
+
+<div class="ui form">
+    <fieldset>
+        <legend>
+            <b>&nbsp;@Html.LabelForModel()&nbsp;</b>
+        </legend>
+        <div class="ui compact grid">
+            @for (int i = 0; i < Model.Count(); i++)
+            {
+                <div class="row">
+                    @Html.HiddenFor(model => Model[i].Id)
+                    @Html.HiddenFor(model => Model[i].Label)
+                    <div class="ui middle aligned ten wide column">
+                        <label><b>@Html.DisplayTextFor(model => Model[i].Label)</b></label>
+                    </div>
+                    <div class="six wide column">
+                        <input asp-for="@Model[i].Value" class="center" type="checkbox" />
+                        <span asp-validation-for="@Model[i].Value" class="validation-error" tabindex="-1"></span>
+                    </div>
+                </div>
+            }
+        </div>
+    </fieldset>
+</div>

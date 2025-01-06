@@ -1,0 +1,75 @@
+{
+  "version": "1.0",
+  "defaultProvider": "cdnjs",
+  "libraries": [
+    {
+      "library": "jquery@3.7.1",
+      "destination": "wwwroot/library/jquery"
+    },
+    {
+      "library": "jquery-validate@1.21.0",
+      "destination": "wwwroot/library/jquery-validate"
+    },
+    {
+      "library": "jquery-validation-unobtrusive@4.0.0",
+      "destination": "wwwroot/library/jquery-validation-unobtrusive"
+    },
+    {
+      "library": "bootstrap@5.3.3",
+      "destination": "wwwroot/library/bootstrap"
+    },
+    {
+      "library": "sweetalert2@11.14.0",
+      "destination": "wwwroot/library/sweetalert2"
+    },
+    {
+      "library": "jquery.form@4.3.0",
+      "destination": "wwwroot/library/jquery-form"
+    },
+    {
+      "library": "moment.js@2.30.1",
+      "destination": "wwwroot/library/moment.js/"
+    },
+    {
+      "library": "datatables.net@2.1.6",
+      "destination": "wwwroot/library/datatables/"
+    },
+    {
+      "library": "datatables.net-se@2.1.6",
+      "destination": "wwwroot/library/datatables/se/"
+    },
+    {
+      "library": "datatables.net-buttons@3.1.2",
+      "destination": "wwwroot/library/datatables/buttons/"
+    },
+    {
+      "library": "datatables.net-buttons-se@3.1.2",
+      "destination": "wwwroot/library/datatables/buttons-se/"
+    },
+    {
+      "library": "uuid@8.3.2",
+      "destination": "wwwroot/js/uuid/"
+    },
+    {
+      "library": "jszip@3.10.1",
+      "destination": "wwwroot/library/jszip"
+    },
+    {
+      "library": "pdfmake@0.2.12",
+      "destination": "wwwroot/library/pdfmake"
+    },
+    {
+      "library": "fomantic-ui@2.9.3",
+      "destination": "wwwroot/lib/fomantic-ui/"
+    },
+    {
+      "library": "mermaid@10.4.0",
+      "destination": "wwwroot/lib/mermaid"
+    },
+    {
+      "provider": "cdnjs",
+      "library": "jqueryui@1.14.1",
+      "destination": "wwwroot/lib/jqueryui/"
+    }
+  ]
+}

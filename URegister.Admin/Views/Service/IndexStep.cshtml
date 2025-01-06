@@ -1,0 +1,19 @@
+﻿@{
+    ViewData["Title"] = "Стъпки";
+}
+<div class="ui grid">
+    <div class="column">
+        <div class="column">
+            <table id="steps"
+                   class="ui celled striped very compact table" style="width:100%; padding:0px;"
+                   data-url="@Url.Action("GetStepList", "Service")"
+                   data-add-url="@Url.Action("AddStep", "Service")">
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts
+{
+    <script src="~/js/service/stepsList.js" asp-append-version="true"></script>
+}

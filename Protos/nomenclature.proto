@@ -1,0 +1,324 @@
+syntax = "proto3";
+
+import "common.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+
+option csharp_namespace = "URegister.NomenclaturesCatalog";
+
+package nomenclature;
+
+service NomenclatureGrpc {
+  rpc CreateNewCodeableConcept(CreateNewCodeableConceptRequest) returns (CodeableConceptResponse);
+  rpc AddCodeableConcept (CodeableConceptRequest) returns (common.ResultStatus);
+  rpc EditCodeableConcept (CodeableConceptRequest) returns (common.ResultStatus);
+  rpc GetCodeableConcept (GetCodeableConceptRequest) returns (CodeableConceptResponse);
+  rpc GetCodeableConceptList (CodeableConceptListRequest) returns (CodeableConceptListResponse);
+  rpc GetCodeableConceptRegisterList (CodeableConceptRegisterListRequest) returns (CodeableConceptRegisterListResponse);
+  rpc GetNomenclatureType (GetNomenclatureTypeRequest) returns (NomenclatureTypeResponse);
+  rpc GetNomenclatureTypeOnType (GetNomenclatureTypeOnTypeRequest) returns (NomenclatureTypeResponse);
+  rpc GetNomenclatureTypeRegisterOnType (GetNomenclatureTypeRegisterOnTypeRequest) returns (NomenclatureTypeRegisterResponse);
+  rpc AddNomenclatureType (NomenclatureTypeRequest) returns (common.ResultStatus);
+  rpc EditNomenclatureType (NomenclatureTypeRequest) returns (common.ResultStatus);
+  rpc GetNomenclatureTypeList (NomenclatureTypeListRequest) returns (NomenclatureTypeListResponse);
+  rpc GetNomenclatureTypeRegisterList (NomenclatureTypeRegisterListRequest) returns (NomenclatureTypeRegisterListResponse);
+  rpc UpdateNomenclatureTypeRegister(UpdateNomenclatureTypeRegisterRequest) returns (common.ResultStatus);
+  rpc CreateNewNomenclatureType(google.protobuf.Empty) returns (NomenclatureTypeResponse);
+  rpc ImportNrnmNsi(google.protobuf.Empty) returns (common.ResultStatus);
+  rpc ImportNrnmNsiStreet(google.protobuf.Empty) returns (common.ResultStatus);
+  rpc GetNomenclaturePublic (NomenclaturePublicRequest) returns (NomenclaturePublicResponse);
+  rpc GetNomenclatureTypeListPublic (NomenclaturePublicRequest) returns (NomenclatureTypeListPublicResponse);
+  rpc GetEkattePublic(EkattePublicRequest) returns (EkattePublicResponse);
+  rpc UpdateCodeableConceptRegister(UpdateCodeableConceptRegisterRequest) returns (common.ResultStatus);
+  rpc CheckNomenclature(CheckNomenclatureRequest) returns (CheckNomenclatureResponse);
+  rpc GetNomenclatureOnHolderPublic(NomenclatureHolderRequest) returns (NomenclaturePublicResponse);
+  rpc AreNomenclatureCodesAllowed(AreNomenclatureCodesAllowedRequest) returns (AreNomenclatureCodesAllowedResponse);
+  rpc GetValueByCode(GetValueRequest) returns (GetValueResponse);
+}
+
+message CreateNewCodeableConceptRequest{
+	string type = 1;
+}
+
+message GetNomenclatureTypeRequest {
+	int32 id = 1;
+}
+message GetNomenclatureTypeOnTypeRequest {
+   string type = 1;
+}
+message GetNomenclatureTypeRegisterOnTypeRequest {
+   string type = 1;
+   int32 register_id = 2;
+}
+message NomenclatureTypeRequest {
+	string type = 1;
+	string name = 2;
+	google.protobuf.StringValue holder_type = 4;
+	bool is_public = 5;
+}
+
+message NomenclatureTypeResponse {
+   string type = 1;
+   string name = 2;
+   common.ResultStatus result_status = 4;
+   bool is_insert = 5;
+   google.protobuf.StringValue holder_type = 6;
+   bool is_public = 7;
+}
+
+message NomenclatureTypeRegisterResponse {
+   string type = 1;
+   string name = 2;
+   google.protobuf.StringValue holder_type = 3;
+   bool is_valid_all = 5;
+   common.ResultStatus result_status = 10;
+}
+
+message NomenclatureTypeItem {
+	int32 id = 1;
+	string type = 2;
+	string name = 3;
+	google.protobuf.StringValue holder_type = 4;
+}
+message NomenclatureTypeListRequest {
+	common.DatatableRequest data_table_request = 1;
+	string type = 2;
+	string name = 3;
+	google.protobuf.StringValue holder_type = 4;
+}
+
+message NomenclatureTypeListResponse {
+    repeated NomenclatureTypeItem data = 1;
+	common.ResultStatus result_status = 2;
+	int32 count_all = 3;
+}
+
+message NomenclatureTypeRegisterListRequest {
+	common.DatatableRequest data_table_request = 1;
+	string type = 2;
+	string name = 3;
+	google.protobuf.StringValue holder_type = 4;
+	int32 register_id = 5;
+}
+
+
+message NomenclatureTypeRegisterItem {
+	int32 id = 1;
+	string type = 2;
+	string name = 3;
+	google.protobuf.StringValue holder_type = 4;
+	int32 register_id = 5;
+	bool is_valid = 6;
+	bool is_valid_all = 7;
+}
+
+message NomenclatureTypeRegisterListResponse {
+    repeated NomenclatureTypeRegisterItem data = 1;
+	common.ResultStatus result_status = 2;
+	int32 count_all = 3;
+}
+
+message GetCodeableConceptRequest {
+	int64 id = 1;
+}
+
+message CodeableConceptRequest {
+	string code = 1;
+	string value = 2;
+	google.protobuf.StringValue value_en = 3;
+	google.protobuf.Timestamp date_from = 4;
+	google.protobuf.Timestamp date_to = 5;
+	google.protobuf.StringValue parent_code = 6;
+	string type = 7;
+	string created_by = 8;
+	repeated AdditionalColumn additional_columns = 9;
+	google.protobuf.StringValue holder_code = 11;
+}
+
+message CodeableConceptResponse {
+	string code = 1;
+	string value = 2;
+	google.protobuf.StringValue value_en = 3;
+	google.protobuf.Timestamp date_from = 4;
+	google.protobuf.Timestamp date_to = 5;
+	google.protobuf.StringValue parent_code = 6;
+	string type = 7;
+	repeated AdditionalColumn additional_columns = 9;
+	common.ResultStatus result_status = 11;
+	google.protobuf.Timestamp date_from_init = 12;
+	google.protobuf.StringValue holder_code = 13;
+	bool is_insert = 14;
+}
+message CodeableConceptItem {
+	int64 id = 1;
+	string code = 2;
+	string value = 3;
+	google.protobuf.StringValue value_en = 4;
+	google.protobuf.Timestamp date_from = 5;
+	google.protobuf.Timestamp date_to = 6;
+	google.protobuf.StringValue parent_code = 7;
+	google.protobuf.StringValue holder_code = 8;
+}
+
+message CodeableConceptRegisterItem {
+	int64 id = 1;
+	string code = 2;
+	string value = 3;
+	google.protobuf.StringValue value_en = 4;
+	google.protobuf.Timestamp date_from = 5;
+	google.protobuf.Timestamp date_to = 6;
+	google.protobuf.StringValue parent_code = 7;
+	google.protobuf.StringValue holder_code = 8;
+	bool is_valid = 9;
+}
+
+
+message CodeableConceptListResponse {
+    repeated CodeableConceptItem data = 1;
+	common.ResultStatus result_status = 2;
+	int32 count_all = 3;
+}
+
+message CodeableConceptRegisterListResponse {
+    repeated CodeableConceptRegisterItem data = 1;
+	common.ResultStatus result_status = 2;
+	int32 count_all = 3;
+	bool is_valid_all_type = 4;
+}
+
+message CodeableConceptListRequest {
+	common.DatatableRequest data_table_request = 1;
+	string type = 2;
+}
+message CodeableConceptRegisterListRequest {
+	common.DatatableRequest data_table_request = 1;
+	string type = 2;
+	int32 register_id = 3;
+}
+
+message AdditionalColumn {
+	string column_name = 1;
+	string value_bg = 2;
+    google.protobuf.StringValue value_en = 3;
+}
+
+message NomenclaturePublicRequest {
+   int32 register_id = 1;
+   repeated string nomenclature_types = 2;
+   optional string filter_value = 3;
+}
+
+message NomenclatureHolderRequest {
+   int32 register_id = 1;
+   string nomenclature_type = 2;
+   string holder = 3;
+   optional string filter_value = 4;
+}
+
+message EkattePublicRequest {
+   int32 register_id = 1;
+   optional string filter_value = 2;
+}
+
+message EkatteSettlementPublic{
+	string name = 1;
+	string code = 2;
+}
+
+message EkatteItemPublic{
+	string category = 1;
+	repeated EkatteSettlementPublic cities = 2;
+}
+
+message EkattePublicResponse {
+   repeated EkatteItemPublic categories  = 1;
+   common.ResultStatus result_status = 2;
+}
+
+message NomenclaturePublicResponse {
+   repeated NomenclatureTypePublicResponse nomenclature_types = 1;
+   common.ResultStatus result_status = 2;
+}
+
+message NomenclatureTypePublicResponse {
+   string type = 1;
+   string name = 2;
+   repeated CodeableConceptPublicResponse codeable_concepts = 3;
+}
+
+message CodeableConceptPublicResponse {
+	string code = 1;
+	string value = 2;
+	google.protobuf.StringValue value_en = 3;
+}
+
+message NomenclatureTypeListPublicResponse {
+   repeated NomenclatureTypeItem nomenclature_types = 1;
+   common.ResultStatus result_status = 2;
+}
+
+message UpdateNomenclatureTypeRegisterRequest{
+	google.protobuf.StringValue type = 1;
+	google.protobuf.StringValue filter_type = 2;
+	google.protobuf.StringValue filter_name = 3;
+	int32 register_id = 4;
+	optional bool is_valid = 5;
+	optional bool is_valid_all = 6;
+	string updated_by = 7;
+}
+
+message UpdateCodeableConceptRegisterRequest{
+	google.protobuf.StringValue code = 1;
+	string type = 2;
+	google.protobuf.StringValue filter = 3;
+	int32 register_id = 4;
+	bool is_valid = 5;
+	string updated_by = 7;
+}
+
+message CheckNomenclatureItem{
+	string type = 1;
+	string code = 2;
+    string field_path = 4;
+}
+
+message CheckNomenclatureRequest{
+    repeated CheckNomenclatureItem data = 1;
+	int32 register_id = 4;
+}
+
+message CheckNomenclatureResponseItem{
+	string type = 1;
+	string code = 2;
+    string field_path = 4;
+	bool is_valid = 5;
+	google.protobuf.StringValue error = 6;
+}
+
+message CheckNomenclatureResponse{
+    repeated CheckNomenclatureResponseItem data = 1;
+    common.ResultStatus result_status = 2;
+}
+
+message AreNomenclatureCodesAllowedRequest {
+   int32 register_id = 1;
+   string nomenclature_type = 2;
+   optional string holder = 3;
+   repeated string nomenclature_codes = 4;
+}
+
+message AreNomenclatureCodesAllowedResponse {
+   bool are_allowed = 1;   
+   common.ResultStatus result_status = 2;
+}
+
+message GetValueRequest {   
+   string nomenclature_type = 1;
+   string nomenclature_code = 2;   
+}
+
+message GetValueResponse {   
+   string nomenclature_value = 1;
+   common.ResultStatus result_status = 2;
+}

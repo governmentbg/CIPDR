@@ -1,0 +1,156 @@
+@font-face {
+    font-family: "Sofia Sans";
+    src: url(../fonts/SofiaSans-Regular.ttf) format("truetype");
+    font-weight: 400;
+}
+
+@font-face {
+    font-family: "Sofia Sans";
+    src: url(../fonts/SofiaSans-SemiBold.ttf) format("truetype");
+    font-weight: 600;
+}
+
+@font-face {
+    font-family: "Sofia Sans";
+    src: url(../fonts/SofiaSans-Bold.ttf) format("truetype");
+    font-weight: 700;
+}
+
+@font-face {
+    font-family: "Sofia Sans";
+    src: url(../fonts/SofiaSans-ExtraBold.ttf) format("truetype");
+    font-weight: 800;
+}
+
+html {
+    font-size: 14px;
+}
+
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+    font-family: "Sofia Sans";
+    position: absolute;
+    top: 0px;
+    min-height: 100%;
+    width: 100%;
+}
+
+.field-properties {
+    width: 100% !important;
+    max-height: 100vh;
+    overflow: auto;
+}
+
+.ui.menu {
+    font-family: "Sofia Sans";
+}
+
+.ui.header {
+    font-family: "Sofia Sans";
+}
+
+.ui.button {
+    font-family: "Sofia Sans";
+}
+
+.ui.main.fluid.container {
+    margin-top: 70px;
+    padding-left: 20px;
+    padding-right: 20px;
+    /*min-height: calc(100vh - 130px);*/
+}
+
+.right.aligned.column.custom.buttons {
+    padding-right: 0px;
+}
+
+.left.aligned.column.dt.buttons {
+    padding-left: 0px;
+}
+
+.ui.seven.wide.column.dt-info {
+    padding-left: 0px;
+}
+
+.ui.nine.wide.column.right.aligned.dt-pagination {
+    padding-right: 0px;
+}
+
+.buttons-excel.buttons-html5.basic:hover {
+    color: forestgreen;
+}
+
+.dt-button.buttons-print.basic:hover {
+    color: #2185d0;
+}
+
+.buttons-collection.buttons-pdf.basic:hover {
+    color: red; 
+}
+
+.buttons-collection.buttons-colvis.basic:hover {
+    color: saddlebrown;
+}
+
+.buttons-collection.buttons-page-length.basic:hover {
+    color: #2185d0;
+}
+
+.extra.content.field-buttons {
+    background-color: ghostwhite;
+}
+
+    
+    .extra.content.field-buttons .ui.wrapped.wrapping.icon.buttons button {
+        background-color: ghostwhite;
+    }
+
+        
+        .extra.content.field-buttons .ui.wrapped.wrapping.icon.buttons button:hover {
+            background-color: #e0e1e2;
+        }
+
+.right.aligned.column.dt.search {
+    padding-right: 0px;
+}
+
+.dataTable thead tr th {
+    padding-right: 2rem !important;
+}
+
+.ui.form .required.field .ui.input input {
+    background: #fff;
+    border: 1px solid rgba(34,36,38,.15);
+}
+
+.remove-field {
+    background-color: rgba(0, 0, 0, 0) !important;
+}
+
+.remove-item-container {
+    position: absolute;
+    margin-left: -3.8rem !important;
+    width: 3.8rem !important;
+    display: inline-block !important;
+    right:0;
+}
+
+.validation-error {
+    color: #9f3a38;
+    display: inline-block;
+}

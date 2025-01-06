@@ -1,0 +1,46 @@
+{
+  "version": "1.0",
+  "defaultProvider": "cdnjs",
+  "libraries": [
+    {
+      "library": "fomantic-ui@2.9.3",
+      "destination": "wwwroot/lib/fomantic-ui/"
+    },
+    {
+      "library": "uuid@8.3.2",
+      "destination": "wwwroot/js/uuid/"
+    },
+    {
+      "library": "datatables.net@2.1.6",
+      "destination": "wwwroot/lib/datatables/"
+    },
+    {
+      "library": "datatables.net-se@2.1.6",
+      "destination": "wwwroot/lib/datatables/se/"
+    },
+    {
+      "library": "datatables.net-buttons@3.1.2",
+      "destination": "wwwroot/lib/datatables/buttons/"
+    },
+    {
+      "library": "datatables.net-buttons-se@3.1.2",
+      "destination": "wwwroot/lib/datatables/buttons-se/"
+    },
+    {
+      "library": "sweetalert2@11.14.0",
+      "destination": "wwwroot/lib/sweetalert2"
+    },
+    {
+      "library": "jszip@3.10.1",
+      "destination": "wwwroot/lib/jszip"
+    },
+    {
+      "library": "pdfmake@0.2.12",
+      "destination": "wwwroot/lib/pdfmake"
+    },
+    {
+      "library": "moment.js@2.30.1",
+      "destination": "wwwroot/lib/moment"
+    }
+  ]
+}

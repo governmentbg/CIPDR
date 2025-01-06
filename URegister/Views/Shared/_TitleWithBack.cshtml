@@ -1,0 +1,7 @@
+﻿@using Microsoft.Extensions.Localization
+@inject IStringLocalizer Localizer
+@model string
+<div class="page-title__header">
+    <h1 class="page-title">@Model</h1>
+    <a asp-controller="Home" asp-action="Index" class="dashboard-back">@Localizer["BackToWorkPlot"]</a>
+</div>

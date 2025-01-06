@@ -1,0 +1,54 @@
+﻿@using URegister.Common
+@using URegister.Infrastructure.Constants
+@using URegister.NomenclaturesCatalog
+@model URegister.Infrastructure.Model.RegisterForms.FormField
+@inject NomenclatureGrpc.NomenclatureGrpcClient NomenclatureGrpcClient
+@{
+    string placeHolder = string.IsNullOrEmpty(Model.Placeholder) ? string.Empty : Model.Placeholder;
+    string toolTip = string.IsNullOrEmpty(Model.Tooltip) ? string.Empty : Model.Tooltip;
+
+    string selectedText = string.Empty;
+
+    if (!string.IsNullOrWhiteSpace(Model.Value))
+    {
+        GetValueRequest getValueRequest = new GetValueRequest
+        {
+            NomenclatureType = Model.NomenclatureType,
+            NomenclatureCode = Model.Value
+        };
+
+        try
+        {
+            GetValueResponse response =
+                await NomenclatureGrpcClient.GetValueByCodeAsync(getValueRequest);
+
+            if (response.ResultStatus.Code != ResultCodes.Ok)
+            {
+                TempData[MessageConstant.ErrorMessage] = "Проблем с връзката, презаредете страницата";
+            }
+            else
+            {
+                selectedText = response.NomenclatureValue;
+            }
+        }
+        catch (Exception ex)
+        {
+            TempData[MessageConstant.ErrorMessage] = "Проблем с връзката, презаредете страницата";
+        }
+    }
+}
+<div class="ui form">
+    <div class="field ui search autocomplete @(Model.IsRequired ? "required" : string.Empty)" data-nomenclature-type="@Model.NomenclatureType">
+        <label for="@Model.Identifier">@Model.Label</label> 
+        <div class="ui input @(Model.IsReadonly ? "disabled" : string.Empty)" @if (!string.IsNullOrEmpty(toolTip))
+        {
+            <text>data-tooltip="@toolTip"</text>
+        }>
+            <input class="prompt" type="text" type="text" value="@selectedText" @(Model.IsReadonly ? "readonly" : "") placeholder="@placeHolder" @(Model.IsRequired ? "required" : "")/>
+            <input id="@Model.Identifier" type="hidden" name="@Model.Name" type="text" class="@(Model.IsReadonly ? "ui disabled input" : "ui input")" value="@Model.Value"/>
+        </div>
+    </div>
+    @{
+        await Html.RenderPartialAsync("ValidationErrorSpan", Model.ValidationError);
+    }   
+</div>

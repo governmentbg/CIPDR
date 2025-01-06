@@ -1,0 +1,37 @@
+﻿@{
+    ViewData["Title"] = "Списък потребители";
+}
+<button class="ui secondary button" id="openGroupModal">Създай група</button>
+@Html.AntiForgeryToken()
+<div class="ui grid">
+    <div class="column">
+        <div class="column">
+            <table id="usersTable"
+                   class="ui celled striped very compact table" style="width:100%; padding:0px;"
+                   data-url="@Url.Action("GetUsers", "User")"
+                   data-add-url="@Url.Action("Add", "User")">
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="groupModal" class="ui modal">
+    <div class="header">Създай група</div>
+    <div class="content">
+        <div class="ui form">
+            <div class="field">
+                <label for="nameInput">Име</label>
+                <input id="nameInput" type="text" placeholder="Въведи име" />
+            </div>
+        </div>
+    </div>
+    <div class="actions">
+        <button class="ui button" id="cancelButton">Затвори</button>
+        <button class="ui primary button" id="submitButton" data-url="@Url.Action("AddGroup", "User")">Запази</button>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/user/index.js"></script>
+}

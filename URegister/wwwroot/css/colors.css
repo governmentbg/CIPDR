@@ -1,0 +1,19 @@
+﻿:root {
+    --buttons-buttons-style1-normal: #0077B6;
+    --buttons-buttons-style1-empty: #99C9E2;
+    --buttons-buttons-style1-empty-hover: #66ADD3;
+    --icons-icons-inverted: #FFFFFF;
+    --text-text-inverted: #FFFFFF;
+    --text-text-brand: #0077B6;
+    --text-text-secondary: #66747C;
+    --text-text-primary: #001824;
+    --pp-black-50: #7A736D;
+    --primary-light: #FFECD1;
+    --basic-white: #FFFFFF;
+    --buttons-step-done: #CCE4F0;
+    --buttons-step-done-text: #0077B6;
+    --buttons-step-future: #E5E8E9;
+    --buttons-step-future-text: #66747C;
+    --list-documents-body: #E5F1F8;
+    --list-documents-body-uploaded: #99C9E2;
+}

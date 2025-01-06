@@ -1,0 +1,36 @@
+﻿@using URegister.Admin.Models.Service
+@model ServiceTypeVM
+
+@{
+    ViewBag.Title = Model.IsInsert ? "Добавяне на тип услуга" : "Редакция на тип услуга";
+    var htmlFieldPrefix = ViewData.TemplateInfo.HtmlFieldPrefix;
+}
+<div class="ui grid">   
+    <form class="ui sixteen wide column" action="Edit" method="post" enctype="multipart/form-data">
+        <div class="content">           
+            <div class="column ui segment green">
+                <div class="ui form">
+                    @Html.HiddenFor(model => model.Id)
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.Name, "String")
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                             @Html.EditorFor(x => x.Steps, "Checklist") 
+                        </div>
+                    </div>
+                </div>
+            </div>
+             @await Html.PartialAsync("_BackSubmitButton", @Url.Action("Index"))
+        </div>
+    </form>
+</div>
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

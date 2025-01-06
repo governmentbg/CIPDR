@@ -1,0 +1,39 @@
+syntax = "proto3";
+import "common.proto";
+
+option csharp_namespace = "URegister.NumberGenerator";
+
+package number;
+
+service NumberGenerator {
+  rpc GetNumber (NumberRequest) returns (NumberReply);
+  rpc GetNumberForExternalSystem (ExternalNumberRequest) returns (NumberReply);
+  rpc CheckNumber (CheckNumberRequest) returns (CheckNumberReply);
+}
+
+// The request message containing the EBK and Register number.
+message NumberRequest {
+  string initial_document_id = 1;
+  string register = 2;
+}
+
+message ExternalNumberRequest {
+  string initial_document_number = 1;
+  string system_name = 2;
+  int32 ebk = 3;
+}
+
+// The response message containing the number.
+message NumberReply {
+  common.ResultStatus status = 1;
+  int64 number = 2;
+}
+
+message CheckNumberRequest {
+  int64 number = 1;
+}
+
+message CheckNumberReply {
+  common.ResultStatus status = 1;
+  bool is_valid = 2;
+}

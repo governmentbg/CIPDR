@@ -1,0 +1,23 @@
+﻿@model URegister.Infrastructure.Model.RegisterForms.AddFormViewModel
+@{
+    ViewData["Title"] = "Добавяне на форма";
+}
+<div class="ui green clearing segment">
+    <form asp-action="EditForm" method="post" enctype="multipart/form-data" id="Add">
+        @Html.HiddenFor(model => model.ParentId)
+        @Html.AntiForgeryToken()
+        <div class="ui form">
+            <div class="fields">
+                <div class="four wide field">@Html.EditorFor(m => m.FormTitle, "StringProperty")</div>
+                <div class="four wide field">@Html.EditorFor(m => m.Purpose, "StringProperty")</div>
+            </div>
+        </div>
+        <div class="fields">
+            <button class="ui right floated primary button" type="submit">
+            <i class="save icon"></i>
+            Запис
+        </button>
+            <a href="@Url.Action("FormIndex", "Catalog", new { area = "Admin" })" class="ui right floated button"><i class="arrow left icon"></i> Назад</a>
+        </div>
+    </form>
+</div>

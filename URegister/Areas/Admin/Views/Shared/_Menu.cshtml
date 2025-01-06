@@ -1,0 +1,31 @@
+﻿<div class="ui fixed menu">
+    <div class="ui fluid container">
+        <a href="#" class="header item">
+            ИСЦИПР
+        </a>
+        <a href="\" class="item"><i class="home icon"></i> Начало</a>
+        <div class="ui simple dropdown item">
+            <i class="list alternate outline icon"></i> Процеси <i class="dropdown icon"></i>
+            <div class="menu">
+                <a class="item" href="@Url.Action("Index", "Process", new {area = "Admin"})"><i class="table icon"></i> Процеси</a>
+            </div>
+        </div>
+        <div class="ui simple dropdown item">
+            <i class="sliders horizontal icon"></i> Управление <i class="dropdown icon"></i>
+            <div class="menu">
+                <a class="item" href="/User/Index"><i class="user edit icon"></i> Потребители</a>
+                <a class="item" href="/Admin/Register/Edit"><i class="list alternate outline icon"></i> Регистър</a>
+                <a class="item" href="/Admin/Register/IndexAdministration"><i class="list alternate outline icon"></i> Администрации</a>
+            </div>
+        </div>
+        <div class="ui simple dropdown item">
+            <i class="list alternate outline icon"></i> Каталози <i class="dropdown icon"></i>
+            <div class="menu">
+                <a class="item" href="/Admin/Catalog/FormIndex"><i class="table icon"></i> Форми</a>
+                <a class="item" href="@Url.Action("Index", "Service", new {area = "Admin"})"><i class="handshake outline icon"></i> Услуги</a>
+            </div>
+        </div>
+        <a href="/Admin/Nomenclature/IndexTypeRegister" class="brown item"><i class="list ol icon"></i> Номенклатури</a>
+        <partial name="_LoginPartial" />
+    </div>
+</div>

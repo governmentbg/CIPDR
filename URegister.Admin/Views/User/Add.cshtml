@@ -1,0 +1,47 @@
+﻿@using URegister.Infrastructure.Model.KeyCloak
+@model UserViewModel
+<div class="ui grid">
+    <form class="ui sixteen wide column" action="@Url.Action("Add", "User")" method="post" enctype="multipart/form-data">
+        <div class="content">
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            <h3>Регистрация на потребител</h3>
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class="four wide field">
+                            @Html.EditorFor(model => model.Username, "String")
+                        </div>
+                        <div class="four wide field">
+                            @Html.EditorFor(model => model.FirstName, "String")
+                        </div>
+                        <div class="four wide field">
+                            @Html.EditorFor(model => model.LastName, "String")
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class="four wide field">
+                            @Html.EditorFor(model => model.Email, "String")
+                        </div>
+                        <div class="four wide field">
+                            @Html.EditorFor(model => model.AdministrationId, "String")
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <a href="@Url.Action("Index")" class="ui button">
+                <i class="arrow left icon"></i>
+                Назад
+            </a>
+            <button class="ui primary button" type="submit">
+                <i class="save outline icon"></i>
+                Запис
+            </button>
+        </div>
+    </form>
+</div>
+@section Scripts {
+    <script src="~/js/user/add.js"></script>
+}

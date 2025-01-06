@@ -1,0 +1,21 @@
+﻿@{
+    ViewData["Title"] = "Списък на формите в регистъра";
+}
+
+@* <div class="ui segments">
+    <div class="ui green clearing segment">
+        <a href="@Url.Action("EditForm", "Catalog")" class="ui right floated mini primary button"> <i class="plus icon"></i> Добави нова форма</a>
+    </div> *@
+    @* <div class="ui green segment"> *@
+        <table id="field-types" class="ui celled striped very compact table" style="width:100%; padding:0px;"
+               data-url="@Url.Action("GetForms", "Designer")"
+               data-add-url="@Url.Action("EditForm", "Catalog")">
+        </table>
+    @* </div> *@
+@* </div> *@
+@{                
+    await Html.RenderPartialAsync("_ConfirmAction");
+}
+@section Scripts {
+    <script src="~/js/admin/catalog/formList.js"></script>
+}

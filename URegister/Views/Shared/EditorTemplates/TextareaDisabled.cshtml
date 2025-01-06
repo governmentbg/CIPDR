@@ -1,0 +1,11 @@
+﻿@using URegister.Infrastructure.Extensions
+@model string
+
+<div class="ui form">
+    <div class="field">
+        <label asp-for="@Model"></label>
+        @Html.HiddenFor(model => model)
+        @Html.TextArea(string.Empty, Model.Decode(), new { @rows = "6", disabled = "disabled" })
+        <span asp-validation-for="@Model" class="validation-error" tabindex="-1"></span>
+    </div>
+</div>

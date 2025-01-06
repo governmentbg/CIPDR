@@ -1,0 +1,19 @@
+﻿@{
+    ViewData["Title"] = "Типове услуги";
+}
+
+<div class="ui grid">
+    <div class="column">
+        <div class="column">
+            <table id="serviceTypes"
+                   class="ui celled striped very compact table" style="width:100%; padding:0px;"
+                data-url="@Url.Action("GetServiceTypesList", "Service")"
+                data-add-url="@Url.Action("Add", "Service")">
+             </table>
+        </div>
+    </div>
+</div>
+@section Scripts
+{
+    <script src="~/js/service/serviceTypesList.js" asp-append-version="true"></script>
+}

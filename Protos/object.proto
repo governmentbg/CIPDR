@@ -1,0 +1,109 @@
+syntax = "proto3";
+import "common.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+
+option csharp_namespace = "URegister.ObjectsCatalog";
+
+package object;
+
+service ObjectsCatalogGrpc {
+  rpc GetFieldsList(google.protobuf.Empty) returns (CatalogFieldsListReply);
+  rpc GetField(CatalogFieldRequest) returns (CatalogGetFieldReply);
+  rpc SetField(CatalogSerializedData) returns (CatalogSetFieldReply);
+  rpc SetFieldType(CatalogFieldType) returns (common.ResultStatus);
+  rpc GetServiceTypes(common.DatatableRequest) returns (ServiceTypesListReply);
+  rpc GetServiceType(GetServiceTypeRequest) returns (GetServiceTypeReply);
+  rpc AppendUpdate(ServiceTypeMessage) returns (common.ResultStatus);
+  rpc GetStepList(common.DatatableRequest) returns (StepListReply);
+  rpc GetStep(GetStepMessage) returns (GetStepReply);
+  rpc AppendUpdateStep(StepMessage) returns (common.ResultStatus);
+}
+
+// Тип на поле от каталога
+message CatalogFieldType {
+  string type = 1;
+  string label = 2;
+  bool isComplex = 3;
+  string templateName = 4;
+}
+
+// Списък от полета дефинирани в каталога
+message CatalogFieldsListReply {
+  common.ResultStatus status = 1;
+  repeated CatalogFieldType field_types = 2;
+}
+
+// Поле от каталога
+message CatalogFieldRequest {
+  string field_type = 1;
+}
+
+// Сериализирани данни за обект от каталога
+message CatalogSerializedData {
+  string data = 1;
+  optional string assembly_qualified_name = 2;
+}
+
+// Отговор за искане за поле от каталога
+message CatalogGetFieldReply {
+  common.ResultStatus status = 1;
+  string data = 2;
+}
+
+// Отговор за запис на поле от каталога
+message CatalogSetFieldReply {
+  common.ResultStatus status = 1;
+  int32 version = 2;
+}
+
+message ServiceTypeMessage {
+	int32 id = 1;
+	string name = 2;
+	repeated int32 step_ids = 3;
+}
+
+message GetServiceTypeMessage {
+	int32 id = 1;
+	string name = 2;
+	repeated common.CheckListItem steps = 3;
+}
+
+message GetServiceTypeReply {
+    common.ResultStatus status = 1;
+	GetServiceTypeMessage service_type = 2;
+}
+
+message ServiceTypesListReply {
+  common.ResultStatus status = 1;
+  repeated ServiceTypeMessage service_types = 2;
+  int32 count_all = 3;
+}
+
+message GetServiceTypeRequest{
+	int32 service_id = 1;
+}
+
+message GetStepMessage{
+    int32 step_id = 1;
+} 
+
+message StepMessage{
+	int32 id = 1;
+	string name = 2;
+	string type = 3;
+	string method = 4;
+	google.protobuf.StringValue configuration = 5;
+	bool is_for_public_use = 6;
+	bool is_for_official_use = 7;
+}
+
+message GetStepReply{
+	common.ResultStatus status = 1;
+	StepMessage step = 2;
+}
+message StepListReply{
+    common.ResultStatus status = 1;
+    repeated StepMessage steps = 2;
+	int32 count_all = 3;
+}
