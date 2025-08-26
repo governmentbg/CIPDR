@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using URegister.Infrastructure.Constants;
 
 namespace URegister.Core.Models.Nomenclature
 {
@@ -8,9 +9,9 @@ namespace URegister.Core.Models.Nomenclature
         /// <summary>
         /// Име на колона
         /// </summary>
-        [StringLength(50)]
+        [StringLength(50, ErrorMessage = MessageConstant.StringMaxLengthValidation)]
         [Display(Name = "Име на колона")]
-        [Required]
+        [Required(ErrorMessage = MessageConstant.FieldIsRequired)]
         public string Name { get; set; } = null!;
 
         /// <summary>
@@ -23,16 +24,16 @@ namespace URegister.Core.Models.Nomenclature
         /// <summary>
         /// Стойност 
         /// </summary>
-        [StringLength(1024)]
+        [StringLength(1024, ErrorMessage = MessageConstant.StringMaxLengthValidation)]
         [Display(Name = "Стойност")]
-        [Required]
+        [Required(ErrorMessage = MessageConstant.FieldIsRequired)]
         public string Value { get; set; } = null!;
 
         /// <summary>
-        /// Стойност ЕН
+        /// Стойност EN
         /// </summary>
-        [StringLength(1024)]
-        [Display(Name = "Стойност ЕН")]
+        [StringLength(1024, ErrorMessage = MessageConstant.StringMaxLengthValidation)]
+        [Display(Name = "Стойност EN")]
         public string? ValueEn { get; set; }
 
         /// <summary>

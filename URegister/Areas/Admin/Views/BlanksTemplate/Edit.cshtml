@@ -1,0 +1,56 @@
+﻿@using URegister.Core.Models.Service
+@using URegister.Infrastructure.Constants
+@model BlanksTemplateVM
+@{
+    ViewBag.Title = "Бланки за документи";
+}
+<div class="ui grid">
+    <form class="ui sixteen wide column" action="@Url.Action("Edit")" method="post" enctype="multipart/form-data">
+        <div class="content">
+            <div class="column ui segment green">
+                <div class="ui form">
+                    @if (GlobalConsts.ShowBlankCode)
+                    {
+                        <div class="fields">
+                            <div class='sixteen wide field'>
+                                @Html.EditorFor(model => model.Code, "String")
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        @Html.HiddenFor(model => model.Code)
+                    }
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.Name, "String")
+                        </div>
+                    </div>
+
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.SourceType, "DropDownInt", new { Ddl = ViewData[$"{InternalNomenclatureTypes.BlankSourceType}_ddl"], onchange = "blankSourceTypeChange(this)" })
+                        </div>
+                    </div>
+                    <div class="fields container-service-id">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.ServiceId, "DropDownInt")
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.FormParentId, "DropDownInt")
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ui fluid container basic clearing segment"></div>
+            @await Html.PartialAsync("_BackSubmitButton", @Url.Action("Index"))
+        </div>
+    </form>
+</div>
+
+@section Scripts
+{
+    <script src="~/js/admin/blanks_template/edit.js" asp-append-version="true"></script>
+}

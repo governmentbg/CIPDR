@@ -1,7 +1,10 @@
 ﻿@model string
+@{
+    var reqClass = ViewData.ModelMetadata.GetIOReqClass();
+}
 
 <div class="ui form">
-    <div class="field">
+    <div class="field @reqClass">
         <label asp-for="@Model"></label>
         @Html.TextArea(string.Empty, Model.Decode(), new { @rows = "3" })
         <span asp-validation-for="@Model" class="validation-error" tabindex="-1"></span>

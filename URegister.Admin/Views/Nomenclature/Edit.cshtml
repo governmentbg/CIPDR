@@ -1,4 +1,5 @@
 ﻿@using URegister.Core.Models.Nomenclature
+@using URegister.Infrastructure.Constants
 @model CodeableConceptVM
 
 @{
@@ -7,21 +8,31 @@
     var codeEditor = Model.IsInsert ? "String" : "StringDisabled";
     var action = Model.IsInsert ? "Add" : "Edit";
 }
-<div class="ui grid">   
+<div class="ui grid">
     <form class="ui sixteen wide column" action="@Url.Action(action)" method="post" enctype="multipart/form-data">
-        <div class="content">           
+        <div class="content">
             <div class="column ui segment green">
                 <div class="ui form">
+                    @Html.HiddenFor(model => model.EditId)
                     @Html.HiddenFor(model => model.Type)
                     @Html.HiddenFor(model => model.IsInsert)
-                    @Html.HiddenFor(model => model.DateFromInit)
+                    <input asp-for="@Model.DateFromInit" type="hidden" value="@Model.DateFromInit.ToString(FormattingConstant.NormalDateFormat)" />
                     <div class="fields">
                         <div class='eight wide field'>
                             @Html.EditorFor(model => model.Code, codeEditor)
                         </div>
-                        <div class='eight wide field'>
-                            @Html.EditorFor(model => model.HolderCode, "String")
-                        </div>
+                        @if (GlobalConsts.ShowNomenclatureHolder)
+                        {
+                            <div class='eight wide field'>
+                                @Html.EditorFor(model => model.HolderCode, "String")
+                            </div>
+                        }
+                        else
+                        {
+                            <div class='eight wide field'>
+                                @Html.HiddenFor(model => model.HolderCode)
+                            </div>
+                        }
                     </div>
                     <div class="fields">
                         <div class='eight wide field'>
@@ -41,15 +52,18 @@
                     </div>
                 </div>
             </div>
-            <div class="column ui segment green">
-                <div class="ui form">
-                    <div class="fields">
-                        <div class='sixteen wide field'>
-                            @await Html.PartialAsync("_AdditionalColumnList", Model.AdditionalColumns)
+            @if (GlobalConsts.ShowNomenclatureAdditional)
+            {
+                <div class="column ui segment green">
+                    <div class="ui form">
+                        <div class="fields">
+                            <div class='sixteen wide field'>
+                                @await Html.PartialAsync("_AdditionalColumnList", Model.AdditionalColumns)
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            } 
             @await Html.PartialAsync("_BackSubmitButton", @Url.Action("Index", new { nomenclatureType = Model.Type }))
         </div>
     </form>

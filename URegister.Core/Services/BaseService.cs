@@ -2,7 +2,7 @@
 using URegister.Core.Contracts;
 using URegister.Core.Data;
 
-namespace Core.Services
+namespace URegister.Core.Services
 {
     public abstract class BaseService : IBaseService
     {
@@ -18,6 +18,11 @@ namespace Core.Services
         public async Task<T> GetByIdAsync<T>(object id) where T : class
         {
             return await Repo.GetByIdAsync<T>(id);
+        }
+
+        public void ClearTracker()
+        {
+            Repo.ChangeTrackerClear();
         }
     }
 }

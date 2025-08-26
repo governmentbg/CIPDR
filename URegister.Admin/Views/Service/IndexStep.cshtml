@@ -12,7 +12,9 @@
         </div>
     </div>
 </div>
-
+@{
+    await Html.RenderPartialAsync("_ConfirmAction");
+}
 @section Scripts
 {
     <script src="~/js/service/stepsList.js" asp-append-version="true"></script>

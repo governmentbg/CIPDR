@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using URegister.Infrastructure.Data.Common;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace URegister.NomenclaturesCatalog.Data.Models
@@ -12,7 +13,7 @@ namespace URegister.NomenclaturesCatalog.Data.Models
     [Table("nomenclature_types")]
     [Comment("Тип номенклатура")]
     [Index(nameof(Type), IsUnique = true)]
-    public class NomenclatureType
+    public class NomenclatureType : SoftDeletable
     {
         /// <summary>
         /// Идентификатор

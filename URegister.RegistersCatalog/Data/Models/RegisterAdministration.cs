@@ -10,7 +10,7 @@ namespace URegister.RegistersCatalog.Data.Models
     /// </summary>
     [Comment("Администрации")]
     [Index(nameof(RegisterId), nameof(AdministrationId), IsUnique = true)]
-    public class RegisterAdministration : SoftDeletable
+    public class RegisterAdministration : EntityBaseWithLastModifiedInfo
     {
         /// <summary>
         /// Идентификатор
@@ -47,6 +47,13 @@ namespace URegister.RegistersCatalog.Data.Models
         [Required]
         [Comment("Дата на създаване")]
         public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// OpenData DataSetId
+        /// </summary>
+        [MaxLength(100)]
+        [Comment("OpenData DataSetId")]
+        public string? OpenDataDataSetId { get; set; } 
 
         /// <summary>
         /// Регистър

@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using URegister.Infrastructure.Model.JsonConverters;
 
 namespace URegister.Infrastructure.Model.RegisterForms
@@ -14,11 +12,6 @@ namespace URegister.Infrastructure.Model.RegisterForms
         /// Идентификатор
         /// </summary>
         public Guid Identifier { get; set; }
-
-        /// <summary>
-        /// Идентификатор на поле
-        /// </summary>
-        public Guid FieldId { get; set; }
 
         /// <summary>
         /// Тип на поле
@@ -146,12 +139,6 @@ namespace URegister.Infrastructure.Model.RegisterForms
         public string[]? AllowedFileExtensions { get; set; }
 
         /// <summary>
-        /// Файл в битове
-        /// </summary>
-        [NotMapped]
-        public IFormFile? File { get; set; } = null;
-
-        /// <summary>
         /// Потребителят може да добавя повторения на полето
         /// </summary>
         public bool CanBeRepeated { get; set; } = false;
@@ -163,13 +150,33 @@ namespace URegister.Infrastructure.Model.RegisterForms
 
 
         /// <summary>
-        /// Лицето собственик ли е на партидата
+        /// Физическото или юридическо лице собственик ли е на партидата
         /// </summary>
         public bool IsBatchOwner { get; set; } = false;
+
+        /// <summary>
+        /// Лицето заявител ли е
+        /// </summary>
+        public bool IsSubmitter { get; set; } = false;
 
         /// <summary>
         /// Повторения на полето, заявени от потребителя
         /// </summary>
         public List<FormField>? Repetitions { get; set; } = new List<FormField>();
+
+        /// <summary>
+        /// Форматиран статичен текст
+        /// </summary>
+        public string FormattedText { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Дали полето ще бъде колона при визуализиране на данните в таблица
+        /// </summary>
+        public bool IsColumnInDataTable { get; set; } = false;
+
+        /// <summary>
+        /// Път за стойността в еформата. Ползва се при импорт на данни
+        /// </summary>
+        public string EFormImportPath { get; set; } = string.Empty;
     }
 }

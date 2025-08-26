@@ -1,0 +1,23 @@
+﻿@using URegister.Infrastructure.Extensions
+
+@model List<Guid>
+@{
+    var ddl = ViewData.GetDropDownDdl().SetSelected(Model);
+    var onchange = (string)(ViewData["onchange"] ?? String.Empty);
+    var class_css = (string)(ViewData["class"] ?? String.Empty);
+    var reqClass = ViewData.ModelMetadata.GetIOReqClass();
+    var container_css = (string)(ViewData["container_css"] ?? String.Empty);
+    var nddl = new MultiSelectList(ddl, "Value", "Text", Model);
+}
+
+@if (ddl != null)
+{
+    <div class="ui form @container_css">
+        <div class="field @reqClass">
+            <label asp-for="@Model"></label>
+            @* @Html.ListBoxFor(model => model, nddl, new { @class = "ui fluid multiple search selection dropdown", @multiple = "multiple" }) *@
+            @Html.ListBoxFor(model => model, ddl.SetSelected(Model), new { multiple = String.Empty, @class = "ui fluid search selection dropdown multi-select dropdown-z" })
+            <span asp-validation-for="@Model" class="validation-error" tabindex="-1"></span>
+        </div>
+    </div>
+}

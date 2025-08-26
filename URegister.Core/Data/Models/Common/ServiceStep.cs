@@ -2,6 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using URegister.Infrastructure.Constants;
+using URegister.Infrastructure.Data.Common;
 
 namespace URegister.Core.Data.Models.Common
 {
@@ -9,7 +10,7 @@ namespace URegister.Core.Data.Models.Common
     /// Стъпка от услуга в регистъра
     /// </summary>
     [Comment("Стъпка от услуга в регистъра")]
-    public class ServiceStep
+    public class ServiceStep : EntityBaseWithLastModifiedInfo
     {
         /// <summary>
         /// Системен идентификатор
@@ -19,18 +20,11 @@ namespace URegister.Core.Data.Models.Common
         public int Id { get; set; }
 
         /// <summary>
-        /// Идентификатор на тип форма
-        /// </summary>        
-        [Comment("Идентификатор на тип форма")]
-        [Required]
-        public int FormParentId { get; set; }
-
-        /// <summary>
         /// Име на стъпката
         /// </summary>
         [StringLength(150)]
         [Comment("Име на стъпката")]
-       // [Required]
+        // [Required]
         public string? Title { get; set; }
 
         /// <summary>
@@ -39,6 +33,13 @@ namespace URegister.Core.Data.Models.Common
         [Comment("Идентификатор на услугата от регистъра")]
         [Required]
         public int ServiceId { get; set; }
+
+        /// <summary>
+        /// Статус
+        /// </summary>        
+        [Comment("Статус")]
+        [Required]
+        public int StatusId { get; set; }
 
         /// <summary>
         /// Поредност
@@ -58,5 +59,15 @@ namespace URegister.Core.Data.Models.Common
         [ForeignKey(nameof(ServiceId))]
         [Comment("Външен ключ към услуга")]
         public virtual Service Service { get; set; } = null!;
+
+        /// <summary>
+        /// Процеси ползващи стъпката
+        /// </summary>
+        public virtual ICollection<Process.Process> Processes { get; set; } = null!;
+
+        /// <summary>
+        /// Стъпки към услуга
+        /// </summary>
+        public List<StepRole> StepRoles { get; set; } = new();
     }
 }

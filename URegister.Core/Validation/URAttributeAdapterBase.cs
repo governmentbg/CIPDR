@@ -1,12 +1,16 @@
-﻿using Microsoft.AspNetCore.Mvc.DataAnnotations;
+﻿using Google.Protobuf.WellKnownTypes;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.Extensions.Localization;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace URegister.Core.Validation
 {
@@ -31,3 +35,4 @@ namespace URegister.Core.Validation
         }
     }
 }
+

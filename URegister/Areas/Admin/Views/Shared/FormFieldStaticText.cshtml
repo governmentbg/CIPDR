@@ -1,0 +1,9 @@
+﻿@model URegister.Infrastructure.Model.RegisterForms.FormField
+@{
+//     string placeHolder = string.IsNullOrEmpty(Model.Placeholder) ? string.Empty : Model.Placeholder;
+//     string toolTip = string.IsNullOrEmpty(Model.Tooltip) ? string.Empty : Model.Tooltip;    
+}
+@if (!Model.FormattedText.Contains("script", StringComparison.InvariantCultureIgnoreCase))
+{
+    @Html.Raw(Model.FormattedText);
+}

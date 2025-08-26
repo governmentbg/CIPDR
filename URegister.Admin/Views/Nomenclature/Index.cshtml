@@ -3,7 +3,7 @@
 @{
     ViewData["Title"] = "Номенклатурни стойности към " + Model.Name;
 }
-
+@Html.AntiForgeryToken()
 @Html.HiddenFor(x => x.Type)
 @Html.HiddenFor(x => x.Name)
 <div class="ui grid">    

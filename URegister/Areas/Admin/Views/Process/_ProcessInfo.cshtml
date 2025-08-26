@@ -1,0 +1,67 @@
+﻿@using URegister.Core.Contracts
+@using URegister.Core.Models.Process
+@using URegister.Infrastructure.Constants
+@inject IRegisterService registerService;
+@model ProcessInfoVM
+@{
+    var register = await registerService.GetCurrentRegister();
+    var htmlFieldPrefix = ViewData.TemplateInfo.HtmlFieldPrefix;
+}
+@Html.HiddenFor(m => m.ServiceStepId)
+<div class="ui green clearing segment">
+    <div class="ui form">
+        @if (Model.ServiceStepId == (int)ServiceSteps.Coordination)
+        {
+
+            <div class="fields">
+                <div class="sixteen wide field">
+                    @Html.EditorFor(model => model.CoordinationStatusId, "DropDownInt", new { Ddl = ViewData[$"{InternalNomenclatureTypes.CooordinationStatusType}_ddl"]})
+                </div>
+            </div>
+            <div class="fields">
+                <div class="sixteen wide field">
+                    @Html.EditorFor(model => model.CoordinationMotive, "Textarea")
+                </div>
+            </div>
+        }
+        <div class="fields">
+            @if (!string.IsNullOrEmpty(Model.OldIncomingNumber))
+            {
+                <div class="four wide field">
+                    @Html.EditorFor(model => model.OldIncomingNumber, "String")
+                </div>
+                <div class="four wide field">
+                    @Html.EditorFor(model => model.OldIncomingDate, "DateTime")
+                </div>
+            }
+            @if (register.TypeEntry == RegisterTypeEntry.Applicant)
+            {
+                <div class="eight wide field">
+                    @Html.EditorFor(model => model.ReceivedChannelId, "DropDownDisabled", new { Ddl = ViewData[$"{InternalNomenclatureTypes.ChannelType}_ddl"] })
+                </div>
+            }
+        </div>
+        <div class="fields">
+            @if (Model.EFormFile != null)
+            {
+                ViewData.TemplateInfo.HtmlFieldPrefix = $"{ htmlFieldPrefix}.ProcessInfo";
+                await Html.RenderPartialAsync("_DownloadFile", Model.EFormFile);
+                ViewData.TemplateInfo.HtmlFieldPrefix = htmlFieldPrefix;
+            }
+        </div>
+        @if (register.TypeEntry == RegisterTypeEntry.Applicant)
+        {
+            <div class="fields">
+                <div class="eight wide field">
+                    @Html.EditorFor(model => model.PreferredResultDeliveryMethod, "DropDown", new { Ddl = ViewData[$"{InternalNomenclatureTypes.ChannelType}_ddl"] })
+                </div>
+                <div class="four wide field">
+                    @Html.EditorFor(model => model.DeadlineId, "DropDownInt", new { onchange = "DeadlineChange(this)" })
+                </div>
+                <div class="four wide field">
+                    @Html.EditorFor(model => model.DeadlineDate, "DateTime")
+                </div>
+            </div>
+        }
+    </div>
+</div>

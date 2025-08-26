@@ -10,10 +10,17 @@
             subField.IsReadonly = true;
         }
     }
+    if (!Model.IsRequired)
+    {
+        foreach (FormField subField in Model.Fields)
+        {
+            subField.IsRequired = false;
+        }
+    }
 }
 <div class="ui form">
     <div class="field">
-        <fieldset class="person-fieldset @(Model.IsReadonly ? "readonly-fieldset" : "")">
+        <fieldset class="fieldgroup-fieldset @(Model.IsReadonly ? "readonly-fieldset" : "")">
             <legend class="person-tooltip"
                     @if (!string.IsNullOrEmpty(toolTip))
                     {

@@ -1,0 +1,118 @@
+syntax = "proto3";
+
+import "common.proto";
+import "google/protobuf/wrappers.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "URegister.IntegrationsCatalog";
+
+package integration;
+
+service IntegrationGrpc {
+  rpc GetPersonInfo(GetPersonInfoRequest) returns (GetPersonInfoResponse);
+  rpc GetCompanyInfo(GetCompanyInfoRequest) returns (GetCompanyInfoResponse);
+  rpc SendMessage(OutboxMessage) returns (SendMessageResponse);
+  rpc GetIntegrationFilesUrl(IntegrationFileRequest) returns (IntegrationFilesResponse);
+  rpc GetEDeliveryLogRecordsList(common.DatatableRequest) returns (EDeliveryMessagesListReply);
+}
+
+message GetPersonInfoRequest {
+	string pid = 1;
+	IntegrationServiceContextInfo context_info = 2;
+}
+
+message GetPersonInfoResponse {
+   string first_name = 1;
+   string middle_name = 2;
+   string last_name = 3;
+   common.ResultStatus result_status = 4;
+}
+
+message GetCompanyInfoRequest {
+	string cid = 1;
+	int32 cid_type = 2;
+	IntegrationServiceContextInfo context_info = 3;
+}
+
+message GetCompanyInfoResponse {
+   string name = 1;
+   int32 legal_form_code = 2;   
+   common.ResultStatus result_status = 3;
+   string legal_form_name = 4;
+   google.protobuf.StringValue countryCode = 5;
+   google.protobuf.StringValue settlementCode = 6;
+   google.protobuf.StringValue postCode = 7;
+   google.protobuf.StringValue regionCode = 8;
+   google.protobuf.StringValue streetName = 9;
+   google.protobuf.StringValue buildingNumber = 10;
+   google.protobuf.StringValue entranceName = 11;
+   google.protobuf.StringValue floorNumber = 12;
+   google.protobuf.StringValue apartmentNumber = 13;
+   google.protobuf.StringValue foreignAddress = 14;
+   google.protobuf.StringValue countryName = 15;
+   google.protobuf.StringValue regionName = 16;
+   google.protobuf.StringValue settlementName = 17;
+   google.protobuf.StringValue streetNumber = 18;
+}
+
+message OutboxFile {
+	string fileName = 1;
+	string fileUrl = 2;
+}
+
+message OutboxMessage {
+   string uic = 1;
+   string uic_type = 2;
+   int32 template_id = 3;
+   int32  message_type_id = 4;
+   string subject = 9; 
+   string message = 10; 
+   google.protobuf.StringValue rnu = 11;
+   int32 source_type = 13;
+   string source_id = 14;
+   int32 register_id = 15;
+   string tenant_id = 16;
+   string process_id = 17;
+   repeated OutboxFile outbox_files = 18;
+}
+
+message SendMessageResponse {
+	google.protobuf.StringValue message_id = 1;
+	common.ResultStatus status = 2;
+}
+
+message IntegrationFileRequest {
+   repeated string ids = 1;
+}
+
+message IntegrationFileMessage {
+   string id = 1;
+   string url = 2;
+}
+
+message IntegrationFilesResponse {
+	repeated IntegrationFileMessage files = 1;
+	common.ResultStatus status = 2;
+}
+
+message IntegrationServiceContextInfo{
+	google.protobuf.StringValue employee_names = 1;
+	google.protobuf.StringValue employee_position = 2;
+	google.protobuf.StringValue employee_administration = 3;
+}
+
+message EDeliveryProtoMessage {
+	google.protobuf.StringValue id = 1;
+	optional int32 register_id = 2;
+	google.protobuf.StringValue error_message = 3;
+	optional google.protobuf.Timestamp modified_on = 4;
+	optional google.protobuf.StringValue public_service_name = 5;
+	optional google.protobuf.StringValue public_service_identifier = 6;
+	optional google.protobuf.StringValue register_name = 7;
+}
+
+message EDeliveryMessagesListReply {
+  common.ResultStatus status = 1;
+  repeated EDeliveryProtoMessage edelivery_messages = 2;
+  int32 count_all = 3;
+}

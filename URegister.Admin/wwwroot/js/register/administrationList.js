@@ -4,7 +4,7 @@ $(function () {
 
 function LoadAdministrations() {
     const tableId = '#administrations';
-    const registerId = $('#RegisterId').val();
+    const registerId = $('#Id').val();
     if ($.fn.dataTable.isDataTable(tableId)) {
         refreshTable(tableId);
     }
@@ -25,7 +25,7 @@ function LoadAdministrations() {
                     messageHelper.ShowErrorMessage('Проблем при четене ' + error.responseText);
                 }
             },
-            filter: false,
+            filter: true,
             columns: [
                 {
                     name: 'uic',
@@ -37,7 +37,7 @@ function LoadAdministrations() {
                 {
                     name: 'name',
                     data: 'name',
-                    title: 'Име',
+                    title: 'Наименование на административния орган',
                     sortable: true,
                     searchable: true
                 },
@@ -55,11 +55,16 @@ function LoadAdministrations() {
                     sortable: false,
                     searchable: false,
                     className: "text-left noExport",
-                    width: 120,
+                    width: "10%",
                     "render": function (data, type, row) {
-                        return `<a href="/Register/indexPerson?administrationId=${row.id}&registerId=${registerId}" data-tooltip="Оторизирани лица" class="ui tertiary icon button">
+                        return editButton(`/Register/EditAdministration?registerAdministrationId=${row.id}&registerId=${registerId}`) +
+                               `<a href = "/Register/indexPerson?registerAdministrationId=${row.id}&registerId=${registerId}" data-tooltip="Оторизирани лица" class="ui tertiary icon button" >
                                    <i class="tasks icon"></i>
-                                </a>`;
+                                </a>` +
+                            "<a href='javascript:actionWithConfirmation(\"/Register/DeleteRegisterAdministration\", \"" +
+                            data + "\", \"Сигурни ли сте, че искате да изтриете " +
+                            row.name +
+                            "?\", null)' type='button' class='ui tertiary icon button' data-tooltip='Изтрий'><i class='red trash alternate icon'></i></button>";
                     }
                 }
             ]

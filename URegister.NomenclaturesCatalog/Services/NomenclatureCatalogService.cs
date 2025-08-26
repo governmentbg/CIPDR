@@ -1,7 +1,5 @@
 ﻿using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
-using Npgsql;
-using Npgsql.PostgresTypes;
 using URegister.Common;
 using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Helper;
@@ -14,7 +12,8 @@ namespace URegister.NomenclaturesCatalog;
 /// </summary>
 public class NomenclatureCatalogService(
     ILogger<NomenclatureCatalogService> logger,
-    INomenclatureInfoService nomenclatureInfoService
+    INomenclatureInfoService nomenclatureInfoService,
+    IImportNrnmNsiService importNrnmNsiService
     ) : NomenclatureGrpc.NomenclatureGrpcBase
 {
     /// <summary>
@@ -351,7 +350,7 @@ public class NomenclatureCatalogService(
         var reply = CommonGrpcHelper.CreateStatusOK();
         try 
         {
-            await nomenclatureInfoService.ImportNrnmNsi();
+            await importNrnmNsiService.ImportNrnmNsi();
         }
         catch (ArgumentException ex)
         {
@@ -373,8 +372,8 @@ public class NomenclatureCatalogService(
         var reply = CommonGrpcHelper.CreateStatusOK();
         try
         {
-            await nomenclatureInfoService.ImportEkStreet(NomenclatureTypes.EkStreet);
-            await nomenclatureInfoService.ImportEkStreet(NomenclatureTypes.EkKvartal);
+            await importNrnmNsiService.ImportEkStreet(NomenclatureTypes.EkStreet);
+            await importNrnmNsiService.ImportEkStreet(NomenclatureTypes.EkKvartal);
         }
         catch (ArgumentException ex)
         {
@@ -412,7 +411,7 @@ public class NomenclatureCatalogService(
     /// <param name="request"></param>
     /// <param name="context"></param>
     /// <returns></returns>
-    public async override Task<EkattePublicResponse> GetEkattePublic(EkattePublicRequest request, ServerCallContext context)
+    public override async Task<EkattePublicResponse> GetEkattePublic(EkattePublicRequest request, ServerCallContext context)
     {
         EkattePublicResponse reply = new();
         try
@@ -424,6 +423,52 @@ public class NomenclatureCatalogService(
         catch (Exception ex)
         {
             logger.LogError(ex, "NomenclatureService/GetEkattePublic");
+            reply.ResultStatus = CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+        return reply;
+    }
+    
+    /// <summary>
+    /// Четене на имена на населени места с област и община по екатте код
+    /// </summary>
+    /// <param name="request"></param>
+    /// <param name="context"></param>
+    /// <returns></returns>
+    public override async Task<SettlementFullInfoResponse> GetSettlementFullInfo(SettlementFullInfoRequest request, ServerCallContext context)
+    {
+        SettlementFullInfoResponse reply = new();
+        try
+        {
+            reply.ResultStatus = CommonGrpcHelper.CreateStatusOK();
+            string settlementInfo = await nomenclatureInfoService.GetSettlementFullInfo(request.EkatteCode);
+            reply.SettlementFullInfo = settlementInfo;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,  nameof(GetSettlementFullInfo));
+            reply.ResultStatus = CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+        return reply;
+    }
+
+    /// <summary>
+    /// Четене на номенклатура с категории
+    /// </summary>
+    /// <param name="request"></param>
+    /// <param name="context"></param>
+    /// <returns></returns>
+    public override async Task<NomenclatureWithHolderResponse> GetNomenclatureWithHolderValues(NomenclatureWithHolderValuesRequest request, ServerCallContext context)
+    {
+        NomenclatureWithHolderResponse reply = new();
+        try
+        {
+            reply.ResultStatus = CommonGrpcHelper.CreateStatusOK();
+            var categories = await nomenclatureInfoService.GetNomenclatureWithHolderValues(request);
+            reply.Categories.Add(categories);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, $"NomenclatureService/{nameof(GetNomenclatureWithHolderValues)}");
             reply.ResultStatus = CommonGrpcHelper.CreateStatusInternalServerError(ex);
         }
         return reply;
@@ -502,6 +547,20 @@ public class NomenclatureCatalogService(
         catch (Exception ex)
         {
             logger.LogError(ex, "NomenclatureService/UpdateCodeableConceptRegister");
+            return CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+    }
+
+    public override async Task<ResultStatus> UpdateCodeableConceptStatus(UpdateCodeableConceptStatusRequest request, ServerCallContext context)
+    {
+        try
+        {
+            await nomenclatureInfoService.UpdateCodeableConceptStatus(request);
+            return CommonGrpcHelper.CreateStatusOK();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "NomenclatureService/UpdateCodeableConceptStatus");
             return CommonGrpcHelper.CreateStatusInternalServerError(ex);
         }
     }
@@ -599,4 +658,41 @@ public class NomenclatureCatalogService(
             return result;
         }
     }
+
+    public override async Task<ResultStatus> DeleteNomenclatureType(GetNomenclatureTypeRequest request, ServerCallContext context)
+    {
+        try
+        {
+            ResultStatus result = await nomenclatureInfoService.DeleteNomenclatureType(request.Id);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "NomenclatureCatalogService/AppendUpdate");
+            return CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+    }
+
+    /// <summary>
+    /// Списък с всички стойности към номенклатурен тип
+    /// </summary>
+    /// <param name="request">заявка</param>
+    /// <param name="context"></param>
+    /// <returns></returns>
+    public override async Task<CodeableConceptListResponse> GetCodeableConceptListExport(CodeableConceptListExportRequest request, ServerCallContext context)
+    {
+        CodeableConceptListResponse reply = new();
+        try
+        {
+            reply = await nomenclatureInfoService.GetCodeableConceptListExport(request);
+            reply.ResultStatus = CommonGrpcHelper.CreateStatusOK();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "NomenclatureService/GetCodeableConceptListExport");
+            reply.ResultStatus = CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+        return reply;
+    }
+
 }

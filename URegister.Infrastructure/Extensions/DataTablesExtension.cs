@@ -1,11 +1,9 @@
-﻿using System.Linq.Expressions;
+﻿using System.Diagnostics;
+using System.Linq.Expressions;
 using DataTables.AspNet.Core;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using DataTables.AspNet.AspNetCore;
-using static FastExpressionCompiler.ExpressionCompiler;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
-using Microsoft.EntityFrameworkCore.Storage;
 
 namespace URegister.Infrastructure.Extensions
 {
@@ -140,7 +138,7 @@ namespace URegister.Infrastructure.Extensions
             {
                 Length = request.Length,
                 Start = request.Start,
-                Filter = request.Search.Value
+                Filter = request.Search.Value?.Trim()
             };
             result.OrderBy.AddRange(
                 request.Columns
@@ -206,7 +204,13 @@ namespace URegister.Infrastructure.Extensions
             return new JsonResult(dtResponse, settings);
         }
 
-        public static (IQueryable<T>, int) GetResponseData<T>(this IDataTablesRequest request, IQueryable<T> data, IQueryable<T> filteredData = null, Dictionary<string, object> additionalParameters = null, bool fromDatabase = true) where T : class
+        public static (IQueryable<T>, int) GetResponseData<T>(this IDataTablesRequest request, 
+            IQueryable<T> data, 
+            IQueryable<T> filteredData = null, 
+            Dictionary<string, object> additionalParameters = null, 
+            bool fromDatabase = true,
+            string uniqueValuesColumnForThenBy = "", 
+            bool ascendingThenBy = true) where T : class
         {
             if (filteredData == null)
             {
@@ -226,12 +230,13 @@ namespace URegister.Infrastructure.Extensions
             }
             else
             {
-                dataPage = filteredData.OrderBy(orderColums).Skip(request.Start).Take(request.Length);
+                dataPage = filteredData.OrderBy(orderColums,uniqueValuesColumnForThenBy, ascendingThenBy).Skip(request.Start).Take(request.Length);
             }
 
             int dataCount = calcCountInDataset<T>(data);
             return (dataPage, dataCount);
         }
+
         /// <summary>
         /// Използва текста в полето за търсене за филтрация на данните по колоните, 
         /// маркирани като колони за търсене
@@ -401,8 +406,12 @@ namespace URegister.Infrastructure.Extensions
         /// <typeparam name="T">Тип на данните</typeparam>
         /// <param name="source">Дърво, което трябва да бъде подредено</param>
         /// <param name="sortModels">Модел с данни за начина на сортиране</param>
+        /// <param name="uniqueValuesColumnForThenBy">Име на колона с уникални стойности за вторично сортиране</param>
+        /// <param name="ascendingThenBy">В растящ ред ли да сортира по колона с уникални стойности</param>
         /// <returns></returns>
-        public static IQueryable<T> OrderBy<T>(this IQueryable<T> source, IEnumerable<DataTables.AspNet.Core.IColumn> sortModels)
+        public static IQueryable<T> OrderBy<T>(this IQueryable<T> source, 
+            IEnumerable<DataTables.AspNet.Core.IColumn> sortModels, 
+            string uniqueValuesColumnForThenBy = "", bool ascendingThenBy = true)
         {
             var expression = source.Expression;
             int count = 0;
@@ -414,10 +423,32 @@ namespace URegister.Infrastructure.Extensions
                 var method = item.Sort.Direction == DataTables.AspNet.Core.SortDirection.Descending ?
                     (count == 0 ? "OrderByDescending" : "ThenByDescending") :
                     (count == 0 ? "OrderBy" : "ThenBy");
+
                 expression = Expression.Call(typeof(Queryable), method,
                     new Type[] { source.ElementType, selector.Type },
                     expression, Expression.Quote(Expression.Lambda(selector, parameter)));
+
                 count++;
+            }
+
+            // Add tiebreaker if sorting was applied and primaryKeyName is provided
+            if (count > 0 && !string.IsNullOrEmpty(uniqueValuesColumnForThenBy) &&
+                !sortModels.Any(s => s.Name.Equals(uniqueValuesColumnForThenBy, StringComparison.OrdinalIgnoreCase)))
+            {
+                try
+                {
+                    var parameter = Expression.Parameter(source.ElementType, "x");
+                    var selector = Expression.PropertyOrField(parameter, uniqueValuesColumnForThenBy);
+                    var method = ascendingThenBy ? "ThenBy" : "ThenByDescending";
+
+                    expression = Expression.Call(typeof(Queryable), method,
+                        new Type[] { source.ElementType, selector.Type },
+                        expression, Expression.Quote(Expression.Lambda(selector, parameter)));
+                }
+                catch (ArgumentException)
+                {
+                    // Skip tiebreaker if primaryKeyName doesn't exist
+                }
             }
 
             return count > 0 ? source.Provider.CreateQuery<T>(expression) : source;

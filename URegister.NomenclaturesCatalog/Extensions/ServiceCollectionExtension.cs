@@ -1,9 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Contracts;
+using URegister.Infrastructure.Models;
 using URegister.Infrastructure.Services;
 using URegister.NomenclaturesCatalog.Contracts;
 using URegister.NomenclaturesCatalog.Services;
-using URegister.RegistersCatalog.Data;
+using URegister.NomenclaturesCatalog.Data;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -19,8 +21,15 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <returns></returns>
         public static IServiceCollection AddApplicationServices(this IServiceCollection services)
         {
-            services.AddScoped<INomenclatureInfoService, NomenclatureService>();
+            services.AddScoped<INomenclatureInfoService, NomenclatureInfoService>();
+            services.AddScoped<IImportNrnmNsiService, ImportNrnmNsiService>();
             services.AddScoped<IHttpRequester, HttpRequester>();
+            services.AddScoped<IAuditLogServiceClient, AuditLogServiceClient>();
+            services.AddScoped<IAuditInfo>(x => new AuditInfo()
+            {
+                TypeAuditTask = TypeAuditTask.GrpcClient,
+                ProjectName = "NomenclatureCatalog"
+            });
             services.AddHttpClient();
             return services;
         }
@@ -39,7 +48,6 @@ namespace Microsoft.Extensions.DependencyInjection
             });
 
             services.AddScoped<INomenclaturesCatalogRepository, NomenclaturesCatalogRepository>();
-
             return services;
         }
     }

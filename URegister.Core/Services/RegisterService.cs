@@ -1,62 +1,101 @@
-﻿using Core.Services;
-using DataTables.AspNet.Core;
+﻿using DataTables.AspNet.Core;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using URegister.Common;
 using URegister.Core.Contracts;
 using URegister.Core.Data;
 using URegister.Core.Data.Models.Register;
 using URegister.Core.Models.CurrentRegister;
 using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Extensions;
+using URegister.NomenclaturesCatalog;
 using URegister.RegistersCatalog;
 
 namespace URegister.Core.Services
 {
-    public class RegisterService: BaseService, IRegisterService
+    public class RegisterService : BaseService, IRegisterService
     {
         private readonly INomenclatureClientService nomenclatureClientService;
         private readonly RegistersCatalogGrpc.RegistersCatalogGrpcClient registerGrpcClient;
+        private readonly IRegisterClientService registerClient;
+        private readonly ILogger<BaseService> logger;
         public RegisterService(
-            IApplicationRepository repo, 
+            IApplicationRepository repo,
             ILogger<BaseService> logger,
             INomenclatureClientService nomenclatureClientService,
-            RegistersCatalogGrpc.RegistersCatalogGrpcClient registerGrpcClient
+            RegistersCatalogGrpc.RegistersCatalogGrpcClient registerGrpcClient,
+            IRegisterClientService registerClient
         ) : base(repo, logger)
         {
             this.nomenclatureClientService = nomenclatureClientService;
             this.registerGrpcClient = registerGrpcClient;
+            this.registerClient = registerClient;
+            this.logger = logger;
         }
         public async Task<int> GetCurrentRegisterId()
         {
             return await Repo.AllReadonly<Register>()
-                .Select(x => x.Id)
+                .Select(x => x.Id)               
                 .TagWith(nameof(GetCurrentRegisterId))
                 .SingleAsync();
         }
 
+        public  int GetCurrentRegisterIdForAudit()
+        {
+            return (Repo.AllReadonly<Register>()
+                .Select(x => (int?)x.Id)
+                .TagWith(nameof(GetCurrentRegisterId))
+                .FirstOrDefault()) ?? 0;
+        }
+
         public async Task<RegisterVM> GetCurrentRegister()
         {
-            return await Repo.AllReadonly<Register>()
-                             .Select(x => new RegisterVM
-                             {
-                                 Id = x.Id,
-                                 Type = x.Type,
-                                 LegalBasis = x.LegalBasis,
-                                 TypeEntry = x.TypeEntry,
-                                 Code = x.Code,
-                                 Description = x.Description,
-                                 IdentitySecurityLevel = x.IdentitySecurityLevel,
-                                 Name = x.Name,
-                             })
-                             .TagWith(nameof(GetCurrentRegister))
-                             .SingleAsync();
+            //return await Repo.AllReadonly<Register>()
+            //                 .Select(x => new RegisterVM
+            //                 {
+            //                     Id = x.Id,
+            //                     Type = x.Type,
+            //                     LegalBasis = x.LegalBasis,
+            //                     TypeEntry = x.TypeEntry,
+            //                     Code = x.Code,
+            //                     Description = x.Description,
+            //                     IdentitySecurityLevel = x.IdentitySecurityLevel,
+            //                     Name = x.Name,
+            //                 })
+            //                 .TagWith(nameof(GetCurrentRegister))
+            //                 .SingleAsync();
+
+            var id = await GetCurrentRegisterId();
+            var model = await registerClient.GetRegister(id, Guid.Empty);
+            return new RegisterVM
+            {
+                Id = model.Id,
+                Type = model.Type,
+                LegalBasis = model.LegalBasis,
+                TypeEntry = model.TypeEntry,
+                Code = model.Code,
+                Description = model.Description,
+                IdentitySecurityLevel = model.IdentitySecurityLevel,
+                Name = model.Name,
+            };
         }
 
         public async Task SaveRegister(RegisterVM model)
         {
-            var register = await Repo.All<Register>().SingleAsync();
+            //var register = await Repo.All<Register>().SingleAsync();
+            //register.Type = model.Type;
+            //register.LegalBasis = model.LegalBasis;
+            //register.TypeEntry = model.TypeEntry;
+            //register.Code = model.Code;
+            //register.Description = model.Description;
+            //register.IdentitySecurityLevel = model.IdentitySecurityLevel;
+            //register.Name = model.Name;
+            //await Repo.SaveChangesAsync();
+            var register = new Core.Models.Register.RegisterVM();
+            register.Id = model.Id;
             register.Type = model.Type;
             register.LegalBasis = model.LegalBasis;
             register.TypeEntry = model.TypeEntry;
@@ -64,119 +103,38 @@ namespace URegister.Core.Services
             register.Description = model.Description;
             register.IdentitySecurityLevel = model.IdentitySecurityLevel;
             register.Name = model.Name;
-            await Repo.SaveChangesAsync();
+            await registerClient.EditRegister(register);
         }
-        public async Task<IActionResult> GetPersonList(IDataTablesRequest request, Guid administrationId)
+
+        public async Task<List<NomenclatureTypePublicResponse>> GetPersonTypes()
         {
             var nomTypes = new[] {
                 InternalNomenclatureTypes.PersonType,
             };
-            var nomenclatureTypes = await nomenclatureClientService.GetNomenclaturePublic(await GetCurrentRegisterId(), nomTypes);
-            var query = Repo.AllReadonly<AdministrationPerson>()
-                          .Where(x => x.AdministrationId == administrationId)
-                          .Select(x => new PersonListItem
-                          {
-                              Id = x.Id,
-                              FirstName = x.FirstName,
-                              MiddleName = x.MiddleName,
-                              LastName = x.LastName,
-                              Position = x.Position,
-                              Type = x.Type,
-                              Email = x.Email,
-                              Phone = x.Phone,
-                          })
-                          .TagWith(nameof(GetPersonList));
-            var countAll = 0;
-            (query, countAll) = request.GetResponseData(query);
-            var data = await query.ToListAsync();
-            data.ForEach(x => x.Type = nomenclatureClientService.GetNomenclatureValue(nomenclatureTypes, InternalNomenclatureTypes.PersonType, x.Type));
-            return request.GetResponseJson(query, countAll);
+            return await nomenclatureClientService.GetNomenclaturePublic(await GetCurrentRegisterId(), nomTypes);
         }
+        
 
-        public async Task<IActionResult> GetAdministrationList(IDataTablesRequest request)
+        public async Task<PersonVM> InitPerson(Guid administrationId, string personType)
         {
-            var nomTypes = new string[] {
-                InternalNomenclatureTypes.RegisterType,
-                InternalNomenclatureTypes.RegisterEntryType,
-                InternalNomenclatureTypes.RegisterIdentitySecurityLevel 
+            var nomenclatureTypes = await GetPersonTypes();
+            return new PersonVM
+            {
+                AdministrationId = administrationId,
+                Type = personType,
+                TypeName = nomenclatureClientService.GetNomenclatureValue(nomenclatureTypes, InternalNomenclatureTypes.PersonType, personType)
             };
-            var registerId = await GetCurrentRegisterId();
-            //var nomenclatureTypes = await nomenclatureClientService.GetNomenclaturePublic(await GetCurrentRegisterId(), nomTypes);
-            var query = Repo.AllReadonly<Administration>()
-                             .Where(x => x.RegisterId == registerId)
-                             .Select(x => new AdministrationListItem
-                             {
-                                 Id = x.Id.ToString(),
-                                 Uic = x.Uic,
-                                 Name = x.Name,
-                                 LegalBasis = x.LegalBasis,
-                             })
-                             .TagWith(nameof(GetAdministrationList));
-            return request.GetResponse(query);
         }
 
-        public async Task<AdministrationVM> GetAdministration(Guid administrationId)
-        {
-            return await Repo.AllReadonly<Administration>()
-                             .Where(x => x.Id == administrationId)
-                             .Select(x => new AdministrationVM
-                             {
-                                 Id = x.Id,
-                                 Uic = x.Uic,
-                                 Name = x.Name,
-                                 LegalBasis = x.LegalBasis,
-                                 Manager = x.People.Where(x => x.Type == PersonTypeValue.Manager)
-                                            .Select(p => new PersonVM
-                                            {
-                                                Id = p.Id,
-                                                Type = p.Type,
-                                                FirstName = p.FirstName,
-                                                MiddleName = p.MiddleName,
-                                                LastName = p.LastName,
-                                                Phone = p.Phone,
-                                                Email = p.Email,
-                                                Position = p.Position,
-                                            })
-                                            .FirstOrDefault()!
-                             })
-                             .TagWith(nameof(GetAdministration))
-                             .FirstAsync();
-        }
 
-        public async Task SaveAdministration(AdministrationVM model)
+        public async Task<RegisterVM> StartRegister(string registerCode)
         {
-            var administration = await Repo.All<Administration>()
-                                           .Include(x => x.People)   
-                                           .Where(x => x.Id == model.Id)
-                                           .FirstAsync();
-            administration.Uic = model.Uic;
-            administration.Name = model.Name;
-            administration.LegalBasis = model.LegalBasis;
-            var manager = administration.People
-                .First(x => x.Type == PersonTypeValue.Manager);
-            manager.FirstName = model.Manager.FirstName;
-            manager.MiddleName = model.Manager.MiddleName;
-            manager.LastName = model.Manager.LastName;
-            manager.Phone = model.Manager.Phone;
-            manager.Email = model.Manager.Email;
-            manager.Position = model.Manager.Position;
-            await Repo.SaveChangesAsync();
-        }
-
-        public async Task<List<SelectListItem>> GetRegisterNotStartedDdl()
-        {
-            return (await registerGrpcClient.GetRegisterNotStartedListAsync(new Google.Protobuf.WellKnownTypes.Empty()))
-                          .Data.Select(x => new SelectListItem
-                          {
-                              Text = x.Label,
-                              Value = x.Id.ToString()
-                          })
-                          .ToList();
-        }
-
-        public async Task StartRegister(int registerId)
-        {
-            var registerItem = (await registerGrpcClient.GetRegisterAndMarkAsStartedAsync(new GetRegisterRequest { RegisterId = registerId })).Data;
+            var response = (await registerGrpcClient.GetRegisterAndMarkAsStartedAsync(new GetRegisterByCodeRequest { RegisterCode = registerCode }));
+            if (response.Status.Code != ResultCodes.Ok)
+            {
+                logger.LogError(response.Status.Message+ registerCode);
+            }
+            var registerItem = response.Data;
             var register = new Register
             {
                 Id = registerItem.Id,
@@ -189,28 +147,11 @@ namespace URegister.Core.Services
                 IdentitySecurityLevel = registerItem.IdentitySecurityLevel,
                 CreatedOn = DateTime.UtcNow,
             };
-            register.Administrations = registerItem.Administrations.Select(x => new Administration
-            {
-                Id = Guid.Parse(x.Id),
-                Name = x.Name,
-                LegalBasis = x.LegalBasis,
-                Uic = x.Uic,
-                CreatedOn = DateTime.UtcNow,
-                People = x.Persons.Select(p => new AdministrationPerson
-                {
-                    Id = p.Id,
-                    Type = p.Type,
-                    FirstName = p.FirstName,
-                    MiddleName = p.MiddleName,
-                    LastName = p.LastName,
-                    Position = p.Position,
-                    Phone = p.Phone,
-                    Email = p.Email,
-                    CreatedOn = DateTime.UtcNow
-                }).ToList()
-            }).ToList();
             await Repo.AddAsync(register);
             await Repo.SaveChangesAsync();
+            return await GetCurrentRegister();
         }
+
+       
     }
 }

@@ -1,0 +1,27 @@
+﻿@model URegister.Infrastructure.Model.RegisterForms.CustomViewViewModel
+@{
+    ViewData["Title"] = Model.Id > 0 ? "Редакция на справка" : "Добавяне на справка";
+}
+<div class="ui green clearing segment">
+    <form asp-action="UpsertCustomView" method="post" enctype="multipart/form-data" id="Add">
+        @Html.HiddenFor(model => model.Id)
+        @Html.AntiForgeryToken()
+        <div class="ui form">
+            <div class="fields">
+                <div class="sixteen wide field">@Html.EditorFor(m => m.CustomViewTitle, "StringProperty")</div>
+            </div>
+        </div>
+        <div class="ui form">
+            <div class="fields">
+                <div class="sixteen wide field">@Html.EditorFor(m => m.SelectedColumns, "MultiselectString")</div>
+            </div>
+        </div>
+        <div class="fields">
+            <button class="ui right floated primary button" type="submit">
+                <i class="save icon"></i>
+                Запис
+            </button>
+            <a href="@Url.Action("CustomViewsIndex", "Catalog", new { area = "Admin" })" class="ui right floated button"><i class="arrow left icon"></i> Назад</a>
+        </div>
+    </form>
+</div>

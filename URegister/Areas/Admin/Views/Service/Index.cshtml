@@ -1,5 +1,5 @@
 ﻿@{
-    ViewData["Title"] = "Типове услуги";
+    ViewData["Title"] = "Услуги";
 }
 
 <div class="ui grid">
@@ -14,7 +14,10 @@
     </div>
 </div>
 @await Html.PartialAsync("_BackButton", @Url.Action("Index", "Home", new { area = "" }))
+@{
+    await Html.RenderPartialAsync("_ConfirmAction");
+}
 @section Scripts
 {
-    <script src="~/js/Admin/service/serviceList.js" asp-append-version="true"></script>
+    <script src="~/js/admin/service/serviceList.js" asp-append-version="true"></script>
 }

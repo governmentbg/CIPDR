@@ -8,11 +8,11 @@ namespace URegister.Infrastructure.Data.Common
     public interface IEntityBaseWithLastModifiedInfo
     {
         /// <summary>
-        /// Идентификатор на потребилет променил последно записа
+        /// Идентификатор на потребителят променил последно записа
         /// </summary>
-        [Comment("Идентификатор на потребилет променил последно записа")]
-        [StringLength(36)]
-        public string ModifiedByUserId { get; set; }
+        [Comment("Идентификатор на потребителят променил последно записа")]
+        [Required]
+        public Guid ModifiedByUserId { get; set; }
 
         /// <summary>
         /// Дата на последна промяна

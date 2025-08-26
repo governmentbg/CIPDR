@@ -6,14 +6,27 @@ const columnWidthStep = 1;
 const fomanticColumnsForUserColumn = 4;
 var skipLoadingDefaultsOnTypeChange = false;
 var loadedSubFields = [];
+var ckEditorInstance;
+var isDirty = false;
 
 $(function () {
-    loadConfiguration();
+    $(window).on("beforeunload", function (e) {
+        if (isDirty) {
+            // Standard message (browsers may override this)
+            const confirmationMessage = "Имате незапазени промени. Искате ли да продължите?";
 
-    $('.compact-tooltip').popup({
-        boundary: '.ui responsive-tooltip'
+            // Set the returnValue for the event (required for some browsers)
+            (e.originalEvent || window.event).returnValue = confirmationMessage;
+            return confirmationMessage;
+        }
     });
 
+    loadConfiguration();
+    
+    $('.compact-tooltip').popup({
+        boundary: '#designer-workspace'
+    });
+    
     $('#type').change(function () {
         if ($('#type').val() === '') {
             return;
@@ -30,62 +43,24 @@ $(function () {
             }
         });
 
+        // Hide all elements that match any of the values
+        $('[data-hide-for]').each(function () {
+            var hideForValue = $(this).data('hide-for').split(',');           
+            if (hideForValue.includes($('#type').val())) {
+                $(this).hide(); 
+            } else {
+                $(this).show(); 
+            }
+        });
+
         if (skipLoadingDefaultsOnTypeChange) {
             skipLoadingDefaultsOnTypeChange = false;
             return;
         }
 
-        let url = "/Admin/Designer/GetFieldDefaultConfiguration";
-        showLoader('body');
-        get_async(url,
-            {
-                type: $('#type').val()
-            })
-            .then((result) => {
-                if (result !== '') {
-                    $('#fieldProperties').find('input[id]').each(function () {
-                        let fieldName = $(this).attr('id');
-                        
-                        if (fieldName === 'type') {
-                            return;
-                        }
-                        if (fieldName === 'label' && $('#label').val() !== '') {
-                            return;
-                        }
-                        if (fieldName === 'name' && $('#name').val() !== '') {
-                            return;
-                        }
+        getCurrentFieldConfiguration();
 
-                        if ($(this).attr('type') === 'checkbox') {
-                            $(this).prop('checked', result[fieldName]);
-
-                        }
-                        else {
-                            $(this).val(result[fieldName]).trigger('change');
-                        }
-                    });
-
-                    if ($('#columns').val() < 1) {
-                        $('#columns').val(1);
-                    }
-
-                    $('#allowedFileExtensions').trigger('change');
-                    let textForNomenclatureType = $('#nomenclatureType').parent().find(`.menu .item[data-value="${$('#nomenclatureType').val()}"]`).text();                    
-                    $('#nomenclatureType').parent().dropdown('set text', textForNomenclatureType);
-
-                    loadedSubFields = result['fields'];
-                    hideLoader('body');
-                }
-                else {
-                    $('#columns').val(1);
-                    hideLoader('body');
-                }
-            })
-            .catch((error) => {
-                console.error("Проблем при зареждане на конфигурацията по подразбитане" + error);               
-                $('#columns').val(1);
-                hideLoader('body');
-            });
+        $('.field-properties').find('span.validation-error').text('');
     });
 
     $('#addField').on('click', function (event) {
@@ -98,6 +73,7 @@ $(function () {
     $('#close').on('click', function (event) {
         selectedFieldId = null;
         $('.card').removeClass('black').addClass('grey');
+        $(".ui.right.floated.mini.icon.button.remove-field i.icon.window.close").removeClass("inverted");
         hideProperties();
     });
     
@@ -110,6 +86,10 @@ $(function () {
     $('#previewButton').on('click', function (event) {        
         if (!$('.field-properties').hasClass('hidden') && !createField()) {
             return showToast('warning', 'Проблем при запис на текущото поле. Моля прегледайте панела с настройки.');
+        }
+
+        if (!validateMPRAndSubmitterCount()) {
+            return;
         }
 
         let url = "/Admin/Designer/SaveConfiguration";
@@ -125,6 +105,7 @@ $(function () {
                     let formParentId = $('#FormParentId').val();
                     let formTitle = $('#FormTitle').val();
                     let url = `/Admin/Designer/ShowPreview?formParentId=${formParentId}`;
+                    isDirty = false;
                     window.location.href = url;
                 }
                 else {
@@ -141,6 +122,10 @@ $(function () {
             return showToast('warning', 'Проблем при запис на текущото поле. Моля прегледайте панела с настройки.');
         }
 
+        if (!validateMPRAndSubmitterCount()) {
+            return;
+        }
+
         let url = "/Admin/Designer/SaveConfiguration";
         post_async(url, {
             jsonFieldsModel: JSON.stringify(jsonFieldsModel),
@@ -151,7 +136,8 @@ $(function () {
         )
             .then((result) => {
                 if (result === true) {
-                    showToast('success', 'Конфигурацията е записана успешно');
+                    isDirty = false;
+                    location.reload(); //За да може бутонът Одобри конфигурация да се крие, презареждаме страницата при успех
                 }
                 else {
                     showToast('error', 'Проблем при запис на конфигурацията');
@@ -162,7 +148,110 @@ $(function () {
             });
     });
 
-    $('[data-specific-for]').hide();
+    $('#approveConfigurationButton').on('click', function (event) {       
+        let url = "/Admin/Designer/ApproveConfiguration";
+        post_async(url, {
+            formId: $('#FormId').val(),
+            __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val(),            
+        },
+        )
+            .then((result) => {
+                if (result.success) {                    
+                    window.location.href = "/Admin/Catalog/FormIndex";                    
+                }
+                else {
+                    showToast('error', result.message);
+                }
+            })
+            .catch((error) => {
+                console.error("Проблем при запис на конфигурацията " + error);
+            });
+    });
+
+    initCKEditor();
+
+    $('#clipboardCopy').on('click', function (event) {
+        event.stopPropagation(); // Prevent dropdown from closing
+
+        try {
+            // Convert jsonFieldsModel to string if it's an object
+            const dataToCopy = typeof jsonFieldsModel === 'object'
+                ? JSON.stringify(jsonFieldsModel, null, 2) // Pretty-print JSON
+                : jsonFieldsModel;
+
+            // Copy to clipboard using Clipboard API
+            navigator.clipboard.writeText(dataToCopy)
+                .then(() => {
+                    console.log('Конфигурацията е копирана в системния буфер');
+                    $.toast({
+                        message: 'Конфигурацията е копирана в системния буфер',
+                        class: 'success'
+                    });                    
+                })
+                .catch(err => {
+                    console.error('Failed to copy: ', err);
+                    alert('Грешка!');
+                });
+        } catch (err) {
+            console.error('Грешка: ', err);
+            alert('Error processing configuration data.');
+        }
+    });
+
+    // Handle click on "Зареди конфигурация от системен буфер"
+    $('#clipboardPaste').on('click', function (event) {
+        event.stopPropagation(); // Prevent dropdown from closing
+
+        try {
+            // Read text from clipboard
+            navigator.clipboard.readText()
+                .then(text => {
+                    try {
+                        // Attempt to parse clipboard content as JSON
+                        jsonFieldsModel = JSON.parse(text);
+                        renderPreview();
+                        console.log('jsonFieldsModel updated:', jsonFieldsModel);
+                        $.toast({
+                            message: 'Конфигурация заредена от системен буфер',
+                            class: 'success'
+                        });
+                    } catch (parseError) {
+                        console.error('Failed to read clipboard: ', err);
+                        $.toast({
+                            message: 'Невалидна конфигурация в системния буфер',
+                            class: 'error'
+                        });
+                    }
+                })
+                .catch(err => {
+                    console.error('Failed to read clipboard: ', err);
+                    $.toast({
+                        message: 'Невалидна конфигурация в системния буфер',
+                        class: 'error'
+                    });
+                });
+        } catch (err) {
+            console.error('Error processing clipboard data: ', err);
+            $.toast({
+                message: 'Error processing clipboard data.',
+                class: 'error'
+            });
+        }
+    });
+});
+
+$('#importFromRegisterForm').on('click', function (event) {
+    $('#confirmModal')
+        .modal({
+            title: '<i class="redo icon"></i>Импорт на конфигурация',
+            content: 'Сигурни ли сте, че искате да заредите конфигурацията на формата от услугата за вписване?'
+        })
+        .modal({
+            onApprove: function () {
+                importRegisterFormConfiguration();
+            }
+        })
+        .modal('show');
 });
 
 function validateData() {
@@ -239,6 +328,33 @@ function validateData() {
         $('span[for="pattern"]').text('');
     };
 
+    if ((ckEditorInstance.getData().toLowerCase().includes('script'))) {
+        result = false;
+        $('span[for="formattedText"]').text('Скриптове не са позволени в текста');
+    }
+    else {
+        $('span[for="formattedText"]').text('');
+    };
+
+    if (["Person", "Company"].includes($('#type').val()) && $('#canBeRepeated').is(':checked') && ($('#isBatchOwner').is(':checked') || $('#isSubmitter').is(':checked'))) {
+        result = false;
+        $('span[for="canBeRepeated"]').text('Заявител/собственик на партида, не може да е повтарящо се поле.');
+    }
+    else {
+        $('span[for="canBeRepeated"]').text('');
+    }
+
+    if ($('#eFormImportPath').val()) {
+        const regex = /^[a-zA-Z/]*$/;
+        if (!regex.test($('#eFormImportPath').val())) {
+            result = false;
+            $('span[for="eFormImportPath"]').text('Приема се разделител за път / и латински букви');
+        }
+        else {
+            $('span[for="eFormImportPath"]').text('');
+        };
+    }
+
     return result;
 }
 
@@ -247,6 +363,7 @@ function createField() {
         return false;
     }
 
+    isDirty = true;
     let record;
 
     if (selectedFieldId === null) {
@@ -304,7 +421,7 @@ function subscribeForSelection() {
 
         let selectedJsonElement = getSelectedJsonElement();
 
-        $('#fieldProperties').find('input[id]').each(function () {
+        $('#fieldProperties').find('input[id], textarea[id]').each(function () {
             if ($(this).attr('type') === 'checkbox') {
                 $(this).prop('checked', selectedJsonElement[$(this).attr('id')]);
 
@@ -313,6 +430,8 @@ function subscribeForSelection() {
                 $(this).val(selectedJsonElement[$(this).attr('id')]);
             }
         });
+
+        ckEditorInstance.setData(selectedJsonElement.formattedText === undefined ? "" : selectedJsonElement.formattedText)
 
         loadedSubFields = selectedJsonElement.fields;
         skipLoadingDefaultsOnTypeChange = true;
@@ -425,7 +544,7 @@ function renderPreview() {
 };
 
 function setFieldPropertiesToJsonRecord(record) {
-    $('#fieldProperties').find('input[id]').each(function () {
+    $('#fieldProperties').find('input[id], textarea[id]').each(function () {
         if ($(this).attr('type') === 'checkbox') {
             record[$(this).attr('id')] = $(this).is(':checked');
         }
@@ -433,6 +552,8 @@ function setFieldPropertiesToJsonRecord(record) {
             record[$(this).attr('id')] = $(this).val();
         }
     });
+
+    record.formattedText = ckEditorInstance.getData();
     record.allowedFileExtensions = $('#allowedFileExtensions').val();
     record.columns = parseInt(record.columns, 10);    
 };
@@ -449,6 +570,7 @@ function hideProperties() {
         $('.field-properties')
             .transition('fade left');
     };
+    $('.field-properties').find('span.validation-error').text('');
     clearInputs();
 };
 
@@ -528,6 +650,7 @@ function subscribeForPreviewButtonEvents() {
             .modal({
                 onApprove: function () {
                     jsonFieldsModel.splice(index, 1);
+                    isDirty = true;
                     hideProperties();
                     renderPreview();
                 }
@@ -581,12 +704,14 @@ function subscribeForPreviewButtonEvents() {
 }
 
 function clearInputs() {
-    $('#fieldProperties').find('input[id]').val('');
+    $('#fieldProperties').find('input[id], textarea[id]').val('');    
     $('#fieldProperties').find('input[type="checkbox"]').prop('checked', false);
     $('#fieldProperties').find('.ui.dropdown').dropdown('clear');
 
     $('#allowPastDates').prop('checked', true);
     $('#allowFutureDates').prop('checked', true);
+
+    ckEditorInstance.setData('');
 
     loadedSubFields = [];
     addAfterId = null;
@@ -617,6 +742,36 @@ function loadConfiguration() {
         });
 }
 
+function importRegisterFormConfiguration() {
+    let url = "/Admin/Designer/ImportRegisterFormConfiguration";
+    showLoader('body');
+    get_async(url,
+        {
+            //formParentId: $('#FormParentId').val()
+        })
+        .then((result) => {
+            if (result !== '') {
+                if (result.notFound) {
+                    showToast('error', 'Не е открита форма за усуга за вписване');
+                }
+                else {
+                    jsonFieldsModel = JSON.parse(result.config);
+                    hideLoader('body');
+                    renderPreview();
+                }
+            }
+            else {
+                hideLoader('body');
+                showToast('error', 'Проблем при зареждане на конфигурацията');
+            }
+        })
+        .catch((error) => {
+            hideLoader('body');
+            showToast('error', 'Проблем при зареждане на конфигурацията');
+            console.error("Проблем при зареждане на конфигурацията " + error);
+        });
+}
+
 $('#loadConfigurationButton')
     .popup({
         position: 'bottom center',
@@ -627,6 +782,12 @@ $('#previewButton')
     .popup({
         position: 'bottom center',
         content: 'Запис и визуализиране на изглед на формата',
+    });
+
+$('#importFromRegisterForm')
+    .popup({
+        position: 'bottom center',
+        content: 'Зареди конфигурацията от формата на услугата за вписване',
     });
 
 $('#saveButton')
@@ -661,3 +822,261 @@ function isRegexPatternValid(pattern) {
         return false;
     }
 }
+
+import {
+    ClassicEditor,
+    Autoformat,
+    Bold,
+    Italic,
+    Underline,
+    BlockQuote,
+    Base64UploadAdapter,
+    CloudServices,
+    Essentials,
+    Heading,
+    PictureEditing,
+    Indent,
+    IndentBlock,
+    Link,
+    List,
+    MediaEmbed,
+    Mention,
+    Paragraph,
+    PasteFromOffice,
+    Table,
+    TableColumnResize,
+    TableToolbar,
+    TextTransformation
+} from '/ckeditor5/ckeditor5.js';
+
+function initCKEditor() {
+    const LICENSE_KEY = 'GPL';
+
+    const editorConfig = {
+        toolbar:
+        {
+            removeItems: ['uploadImage', 'mediaEmbed', 'undo', 'redo', 'fontSize', 'image', 'fontFamily'],
+            shouldNotGroupWhenFull: true,
+            items: [
+                'heading',                
+                '|',
+                'bold',
+                'italic',
+                'underline',                                
+                '|',                
+                'link',
+                'insertTable',                
+                'blockQuote',
+                '|',
+                'bulletedList',
+                'numberedList',                
+                'outdent',
+                'indent'
+            ],
+        },
+        plugins: [
+            Autoformat,
+            BlockQuote,
+            Bold,
+            CloudServices,
+            Essentials,
+            Heading,           
+            Base64UploadAdapter,
+            Indent,
+            IndentBlock,
+            Italic,
+            Link,
+            List,
+            MediaEmbed,
+            Mention,
+            Paragraph,
+            PasteFromOffice,
+            PictureEditing,
+            Table,
+            TableColumnResize,
+            TableToolbar,
+            TextTransformation,
+            Underline,
+        ],
+        balloonToolbar: ['bold', 'italic', '|', 'link', '|', 'bulletedList', 'numberedList'],
+        fontFamily: {
+            supportAllValues: true
+        },
+        fontSize: {
+            options: [10, 12, 14, 'default', 18, 20, 22],
+            supportAllValues: true
+        },
+        heading: {
+            options: [
+                {
+                    model: 'paragraph',
+                    title: 'Paragraph',
+                    class: 'ck-heading_paragraph'
+                },
+                {
+                    model: 'heading1',
+                    view: 'h1',
+                    title: 'Heading 1',
+                    class: 'ck-heading_heading1'
+                },
+                {
+                    model: 'heading2',
+                    view: 'h2',
+                    title: 'Heading 2',
+                    class: 'ck-heading_heading2'
+                },
+                {
+                    model: 'heading3',
+                    view: 'h3',
+                    title: 'Heading 3',
+                    class: 'ck-heading_heading3'
+                },
+                {
+                    model: 'heading4',
+                    view: 'h4',
+                    title: 'Heading 4',
+                    class: 'ck-heading_heading4'
+                },
+                {
+                    model: 'heading5',
+                    view: 'h5',
+                    title: 'Heading 5',
+                    class: 'ck-heading_heading5'
+                },
+                {
+                    model: 'heading6',
+                    view: 'h6',
+                    title: 'Heading 6',
+                    class: 'ck-heading_heading6'
+                }
+            ]
+        },
+        language: {
+            ui: 'bg',
+            content: 'bg'
+        },
+        licenseKey: LICENSE_KEY,
+        link: {
+            addTargetToExternalLinks: true,
+            defaultProtocol: 'https://',
+            decorators: {
+                toggleDownloadable: {
+                    mode: 'manual',
+                    label: 'Downloadable',
+                    attributes: {
+                        download: 'file'
+                    }
+                }
+            }
+        },
+        list: {
+            properties: {
+                styles: true,
+                startIndex: true,
+                reversed: true
+            }
+        },
+        placeholder: 'Място за вашия текст',
+        table: {
+            contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells', 'tableProperties', 'tableCellProperties']
+        },        
+    };
+
+    ClassicEditor
+        .create(document.querySelector('#editor'), editorConfig)
+        .then(editor => {
+            ckEditorInstance = editor;
+            //console.log('Editor initialized:', editor);
+        })
+        .catch(error => {
+            console.error('There was a problem initializing the editor:', error);
+        });          
+}
+
+function validateMPRAndSubmitterCount() {
+    let batchOwnersCount = jsonFieldsModel.filter(field => field.isBatchOwner === true).length;
+    if (batchOwnersCount < 1) {
+        showToast('warning', "Конфигурацията трябва да има 'Собственик на партида'. Това може да се конфигурира в полета от тип 'Лице' или 'Компания'.");
+        return false;
+    } else if (batchOwnersCount > 1) {
+        showToast('warning', "Конфигурацията не трябва да има повече от един 'Собственик на партида'. Това може да се конфигурира в полета от тип 'Лице' или 'Компания'.");
+        return false;
+    }
+
+    let submittersCount = jsonFieldsModel.filter(field => field.isSubmitter === true).length;
+    if (submittersCount < 1 && $('#IsSubmitterRequired').val() == "True") {
+        showToast('warning', "Конфигурацията трябва да има 'Заявител'. Това може да се конфигурира в полета от тип 'Лице'.");
+        return false;
+    } else if (submittersCount > 1) {
+        showToast('warning', "Конфигурацията не трябва да има повече от един 'Заявител'. Това може да се конфигурира в полета от тип 'Лице'.");
+        return false;
+    }
+
+    return true;
+}
+
+function getCurrentFieldConfiguration() {
+    if ($('#type').val() === '') {
+        return;
+    }
+    let url = "/Admin/Designer/GetFieldDefaultConfiguration";
+    showLoader('body');
+    get_async(url,
+        {
+            type: $('#type').val()
+        })
+        .then((result) => {
+            if (result !== '') {
+                $('#fieldProperties').find('input[id], textarea[id]').each(function () {
+                    let fieldName = $(this).attr('id');
+
+                    if (fieldName === 'type') {
+                        return;
+                    }
+                    if (fieldName === 'label' && $('#label').val() !== '') {
+                        return;
+                    }
+                    if (fieldName === 'name' && $('#name').val() !== '') {
+                        return;
+                    }
+
+                    if ($(this).attr('type') === 'checkbox') {
+                        $(this).prop('checked', result[fieldName]);
+
+                    }
+                    else {
+                        $(this).val(result[fieldName]).trigger('change');
+                    }
+
+                    ckEditorInstance.setData(result.formattedText);
+                });
+
+                if ($('#columns').val() < 1) {
+                    $('#columns').val(1);
+                }
+
+                $('#allowedFileExtensions').trigger('change');
+                let textForNomenclatureType = $('#nomenclatureType').parent().find(`.menu .item[data-value="${$('#nomenclatureType').val()}"]`).text();
+                $('#nomenclatureType').parent().dropdown('set text', textForNomenclatureType);
+
+                loadedSubFields = result['fields'];
+                hideLoader('body');
+                showToast('success', 'Успешно зареждане!');
+            }
+            else {
+                $('#columns').val(1);
+                hideLoader('body');
+            }
+        })
+        .catch((error) => {
+            console.error("Проблем при зареждане на конфигурацията по подразбиране" + error);
+            $('#columns').val(1);
+            hideLoader('body');
+            showToast('error', 'Неуспешно зареждане!')
+        });
+}
+
+$('#getFieldConfiguration').on('click', function (event) {
+    event.stopPropagation();
+    getCurrentFieldConfiguration();
+});

@@ -1,0 +1,80 @@
+﻿@using Microsoft.AspNetCore.Mvc.TagHelpers
+@using URegister.Core.Models.Process
+@using URegister.Infrastructure.Model.RegisterForms
+@using System.Web
+@using NuGet.Packaging.Signing
+@model ProcessStepVM
+@{
+    ViewData["Title"] = Model.FormTitle;
+    foreach (FormField modelFormField in Model.FormFields)
+    {
+        modelFormField.IsReadonly = true;
+        modelFormField.Tooltip = String.Empty;
+        if (modelFormField.Fields?.Count > 0)
+        {
+            foreach (var fieldsetFormField in modelFormField.Fields)
+            {
+                fieldsetFormField.Tooltip = String.Empty;
+                fieldsetFormField.Placeholder = String.Empty;
+            }
+        }
+        if (modelFormField.Repetitions != null)
+        {
+            foreach (FormField modelFormFieldRep in modelFormField.Repetitions)
+            {
+                modelFormFieldRep.IsReadonly = true;
+                modelFormFieldRep.Tooltip = String.Empty;
+                modelFormFieldRep.Placeholder = String.Empty;
+            }
+        }
+    }
+    var htmlFieldPrefix = ViewData.TemplateInfo.HtmlFieldPrefix;
+}
+
+<div class="ui segments">
+    <div class="ui green clearing segment" id="printable-area">
+        <div>
+            @Html.HiddenFor(m => m.ProcessId)
+            @Html.HiddenFor(m => m.ServiceStepId)
+            @Html.HiddenFor(m => m.ServiceId)
+            @Html.HiddenFor(m => m.OrderNum)
+            @Html.HiddenFor(m => m.FormParentId)
+            @Html.HiddenFor(m => m.SelectedType)
+            @Html.HiddenFor(m => m.DontUploadFilesToStorage)
+            @Html.HiddenFor(m => m.UserTimeZoneOffsetInMinutes)
+            @{
+                ViewData.TemplateInfo.HtmlFieldPrefix = string.IsNullOrEmpty(htmlFieldPrefix) ? "ProcessInfo" : $"{htmlFieldPrefix}.ProcessInfo";
+                await Html.RenderPartialAsync("_ProcessInfo", Model.ProcessInfo);
+                ViewData.TemplateInfo.HtmlFieldPrefix = htmlFieldPrefix;
+            }
+            @{
+                await Html.RenderPartialAsync("FormFieldArranger", Model.FormFields);
+            }
+            <div class="no-print">
+                @{
+                    if (ViewData["BackTo"].ToString() == "CustomTableView")
+                    {
+                        <div class="ui buttons right floated">
+                            <button class="ui right floated button" onclick="window.history.back()">
+                                <i class="arrow left icon"></i> 
+                                Назад
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        @await Html.PartialAsync("_BackButton", @Url.Action(ViewData["BackTo"].ToString(), new { ServiceId = Model.ServiceId }));
+                    };
+                }
+                <button class="ui button" id="printButton">
+                    <i class="print icon"></i>
+                    Отпечатай
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/admin/designer/showPreview.js" asp-append-version="true"></script>
+}

@@ -7,7 +7,7 @@
         <a href="@Url.Action("EditForm", "Catalog")" class="ui right floated mini primary button"> <i class="plus icon"></i> Добави нова форма</a>
     </div> *@
     @* <div class="ui green segment"> *@
-        <table id="field-types" class="ui celled striped very compact table" style="width:100%; padding:0px;"
+        <table id="forms" class="ui celled striped very compact table" style="width:100%; padding:0px;"
                data-url="@Url.Action("GetForms", "Designer")"
                data-add-url="@Url.Action("EditForm", "Catalog")">
         </table>
@@ -17,5 +17,5 @@
     await Html.RenderPartialAsync("_ConfirmAction");
 }
 @section Scripts {
-    <script src="~/js/admin/catalog/formList.js"></script>
+    <script src="~/js/admin/catalog/formList.js" asp-append-version="true"></script>
 }

@@ -9,13 +9,14 @@ using System.Text;
 using System.Threading.Tasks;
 using URegister.Core.Data.Models.Common;
 using URegister.Infrastructure.Constants;
+using URegister.Infrastructure.Data.Common;
 namespace URegister.Core.Data.Models.Process
 {
     /// <summary>
     /// Стъпки към процес
     /// </summary>
     [Comment("Стъпки към процес")]
-    public class ProcessStep
+    public class ProcessStep : EntityBaseWithLastModifiedInfo
     {
         /// <summary>
         /// Идентификатор
@@ -43,16 +44,22 @@ namespace URegister.Core.Data.Models.Process
         public int OrderNum { get; set; }
 
         /// <summary>
-        /// Идентификатор на форма
+        /// Статус при съгласуване
         /// </summary>
-        [Comment("Идентификатор на форма")]
-        public int FormId { get; set; }
+        [Comment("Статус при съгласуване")]
+
+        public int CoordinationStatusId { get; set; }
+        /// <summary>
+        /// Мотиви при съгласуване
+        /// </summary>
+        [Comment("Мотиви при съгласуване")]
+        public string? CoordinationMotive { get; set; }
 
         /// <summary>
         /// Информация за стъпка
         /// </summary>
         [Required]
-        [Column(TypeName = "jsonb")]
+        [Column(TypeName = AttributeConstants.Jsonb)]
         [Comment("Информация за стъпка")]
         public string StepData { get; set; } = null!;
 
@@ -61,12 +68,6 @@ namespace URegister.Core.Data.Models.Process
         /// </summary>
         [ForeignKey(nameof(ProcessId))]
         public Process Process { get; set; } = null!;
-
-        /// <summary>
-        /// Форма
-        /// </summary>
-        [ForeignKey(nameof(FormId))]
-        public Form Form { get; set; } = null!;
 
         /// <summary>
         /// Стъпка

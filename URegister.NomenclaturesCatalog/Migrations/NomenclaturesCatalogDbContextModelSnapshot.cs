@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using URegister.RegistersCatalog.Data;
+using URegister.NomenclaturesCatalog.Data;
 
 #nullable disable
 
@@ -159,7 +159,7 @@ namespace URegister.NomenclaturesCatalog.Migrations
                         .HasMaxLength(1024)
                         .HasColumnType("character varying(1024)")
                         .HasColumnName("value_en")
-                        .HasComment("Стойност ЕН");
+                        .HasComment("Стойност EN");
 
                     b.HasKey("Id")
                         .HasName("pk_additional_columns");
@@ -222,6 +222,22 @@ namespace URegister.NomenclaturesCatalog.Migrations
                         .HasColumnName("parent_code")
                         .HasComment("Код не горно ниво при дървовидна номенклатура");
 
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status")
+                        .HasComment("Статус");
+
+                    b.Property<string>("StatusBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("status_by")
+                        .HasComment("Одобрен от");
+
+                    b.Property<DateTime?>("StatusOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("status_on")
+                        .HasComment("Дата и час на одобрение");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(6)
@@ -240,7 +256,7 @@ namespace URegister.NomenclaturesCatalog.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("value_en")
-                        .HasComment("Стойност ЕН");
+                        .HasComment("Стойност EN");
 
                     b.HasKey("Id")
                         .HasName("pk_codeable_concepts");
@@ -321,10 +337,20 @@ namespace URegister.NomenclaturesCatalog.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_on")
+                        .HasComment("Дата на изтриване");
+
                     b.Property<string>("HolderType")
                         .HasColumnType("text")
                         .HasColumnName("holder_type")
                         .HasComment("Горно ниво в друг номенклатурен тип");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active")
+                        .HasComment("Дали записът е активен");
 
                     b.Property<bool>("IsPublic")
                         .HasColumnType("boolean")

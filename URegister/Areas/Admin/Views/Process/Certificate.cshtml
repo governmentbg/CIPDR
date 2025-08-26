@@ -1,0 +1,31 @@
+﻿@using Microsoft.AspNetCore.Mvc.TagHelpers
+@using URegister.Core.Data.Models.Common
+@using URegister.Core.Models.Process
+@model CertificateVM
+@{
+    ViewData["Title"] = $"Удостоверение";
+    var fileUrl = Url.Action("GetCertificateFile", "Process", new { fileId = Model.FileId });
+}
+<div class="ui grid">
+    <form class="ui sixteen wide column" action="@Url.Action("SignCertificate", "Process")" method="post" enctype="multipart/form-data">
+        @Html.HiddenFor(x => x.ProcessId)
+        @Html.HiddenFor(x => x.FileId)
+        <div class="content">
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div id="previewHolder" class="fields ">
+                        <div class='sixteen wide field embeded-element'>
+                            <div id="pdf-container" data-fileurl="@fileUrl"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @await Html.PartialAsync("_BackSubmitButton", @Url.Action("Index"))
+    </form>
+</div>
+
+@section Scripts {
+    <script defer src="~/library/pdf.js/pdf.mjs" type="module"></script>
+    <script src="~/js/admin/process/certificate.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,26 @@
+﻿@using URegister.Core.Models.User
+@model AdministrationViewModel
+
+@{
+    ViewData["Title"] = "Списък потребители";
+}
+
+@Html.AntiForgeryToken()
+@Html.HiddenFor(model => model.SelectedAdministrationId)
+@Html.HiddenFor(model => model.RegisterCode)
+<div class="ui grid">
+    <div class="column">
+        <div class="column">
+            <table id="usersTable"
+                   class="ui celled striped very compact table" style="width:100%; padding:0px;"
+                   data-url="@Url.Action("GetUsers", "Admin")"
+                   data-add-url="@Url.Action("Add", "Admin")">
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/admin/admin/index.js" asp-append-version="true"></script>
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

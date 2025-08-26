@@ -1,0 +1,145 @@
+﻿@using Microsoft.AspNetCore.Html
+@using URegister.Core.Contracts
+@using URegister.Infrastructure.Constants
+@using URegister.Infrastructure.Model.Report
+@model StatisticalReportViewModel
+@functions {
+    public IHtmlContent card(string color, string icon, string label, object value)
+    {
+        return new HtmlString($@"
+            <div class='ui fluid center aligned card {color}'>
+                <div class='content'>
+                    <div class='header'><i class='{icon} icon'></i> {label}</div>
+                    <div class='description'>
+                        <h2 class='ui header'>{value}</h2>
+                    </div>
+                </div>
+            </div>");
+    }
+}
+@{
+    ViewData["Title"] = "Статистическа справка";
+}
+
+<div id="page-loader" class="ui page dimmer">
+    <div class="ui big text loader">Зареждане...</div>
+</div>
+
+<div id="statisticsContainer" class="container">
+    <div class="ui fluid container basic clearing">
+        <div class="ui accordion">
+            <div class="title">
+                <i class="dropdown icon"></i>
+                Филтър
+            </div>
+            <div class="content">
+                <div class="column ui segment green">
+                    <form asp-action="GenerateStatistics" method="post" class="ui form">
+                        <div class="fields">
+                            <div class="two wide field">
+                                @Html.EditorFor(model => model.DateFrom, "DateTime")
+                            </div>
+                            <div class="two wide field">
+                                @Html.EditorFor(model => model.DateTo, "DateTime")
+                            </div>                          
+                            <div class="ui two wide right aligned field custom buttons">
+                                <div class="ui fluid container basic clearing">
+                                    <button type="submit" class="ui primary button" style="margin-top:1.5rem">
+                                        <i class="icon search"></i>
+                                        Търси
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    @if (Model != null)
+    {
+        <div class="ui raised segment">
+            @* <h2 class="ui teal header"><i class="filter icon"></i> Резултати от статистиката</h2> *@
+
+            @if (Model.RegisterTypeEntry == RegisterTypeEntry.Applicant)
+            {
+                <div class="ui stackable doubling center aligned three column relaxed grid equal height">
+                    <div class="sixteen wide column">
+                        <h3 class="ui centered header"><i class="layer group icon"></i> Подадени заявления</h3>
+                    </div>
+
+                    <div class="column">
+                        @card("blue", "list alternate outline", "Общо", Model.TotalSentProcesses)
+                    </div>
+                 
+                    <div class="column">
+                        @card("green", "building", "На гише", Model.SentCounterProcesses)
+                    </div>
+                 
+                    <div class="column">
+                        @card("teal", "wifi", "По интернет", Model.SentOnlineProcesses)
+                    </div>                 
+                </div>
+            }
+
+            <div class="ui hidden divider"></div>
+
+            <div class="ui stackable doubling center aligned four column relaxed grid equal height">
+                <div class="sixteen wide column">
+                    <h3 class="ui centered header"><i class="th list icon"></i> Вписани услуги в регистъра</h3>
+                </div>
+
+                @* Row 1 *@
+                <div class="column">
+                    @card("blue", "list alternate outline", "Общо", Model.TotalRegisteredProcesses)
+                </div>
+                <div class="column">
+                    @card("green", "file alternate outline", "За първоначално вписване", Model.RegisteredProcessesInitialRegistrations)
+                </div>
+                <div class="column">
+                    @card("yellow", "exchange", "За промяна на обстоятелствата", Model.RegisteredProcessesCircumstanceChanges)
+                </div>
+                <div class="column">
+                    @card("red", "trash", "За заличаване", Model.RegisteredProcessesDeletions)
+                </div>
+
+                @* Row 2 *@
+                <div class="column">
+                    @card("orange", "wrench", "Изправени технически грешки", Model.TechnicalErrorsFixed)
+                </div>
+                <div class="column">
+                    @card("red", "ban", "Постановени откази", Model.Rejections)
+                </div>
+                <div class="column">
+                    @card("blue", "info circle", "Дадени указания", Model.Instructions)
+                </div>
+                <div class="column">
+                    @card("blue", "certificate", "Издадени удостоверения", Model.IssuedCertificates)
+                </div>
+            </div>
+
+            <div class="ui hidden divider"></div>
+
+            <div class="ui stackable doubling center aligned three column relaxed grid equal height">
+                <div class="sixteen wide column">
+                    <h3 class="ui centered header"><i class="users icon"></i> Потребители в регистъра</h3>
+                </div>
+                <div class="column">
+                    @card("blue", "user plus", "Създадени", Model.CreatedUsers)
+                </div>
+                <div class="column">
+                    @card("green", "check circle", "Активни", Model.ActiveUsers)
+                </div>
+                <div class="column">
+                    @card("red", "times circle", "Неактивни", Model.InactiveUsers)
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts
+{
+    <script src="~/js/admin/report/report.js" asp-append-version="true"></script>
+}

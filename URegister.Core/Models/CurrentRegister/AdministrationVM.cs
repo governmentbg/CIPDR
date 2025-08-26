@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using URegister.Infrastructure.Constants;
 
 namespace URegister.Core.Models.CurrentRegister
@@ -18,26 +17,27 @@ namespace URegister.Core.Models.CurrentRegister
         /// ЕИК
         /// </summary>
         [Display(Name = "ЕИК/БУЛСТАТ")]
-        [Required]
-        [MaxLength(16)]
+        [Required(ErrorMessage = MessageConstant.FieldIsRequired)]
+        [MaxLength(16, ErrorMessage = MessageConstant.StringMaxLengthValidation)]
         public string Uic { get; set; } = null!;
 
         /// <summary>
-        /// Име
+        /// Наименование на административния орган
         /// </summary>
-        [Display(Name = "Име")]
-        [Required]
-        [MaxLength(500)]
+        [Display(Name = "Наименование на административния орган")]
+        [Required(ErrorMessage = MessageConstant.FieldIsRequired)]
+        [MaxLength(500, ErrorMessage = MessageConstant.StringMaxLengthValidation)]
+        [RegularExpression(RegexPatterns.CyrillicPersonNamePattern, ErrorMessage = MessageConstant.NotCyrillic)]
         public string Name { get; set; } = null!;
 
         /// <summary>
         /// Правно основание
         /// </summary>
-        [Required]
-        [MaxLength(1000)]
+        [Required(ErrorMessage = MessageConstant.FieldIsRequired)]
+        [MaxLength(1000, ErrorMessage = MessageConstant.StringMaxLengthValidation)]
         [Display(Name = "Правно основание")]
+        //[RegularExpression(RegexPatterns.CyrillicTextPattern, ErrorMessage = MessageConstant.NotCyrillic)]
         public string LegalBasis { get; set; } = null!;
-
 
         /// <summary>
         /// Ръководител
@@ -46,6 +46,5 @@ namespace URegister.Core.Models.CurrentRegister
         {
             Type = PersonTypeValue.Manager,
         };
-
     }
 }

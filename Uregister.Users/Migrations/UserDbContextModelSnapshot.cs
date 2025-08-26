@@ -163,6 +163,10 @@ namespace Uregister.Users.Migrations
                         .HasColumnName("concurrency_stamp")
                         .HasComment("Защита от конкурентни заявки");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
@@ -173,6 +177,10 @@ namespace Uregister.Users.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("email_confirmed")
                         .HasComment("Дали електронната поща е потвърдена");
+
+                    b.Property<bool>("Enable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("enable");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -197,6 +205,11 @@ namespace Uregister.Users.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("lockout_end")
                         .HasComment("Кога приключва заключването");
+
+                    b.Property<string>("MiddleName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("middle_name");
 
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
@@ -224,6 +237,11 @@ namespace Uregister.Users.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("phone_number_confirmed")
                         .HasComment("Дали телефонния номер е потвърден");
+
+                    b.Property<string>("Position")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("position");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text")
@@ -392,6 +410,60 @@ namespace Uregister.Users.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Uregister.Users.Data.Models.UserEMailReceive", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasComment("Идентификатор");
+
+                    b.Property<Guid>("AdministrationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("administration_id");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_on")
+                        .HasComment("Дата на изтриване");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active")
+                        .HasComment("Дали записът е активен");
+
+                    b.Property<Guid>("ModifiedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by_user_id")
+                        .HasComment("Идентификатор на потребителят променил последно записа");
+
+                    b.Property<DateTime>("ModifiedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("modified_on")
+                        .HasComment("Дата на последна промяна");
+
+                    b.Property<bool>("ReceiveEFormNotification")
+                        .HasColumnType("boolean")
+                        .HasColumnName("receive_e_form_notification");
+
+                    b.Property<string>("RegisterCode")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("register_code");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_e_mail_recives");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_user_e_mail_recives_user_id");
+
+                    b.ToTable("user_e_mail_recives", (string)null);
+                });
+
             modelBuilder.Entity("Uregister.Users.Data.Identity.ApplicationRoleClaim", b =>
                 {
                     b.HasOne("Uregister.Users.Data.Identity.ApplicationRole", "Role")
@@ -459,6 +531,18 @@ namespace Uregister.Users.Migrations
                         .HasConstraintName("fk_identity_user_tokens_identity_users_user_id");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Uregister.Users.Data.Models.UserEMailReceive", b =>
+                {
+                    b.HasOne("Uregister.Users.Data.Identity.ApplicationUser", "ApplicationUser")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_e_mail_recives_application_user_user_id");
+
+                    b.Navigation("ApplicationUser");
                 });
 
             modelBuilder.Entity("Uregister.Users.Data.Identity.ApplicationRole", b =>

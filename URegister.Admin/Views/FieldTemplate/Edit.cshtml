@@ -1,0 +1,34 @@
+﻿@using URegister.Core.Models.Service
+@model FieldTemplateVM
+@{
+    ViewBag.Title = "Бланки за документи";
+}
+<div class="ui grid">
+    <form class="ui sixteen wide column" action="@Url.Action("Edit")" method="post" enctype="multipart/form-data">
+        @Html.HiddenFor(model => model.Id)
+        @Html.HiddenFor(model => model.FieldType)
+        <div class="content">
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.Name, "String")
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.FieldTypeId, "DropDownInt")
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.BlankIfNoValue, "CheckBoxBoolean")
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ui fluid container basic clearing segment"></div>
+            @await Html.PartialAsync("_BackSubmitButton", @Url.Action("IndexRegister"))
+        </div>
+    </form>
+</div>

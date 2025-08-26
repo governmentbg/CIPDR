@@ -1,22 +1,23 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.ComponentModel;
-using System.Text.Json.Serialization;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
-using Infrastructure.Constants;
 using URegister.Common;
 using URegister.Core.Contracts;
+using URegister.Core.Services;
+using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Extensions;
 using URegister.Infrastructure.Model.RegisterForms;
 using URegister.NomenclaturesCatalog;
 using URegister.ObjectsCatalog;
 using static URegister.ObjectsCatalog.ObjectsCatalogGrpc;
-using URegister.Core.Services;
-using URegister.Infrastructure.Constants;
 
 namespace URegister.Admin.Controllers
 {
+    [Display(Name = "Дизайнер")]
     public class DesignerController : BaseController
     {
         private const string ConfiguredFieldName = "mainPreviewedFieldDefaultName";
@@ -43,8 +44,8 @@ namespace URegister.Admin.Controllers
         /// <summary>
         /// Конфигуратор на полета
         /// </summary>
-        /// <returns></returns>
-        [DisplayName("Конфигуратор на полета")]
+        /// <returns></returns>      
+        [Display(Name = "Отваряне на конфигуратор на полета")]
         public async Task<IActionResult> ConfigureFields(string preSelectedType = "")
         {
             IEnumerable<CatalogFieldType> fieldTypes = await FieldTypeCatalogService.GetAllFieldType(_objectCatalogGrpcClient);
@@ -114,7 +115,7 @@ namespace URegister.Admin.Controllers
         /// Потвърждаване на формата с полета
         /// </summary>
         [HttpGet]
-        [DisplayName("Генериране на изглед за поле")]
+        [Display(Name = "Генериране на изглед за поле")]
         public async Task<IActionResult> ShowPreview(string fieldType)
         {
             try
@@ -128,7 +129,8 @@ namespace URegister.Admin.Controllers
                     SetErrorMessage($"Проблем при зареждане на конфигурацията за поле {fieldType}");
                     FormViewModel emptyModel = new FormViewModel
                     {
-                        FormFields = new List<FormField>()
+                        FormFields = new List<FormField>(),
+                        DontUploadFilesToStorage = true
                     };
 
                     return View(emptyModel);
@@ -151,6 +153,7 @@ namespace URegister.Admin.Controllers
                 _formFieldsLayoutService.GiveSnakeCaseNamesToComplexFieldChildren(formFields);
 
                 FormViewModel viewModel = new FormViewModel();
+                viewModel.DontUploadFilesToStorage = true;
                 viewModel.FormFields = formFields;
                 viewModel.FormTitle = (await FieldTypeCatalogService.GetAllFieldType(_objectCatalogGrpcClient))
                     .First(t => t.Type == fieldType)
@@ -164,7 +167,8 @@ namespace URegister.Admin.Controllers
                 SetErrorMessage($"Проблем при зареждане на конфигурацията за поле {fieldType}");
                 FormViewModel emptyModel = new FormViewModel
                 {
-                    FormFields = new List<FormField>()
+                    FormFields = new List<FormField>(),
+                    DontUploadFilesToStorage = true
                 };
                 return View(emptyModel);
             }
@@ -175,7 +179,7 @@ namespace URegister.Admin.Controllers
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [DisplayName("Генериране на изглед")]
+        [Display(Name = "Валидиране и преглед на форма")]
         public async Task<IActionResult> ShowPreview(IFormCollection form)
         {
             try
@@ -204,19 +208,26 @@ namespace URegister.Admin.Controllers
                         (await FieldTypeCatalogService.GetAllFieldType(_objectCatalogGrpcClient))
                         .First(t => t.Type == configuredField.Type)
                         .Label,
-                    SelectedType = configuredField.Type
+                    SelectedType = configuredField.Type,
+                    DontUploadFilesToStorage = true
                 };
 
                 _formFieldsLayoutService.DistributePostedFieldValuesToViewModel(form, viewModel);
                 bool isViewModelValidationSuccess = await _formValidationService.ValidateViewModel(viewModel, _nomenclatureGrpcClient, 0);
 
+                if (isViewModelValidationSuccess)
+                {
+                    SetSuccessMessage(MessageConstant.SuccessfulValidation);
+                }
+
                 return View(viewModel);
+                
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, $"Грешка в {nameof(ShowPreview)}");
                 SetErrorMessage("Проблем при зареждане на формата");
-                return View(new FormViewModel { FormFields = new List<FormField>() });
+                return View(new FormViewModel { FormFields = new List<FormField>(), DontUploadFilesToStorage = true });
             }
         }
 
@@ -237,7 +248,6 @@ namespace URegister.Admin.Controllers
 
             if (latestVersionInDb != null)
             {
-                latestVersionInDb.FieldId = jsonAsField.FieldId;
                 if (JsonSerializer.Serialize(jsonAsField) == JsonSerializer.Serialize(latestVersionInDb))
                 {
                     return true;
@@ -252,8 +262,8 @@ namespace URegister.Admin.Controllers
         /// </summary>
         /// <param name = "jsonFieldDefaults" > JSON конфигурация на тип поле</param>
         /// <returns></returns>
-        [HttpPost]
-        [DisplayName("Запис на настройки по подразбиране за тип поле")]
+        [HttpPost]       
+        [Display(Name = "Запис на настройки по подразбиране за тип поле")]
         [ValidateAntiForgeryToken]
         public async Task<bool> SaveDefaults(string jsonFieldDefaults)
         {
@@ -293,12 +303,12 @@ namespace URegister.Admin.Controllers
         /// <param name="type">Тип на полето</param>
         /// <returns>JSON обект</returns>
         [HttpGet]
-        [DisplayName("Зареждане на конфигурацията по подразбиране за тип поле")]
+        [Display(Name = "Извличане на конфигурация по подразбиране за тип поле")]
         public async Task<string> GetFieldDefaultConfiguration(string type)
         {
             try
             {
-                CatalogFieldRequest request = new CatalogFieldRequest { FieldType = type.ToString() };
+                CatalogFieldRequest request = new CatalogFieldRequest { FieldType = type };
 
                 CatalogGetFieldReply reply = await _objectCatalogGrpcClient.GetFieldAsync(request);
 
@@ -322,6 +332,7 @@ namespace URegister.Admin.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet]
+        [Display(Name = "Зареждане на списък с типове полета")]
         public async Task<IActionResult> FieldTypeList()
         {
             return View();
@@ -332,6 +343,7 @@ namespace URegister.Admin.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet]
+        [Display(Name = "Зареждане на форма за добавяне на нов тип поле")]
         public IActionResult AddFieldType()
         {
             return View(new AddFieldTypeViewModel());
@@ -342,32 +354,10 @@ namespace URegister.Admin.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Добавяне на нов тип поле")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddFieldType(AddFieldTypeViewModel model)
         {
-            if (!ModelState.IsValid)
-            {
-                return View(model);
-            }
-
-            if (string.IsNullOrWhiteSpace(model.Label))
-            {
-                ModelState.AddModelError(nameof(model.Label), MessageConstant.FieldIsRequiredNoParam);
-            }
-            else if (!Regex.IsMatch(model.Label, RegexPatterns.CyrillicPersonNamePattern))
-            {
-                ModelState.AddModelError(nameof(model.Label), MessageConstant.NotCyrillic);
-            }
-
-            if (string.IsNullOrWhiteSpace(model.Type))
-            {
-                ModelState.AddModelError(nameof(model.Type), MessageConstant.FieldIsRequiredNoParam);
-            }
-            else if (!Regex.IsMatch(model.Type, RegexPatterns.LatinTextWithNumbersPattern))
-            {
-                ModelState.AddModelError(nameof(model.Type), MessageConstant.NotLatin);
-            }
-
             if (!ModelState.IsValid)
             {
                 return View(model);
@@ -410,17 +400,126 @@ namespace URegister.Admin.Controllers
 
             SetSuccessMessage($"Тип поле {model.Label} е успешно записан");
 
-            FieldTypeCatalogService.ResetFieldTypeList();
             return RedirectToAction(nameof(ConfigureFields), new { preSelectedType = model.Type });
         }
       
         [HttpGet]
+        [Display(Name = "Извличане на списък с типове полета")]
         public async Task<IActionResult?> GetFieldTypes()
         {
             IEnumerable<CatalogFieldType> fieldTypes = await FieldTypeCatalogService.GetAllFieldType(_objectCatalogGrpcClient);
             var data = fieldTypes.OrderBy(f => f.IsComplex).ToList();
 
             return Json(new { data = data });
+        }
+
+        [HttpPost]
+        [Display(Name = "Качване на файл към форма")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UploadFile(IFormFile file, int formParentId, string fieldName, string key)
+        {
+            try
+            {
+                if (file == null || file.Length <= 0)
+                {
+                    return Json(new { success = false, error = MessageConstant.Values.FileIsEmpty });
+                }
+
+                string fieldConfiguration =
+                    await GetFieldDefaultConfiguration(SimpleFormFieldType.File.ToString());
+
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+                };
+
+                FormField? fieldMetadata = JsonSerializer.Deserialize<FormField>(fieldConfiguration, options);
+
+                if (fieldMetadata == null)
+                {
+                    return Json(new { success = false, error = MessageConstant.Values.FileUploadFailed });
+                }
+
+                bool validationResult = await _formValidationService.ValidateFile(fieldMetadata, file);
+
+                if (!validationResult)
+                {
+                    return Json(new { success = false, error = fieldMetadata.ValidationError });
+                }
+
+                return Json(new { success = true, fileKey = Guid.NewGuid() });
+                
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, $"Проблем при качване на файл в {UploadFile}, за форма с parentId {formParentId}");
+                return Json(new { success = false, error = MessageConstant.Values.FileUploadFailed });
+            }
+        }
+
+        [HttpPost]
+        [Display(Name = "Изтриване на файл")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteFile(string key)
+        {
+            return Json(new { success = true });
+        }
+
+        /// <summary>
+        /// Търси поле на форма по име до едно ниво навътре
+        /// </summary>
+        /// <param name="fields"></param>
+        /// <param name="fieldName"></param>
+        /// <returns></returns>
+        private FormField FindFieldMetadata(IEnumerable<FormField> fields, string fieldName)
+        {
+            foreach (var field in fields)
+            {
+                if (field.Name == fieldName)
+                {
+                    return field;
+                }
+
+                foreach (var innerField in field.Fields)
+                {
+                    if (innerField.Name == fieldName)
+                    {
+                        return innerField;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Изтриване на поле
+        /// </summary>
+        /// <param name="id">Идентификатор на тип услуга за изтриване</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Display(Name = "Изтриване на тип поле")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteFieldType(int id)
+        {
+            GetFieldTypeRequest request = new GetFieldTypeRequest()
+            {
+                FieldTypeId = id
+            };
+
+            ResultStatus result = await _objectCatalogGrpcClient.DeleteFieldTypeAsync(request);
+
+            if (result.Code == ResultCodes.Ok)
+            {
+                SetSuccessMessage("Типа поле е изтрит успешно");
+            }
+            else
+            {
+                SetErrorMessage(result.Message);
+            }
+
+            return Json(null);
         }
 
     }

@@ -26,7 +26,7 @@
             </a>
         </div>
     </div>
-    <div class="ui green segment">
+    <div id="designer-workspace" class="ui green segment">
         <div class="ui grid">
             <div class="ui twelve wide column">
                 <div class="ui form" id="preview-hidden-fields" style="display: none;">
@@ -43,19 +43,22 @@
                     <div class="item">
                         <h3 class="ui header">Конфигуриране на поле:</h3>
                         <div class="field">
-                            @* <label for="configuredType">Тип на поле</label> *@
-                            <div class="ui fluid search selection dropdown">
-                                <input id="configuredType" type="hidden" name="configuredType">
-                                <i class="dropdown icon"></i>
-                                <div class="default text"></div>
-                                <div class="menu">
-                                    @foreach (SelectListItem item in ViewBag.DesignerFieldTypes_ddl as List<SelectListItem>)
-                                    {
-                                        <div class="item" data-value="@item.Value">@item.Text</div>
-                                    }
+                            <div class="ui mini form">
+                                <label for="configuredType" class="fw700">Тип на поле</label>
+                                <div class="ui fluid search selection dropdown">
+                                    <input id="configuredType" type="hidden" name="configuredType">
+                                    <i class="dropdown icon"></i>
+                                    <div class="default text"></div>
+                                    <div class="menu">
+                                        @foreach (SelectListItem item in ViewBag.DesignerFieldTypes_ddl as List<SelectListItem>)
+                                        {
+                                            <div class="item" data-value="@item.Value">@item.Text</div>
+                                        }
+                                    </div>
                                 </div>
+                                <span for="configuredType" class="validation-error" tabindex="-1"></span>
                             </div>
-                            <span for="configuredType" class="validation-error" tabindex="-1"></span>
+
                         </div>
                         <div class="field">
                             <a class="ui mini primary button" id="addField" style="display: none;">
@@ -67,7 +70,7 @@
                     <div class="item" style="display: none;">
                         <div class="ui mini form">
                             <div id="componentFieldTypeContainer" class="field">
-                                <label for="type">Тип на съставно поле</label>
+                                <label for="type">Тип на подполе</label>
                                 <div class="ui fluid search selection dropdown">
                                     <input id="type" type="hidden" name="type">
                                     <i class="dropdown icon"></i>
@@ -83,7 +86,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="item" data-specific-for="Select,MultiSelect,Autocomplete">
+                    <div class="item" data-specific-for="Select,MultiSelect,Autocomplete,AutocompleteWithCategory">
                         <div class="ui mini form">
                             <div class="field">
                                 <label for="nomenclatureType">Вид номенклатура</label>
@@ -124,26 +127,52 @@
                             </div>
                         </div>
                     </div>
-                    <div class="item">
+                    <div class="item" data-hide-for="StaticText">
                         <div class="ui mini form">
                             <div class="fields">
-                                <div class="eight wide field ui checkbox">
-                                    <input id="isRequired" type="checkbox" class="center" />
-                                    <label for="isRequired">Задължително поле</label>
+                                <div class="responsive-tooltip custom-grid50-field">
+                                    <div class="compact-tooltip" data-content="Потребителят трябва да въведе стойност в това поле, преди да може да изпрати формата">
+                                        <div class="ui field checkbox">
+                                            <input id="isRequired" type="checkbox" class="center" />
+                                            <label for="isRequired">Задължително поле</label>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="eight wide field ui checkbox">
-                                    <input id="isPublic" type="checkbox" class="center" />
-                                    <label for="isPublic">Публично поле</label>
+                                <div class="responsive-tooltip custom-grid50-field">
+                                    <div class="compact-tooltip" data-content="Поле, което е достъпно и видимо за всички">
+                                        <div class="ui field checkbox">
+                                            <input id="isPublic" type="checkbox" class="center" />
+                                            <label for="isPublic">Публично поле</label>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="fields">
-                                <div class="eight wide field ui checkbox">
-                                    <input id="isReadonly" type="checkbox" class="center" />
-                                    <label for="isReadonly">Само за четене</label>
+                                <div class="responsive-tooltip custom-grid50-field">
+                                    <div class="compact-tooltip" data-content="Потребителят може да вижда стойността в това поле, но не може да я променя">
+                                        <div class="ui field checkbox">
+                                            <input id="isReadonly" type="checkbox" class="center" />
+                                            <label for="isReadonly">Само за четене</label>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="eight wide field ui checkbox">
-                                    <input id="isHidden" type="checkbox" class="center" />
-                                    <label for="isHidden">Скрито поле</label>
+                                <div class="responsive-tooltip custom-grid50-field">
+                                    <div class="compact-tooltip" data-content="Поле със служебна информация, невидима за потребителя">
+                                        <div class="ui field checkbox">
+                                            <input id="isHidden" type="checkbox" class="center" />
+                                            <label for="isHidden">Скрито поле</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="fields">
+                                <div class="responsive-tooltip">
+                                    <div class="ui field compact-tooltip" data-content="Дали полето ще бъде колона при визуализиране на данните в таблица">
+                                        <div class="sixteen wide field ui checkbox">
+                                            <input id="isColumnInDataTable" type="checkbox" class="center" />
+                                            <label for="isColumnInDataTable">Колона в публична таблица</label>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -212,7 +241,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="item hidden" data-specific-for="Date">
+                    <div class="item hidden" data-specific-for="Date,DateTime">
                         <div class="ui mini form">
                             <div class="fields">
                                 <div class="five wide field ui checkbox">
@@ -228,7 +257,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="item">
+                    <div class="item" data-hide-for="StaticText">
                         <div class="ui mini form">
                             <div class="field">
                                 <label for="tooltip">Подсказка посочване</label>
@@ -239,7 +268,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="item hidden" data-specific-for="Text,TextArea,Phone,Email,Url,Autocomplete,Date,DateTime,MultiSelect,Number,Select,PersonIdentifier">
+                    <div class="item hidden" data-specific-for="Text,TextArea,Phone,Email,Url,Autocomplete,Date,DateTime,Time,MultiSelect,Number,Select,PersonIdentifier">
                         <div class="ui mini form">
                             <div class="field">
                                 <label for="placeholder">Подсказка в поле</label>
@@ -253,15 +282,19 @@
                     <div class="item">
                         <div class="ui mini form">
                             <div class="field">
-                                <label for="columns">Брой колони</label>
-                                <div class="ui input">
-                                    <input id="columns" type="number" value="1" min="1" max="4" step="1">
+                                <div class="responsive-tooltip">
+                                    <div class="ui field compact-tooltip" data-content="Ширината е в брой колони">
+                                        <label for="columns">Ширина (1-4)</label>
+                                        <div class="ui input">
+                                            <input id="columns" type="number" value="1" min="1" max="4" step="1">
+                                        </div>
+                                    </div>
                                 </div>
                                 <span for="columns" class="validation-error" tabindex="-1"></span>
                             </div>
                         </div>
                     </div>
-                    <div class="item">
+                    <div class="item" data-hide-for="StaticText">
                         <div class="ui mini form">
                             <div class="fields">
                                 <div class="responsive-tooltip">
@@ -269,6 +302,29 @@
                                         <div class="sixteen wide field ui checkbox">
                                             <input id="canBeRepeated" type="checkbox" class="center" />
                                             <label for="canBeRepeated">Позволява повторения</label>
+                                            <span for="canBeRepeated" class="validation-error" tabindex="-1"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="item" data-specific-for="Person,Company,CompanyWithAddress">
+                        <div class="ui mini form">
+                            <div class="fields">
+                                <div class="responsive-tooltip">
+                                    <div class="ui field compact-tooltip" data-content="Физическото или юридическо лице собственик ли е на партидата">
+                                        <div class="sixteen wide field ui checkbox">
+                                            <input id="isBatchOwner" type="checkbox" class="center" />
+                                            <label for="isBatchOwner">Собственик на партида</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="responsive-tooltip" data-specific-for="Person">
+                                    <div class="ui field compact-tooltip" data-content="Лицето заявител ли е">
+                                        <div class="sixteen wide field ui checkbox">
+                                            <input id="isSubmitter" type="checkbox" class="center" />
+                                            <label for="isSubmitter">Заявител</label>
                                         </div>
                                     </div>
                                 </div>
@@ -300,7 +356,8 @@
             </div>
         </div>
     </div>
-    @section Scripts {
-        <script src="~/js/uuid/uuidv4.min.js"></script>
-        <script src="~/js/designer/index.js"></script>
-    }
+</div>
+@section Scripts {
+    <script src="~/js/uuid/uuidv4.min.js"></script>
+    <script src="~/js/designer/index.js" asp-append-version="true"></script>
+}

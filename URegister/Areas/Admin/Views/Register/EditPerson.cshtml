@@ -1,0 +1,52 @@
+﻿@using URegister.Core.Models.CurrentRegister
+@using URegister.Infrastructure.Constants
+@model PersonVM
+
+@{
+    ViewBag.Title = "Добавяне на регистър";
+    var htmlFieldPrefix = ViewData.TemplateInfo.HtmlFieldPrefix;
+}
+<div class="ui grid">
+    <form class="ui sixteen wide column" action="@Url.Action("EditPerson")" method="post" enctype="multipart/form-data">
+        <div class="content">
+            @Html.HiddenFor(model => model.Id)
+            @Html.HiddenFor(model => model.Type)
+            @Html.HiddenFor(model => model.AdministrationId)
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            <h3>@Model.TypeName</h3>
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='four wide field'>
+                            @Html.EditorFor(model => model.FirstName, "String")
+                        </div>
+                        <div class='four wide field'>
+                            @Html.EditorFor(model => model.MiddleName, "String")
+                        </div>
+                        <div class='four wide field'>
+                            @Html.EditorFor(model => model.LastName, "String")
+                        </div>
+                        <div class='four wide field'>
+                            @Html.EditorFor(model => model.Position, "String")
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='eight wide field'>
+                            @Html.EditorFor(model => model.Phone, "String")
+                        </div>
+                        <div class='eight wide field'>
+                            @Html.EditorFor(model => model.Email, "String")
+                        </div>
+                    </div>
+                </div>
+             </div>
+            @await Html.PartialAsync("_BackSubmitButton", @Url.Action("IndexPerson", new {administrationId = Model.AdministrationId}))
+        </div>
+    </form>
+</div>
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

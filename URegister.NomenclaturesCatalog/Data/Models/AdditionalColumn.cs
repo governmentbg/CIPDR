@@ -46,7 +46,7 @@ namespace URegister.NomenclaturesCatalog.Data.Models
         /// Стойност ЕН
         /// </summary>
         [StringLength(1024)]
-        [Comment("Стойност ЕН")]
+        [Comment("Стойност EN")]
         public string? ValueEn { get; set; }
 
         /// <summary>

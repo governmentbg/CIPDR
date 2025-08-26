@@ -61,11 +61,51 @@ function LoadPersons() {
                     sortable: true,
                     searchable: true
                 },
+                {
+                    name: 'email',
+                    data: 'email',
+                    title: 'Електронна поща',
+                    sortable: true,
+                    searchable: true
+                },
+                {
+                    name: 'phone',
+                    data: 'phone',
+                    title: 'Телефон',
+                    sortable: true,
+                    searchable: true
+                },
+                //{
+                //    name: 'actions',
+                //    data: "id",
+                //    title: "Действия",
+                //    sortable: false,
+                //    searchable: false,
+                //    className: "text-left noExport",
+                //    width: 100,
+                //    "render": function (data, type, row) {
+                //        return editButton(`/Admin/Register/EditPerson?personId=${row.id}`) +
+                //            `<a href="javascript:deletePerson(${data}, '${row.firstName} ${row.middleName} ${row.lastName}')" 
+                //                                  type="button" 
+                //                                  class="ui tertiary icon button" 
+                //                                  data-tooltip="Изтриване">
+                //                                  <i class="times right icon"></i>
+                //                              </a>`;
+                //    }
+                //}
             ]
         });
 
         dt.ready(function () {
-            SetAddButton($(tableId).data('add-url'));
+           // SetAddButton($(tableId).data('add-url'));
         });
+    }
+}
+
+async function deletePerson(id,  name) {
+    const result = await confirmDialog('Потвърдете изтриване на оторизирано лице', name, 'Изтриване');
+    if (result) {
+        await post_fetch_string_async(`/Admin/Register/DeletePerson?personid=${id}`, {});
+        LoadPersons();
     }
 }

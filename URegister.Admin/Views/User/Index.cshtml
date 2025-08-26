@@ -1,8 +1,28 @@
-﻿@{
+﻿@using URegister.Core.Models.User
+@model AdministrationViewModel
+@{
     ViewData["Title"] = "Списък потребители";
 }
-<button class="ui secondary button" id="openGroupModal">Създай група</button>
 @Html.AntiForgeryToken()
+<div class="ui form">
+    <div class="field">
+        <label for="administration">Администрация</label>
+        <div class="ui fluid search selection dropdown" id="administrationDropdown">
+            <input id="administration" type="hidden" name="Id" value="@Model.SelectedAdministrationId">
+            <i class="dropdown icon"></i>
+            <div class="default text"></div>
+            <div class="menu">
+                @foreach (var item in Model.Administrations)
+                {
+                    <div class="item" data-value="@item.Value" @(item.Selected ? "class='selected active'" : "")>
+                        @item.Text
+                    </div>
+                }
+            </div>
+        </div>
+        <span for="type" class="validation-error" tabindex="-1"></span>
+    </div>
+</div>
 <div class="ui grid">
     <div class="column">
         <div class="column">
@@ -14,24 +34,45 @@
         </div>
     </div>
 </div>
-
-<!-- Modal -->
-<div id="groupModal" class="ui modal">
-    <div class="header">Създай група</div>
+<div class="ui tiny modal confirm-modal">
+    <div class="header">Потвърждение</div>
     <div class="content">
-        <div class="ui form">
-            <div class="field">
-                <label for="nameInput">Име</label>
-                <input id="nameInput" type="text" placeholder="Въведи име" />
-            </div>
-        </div>
+        <p>Сигурни ли сте, че искате да продължите?</p>
     </div>
     <div class="actions">
-        <button class="ui button" id="cancelButton">Затвори</button>
-        <button class="ui primary button" id="submitButton" data-url="@Url.Action("AddGroup", "User")">Запази</button>
+        <div class="ui two buttons">
+            <button class="ui button cancel">
+                <i class="icon close"></i>
+                Отказ
+            </button>
+            <a href="" class="ui primary button confirm">
+                <i class="icon plus"></i>
+                Добави
+            </a>
+        </div>
     </div>
 </div>
 
+<div class="ui tiny modal confirm-admin-role-modal">
+    <div class="header">Потвърждение</div>
+    <div class="content">
+        <p id="admin-role-msg"></p>
+    </div>
+    <div class="actions">
+        <div class="ui two buttons">
+            <button class="ui button cancel">
+                <i class="icon close"></i>
+                Отказ
+            </button>
+            <a href="javascript:void(0);" class="ui primary button admin-role-confirm confirm">
+                
+            </a>
+        </div>
+    </div>
+</div>
+
+
 @section Scripts {
-    <script src="~/js/user/index.js"></script>
+    <script src="~/js/user/index.js" asp-append-version="true"></script>
+    @await Html.PartialAsync("_ValidationScriptsPartial")
 }

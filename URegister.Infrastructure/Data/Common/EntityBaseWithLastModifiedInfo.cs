@@ -10,12 +10,11 @@ namespace URegister.Infrastructure.Data.Common
     public class EntityBaseWithLastModifiedInfo : SoftDeletable, IEntityBaseWithLastModifiedInfo
     {
         /// <summary>
-        /// Идентификатор на потребилет променил последно записа
+        /// Идентификатор на потребителят променил последно записа
         /// </summary>
-        [Comment("Идентификатор на потребилет променил последно записа")]
+        [Comment("Идентификатор на потребителят променил последно записа")]
         [Required]
-        [StringLength(36)]
-        public string ModifiedByUserId { get; set; }
+        public Guid ModifiedByUserId { get; set; }
 
         /// <summary>
         /// Дата на последна промяна
@@ -23,7 +22,7 @@ namespace URegister.Infrastructure.Data.Common
         [Comment("Дата на последна промяна")]
         [Required]
         [Column(TypeName = AttributeConstants.Timestamptz)]
-        public DateTime ModifiedOn { get; set; }
+        public DateTime ModifiedOn { get; set; } = DateTime.UtcNow;
 
         //[ForeignKey(nameof(ModifiedByUserId))]
         //public virtual ApplicationUser ModifiedByUser { get; set; }

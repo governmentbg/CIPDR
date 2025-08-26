@@ -1,0 +1,10 @@
+﻿@using URegister.Core.Models.Common
+@model FileVM
+<div class="fields">
+    <div class='sixteen wide field'>
+        <a href="javascript:downloadAttachedFileById('@Model.MetaFileId', '@Model.FileName')" class="ui left floated button">
+            <i class="download icon"></i>
+            @Model.FileName
+        </a>
+    </div>
+</div>

@@ -1,4 +1,5 @@
 ﻿
+using Grpc.Core;
 using URegister.Common;
 
 namespace URegister.NomenclaturesCatalog.Contracts
@@ -20,14 +21,11 @@ namespace URegister.NomenclaturesCatalog.Contracts
         Task<NomenclatureTypeListResponse> GetNomenclatureTypeList(NomenclatureTypeListRequest request);
         Task<NomenclatureTypeResponse> GetNomenclatureTypeOnType(string nomenclatureType);
         Task<NomenclatureTypeListPublicResponse> GetNomenclatureTypesPublic(int registerId);
-        Task ImportArea1(string nomenclatureType);
-        Task ImportNrnmNsi();
         Task UpdateNomenclatureTypeRegister(UpdateNomenclatureTypeRegisterRequest request);
         Task<CodeableConceptRegisterListResponse> GetCodeableConceptRegisterList(CodeableConceptRegisterListRequest request);
         Task<NomenclatureTypeRegisterResponse> GetNomenclatureTypeRegisterOnType(string nomenclatureType, int registerId);
         Task UpdateCodeableConceptRegister(UpdateCodeableConceptRegisterRequest request);
         Task<List<CheckNomenclatureResponseItem>> CheckNomenclature(CheckNomenclatureRequest request);
-        Task ImportEkStreet(string nomenclatureType);
         Task<NomenclatureTypePublicResponse> GetNomenclatureOnHolderPublic(NomenclatureHolderRequest request);
 
         /// <summary>
@@ -43,5 +41,29 @@ namespace URegister.NomenclaturesCatalog.Contracts
         /// <param name="request">Заявка с параметри</param>
         /// <returns></returns>
         Task<string> GetValueByCode(GetValueRequest request);
+        Task UpdateCodeableConceptStatus(UpdateCodeableConceptStatusRequest request);
+
+        /// <summary>
+        /// Изтриване на номенклатура
+        /// </summary>
+        /// <param name="nomenclatureTypeId">Идентификатор на номенклатура</param>
+        /// <returns></returns>
+        Task<ResultStatus> DeleteNomenclatureType(int nomenclatureTypeId);
+
+        /// <summary>
+        /// Четене на номенклатура с категории
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns> request);
+        Task<List<NomenclatureWithHolderItem>> GetNomenclatureWithHolderValues(NomenclatureWithHolderValuesRequest request);
+
+        Task<CodeableConceptListResponse> GetCodeableConceptListExport(CodeableConceptListExportRequest request);
+
+        /// <summary>
+        /// Четене на имена на населени места с област и община по екатте код
+        /// </summary>
+        /// <param name="ekatteCode"></param>
+        /// <returns></returns>
+        Task<string> GetSettlementFullInfo(string ekatteCode);
     }
 }

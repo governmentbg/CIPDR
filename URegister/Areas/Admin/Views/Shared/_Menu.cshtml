@@ -1,31 +1,129 @@
-﻿<div class="ui fixed menu">
+﻿`@using URegister.Core.Contracts
+@using URegister.Infrastructure.Constants
+@inject IRegisterService registerService;
+@inject IServiceService service;
+@inject IFormConfigurationPersistenceService formService
+@{
+    var regName = string.Empty;
+
+    var administrationId = User.Claims.FirstOrDefault(c => c.Type == "urn:io:administration_id")?.Value;
+    try
+    {
+        var register = await registerService.GetCurrentRegister();     
+        regName = register != null ? (($"{register.Code} {register.Name}".Length > 200) ? register.Code : $"{register.Code} {register.Name}") : string.Empty;
+    }
+    catch
+    {
+
+    }
+    var currentRegisterServices = await service.GetServiceDDL(new List<int>());
+    var customViews = (IEnumerable<dynamic>)(await formService.GetCustomViews());
+}
+<div class="ui fixed menu no-print">
     <div class="ui fluid container">
-        <a href="#" class="header item">
-            ИСЦИПР
+        <a href="#" class="header item register-title">
+            <img class="logo" src="~/images/logo.svg">
+            &nbsp;&nbsp;&nbsp;ИСЦИПР @regName
         </a>
         <a href="\" class="item"><i class="home icon"></i> Начало</a>
-        <div class="ui simple dropdown item">
-            <i class="list alternate outline icon"></i> Процеси <i class="dropdown icon"></i>
-            <div class="menu">
-                <a class="item" href="@Url.Action("Index", "Process", new {area = "Admin"})"><i class="table icon"></i> Процеси</a>
+        @if (User.IsInRole(UserRoles.Editor) || User.IsInRole(UserRoles.Manager) || User.IsInRole(UserRoles.Registrator) || User.IsInRole(UserRoles.Admin))
+        {
+            <div class="ui simple dropdown item">
+                <i class="layer group icon"></i> Заявени услуги <i class="dropdown icon"></i>
+                <div class="menu">
+                    @if (User.IsInRole(UserRoles.Editor) || User.IsInRole(UserRoles.Manager) || User.IsInRole(UserRoles.Registrator))
+                    {
+                        <a class="item" href="@Url.Action("Index", "Process", new { area = "Admin" })"><i class="tasks icon"></i> Управление</a>
+                    }
+
+                    @if (User.IsInRole(UserRoles.Admin))
+                    {
+                        <div class="ui dropdown item">
+                            <i class="dropdown icon"></i>
+                            <i class="file import icon"></i> Импорт
+                            <div class="menu">
+                                <a class="item" href="@Url.Action("ImportFile", "Import", new { area = "Admin" })"><i class="file import icon"></i> Импорт на данни</a>
+                                <a class="item" href="@Url.Action("Maket", "Import", new { area = "Admin" })"><i class="file upload icon"></i> Шаблон</a>
+                            </div>
+                        </div>
+                    }
+
+                    @if (User.IsInRole(UserRoles.Editor) || User.IsInRole(UserRoles.Manager) || User.IsInRole(UserRoles.Registrator))
+                    {
+                        <div class="ui dropdown item">
+                            <i class="dropdown icon"></i>
+                            <i class="table icon"></i> Табличен вид
+                            <div class="menu">
+                                @if (currentRegisterServices.Any())
+                                {
+                                    foreach (var service in currentRegisterServices.Skip(1))
+                                    {
+                                        <a class="item" href="@Url.Action("TableView", "Process", new { area = "Admin", serviceId = service.Value })">@service.Text</a>
+                                    }
+                                }
+                            </div>
+                        </div>
+                        @if (customViews.Any())
+                        {
+                            <div class="ui dropdown item">
+                                <i class="dropdown icon"></i>
+                                <i class="receipt icon"></i> Справки
+                                <div class="menu">
+                                    @foreach (var customView in customViews)
+                                    {
+                                        <a class="item" href="@Url.Action("CustomTableView", "Process", new { area = "Admin", customViewId = customView.Id, customViewName = customView.CustomViewTitle })">@customView.CustomViewTitle</a>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
             </div>
-        </div>
-        <div class="ui simple dropdown item">
-            <i class="sliders horizontal icon"></i> Управление <i class="dropdown icon"></i>
-            <div class="menu">
-                <a class="item" href="/User/Index"><i class="user edit icon"></i> Потребители</a>
-                <a class="item" href="/Admin/Register/Edit"><i class="list alternate outline icon"></i> Регистър</a>
-                <a class="item" href="/Admin/Register/IndexAdministration"><i class="list alternate outline icon"></i> Администрации</a>
+        }
+        @if (User.IsInRole(UserRoles.Admin) || User.IsInRole(UserRoles.Manager) || User.IsInRole(UserRoles.Editor))
+        {
+            <div class="ui simple dropdown item">
+                <i class="sliders horizontal icon"></i> Управление <i class="dropdown icon"></i>
+                <div class="menu">
+                    @if (User.IsInRole(UserRoles.Admin))
+                    {
+                        <a class="item" href="/Admin/Admin/Index?administrationId=@administrationId"><i class="user edit icon"></i> Потребители</a>
+                    }
+                    <a class="item" href="/Admin/Register/Edit"><i class="book icon"></i> Регистър</a>
+                    <a class="item" href="/Admin/Register/IndexAdministration"><i class="building outline icon"></i> Администрации</a>
+                </div>
             </div>
-        </div>
-        <div class="ui simple dropdown item">
-            <i class="list alternate outline icon"></i> Каталози <i class="dropdown icon"></i>
-            <div class="menu">
-                <a class="item" href="/Admin/Catalog/FormIndex"><i class="table icon"></i> Форми</a>
-                <a class="item" href="@Url.Action("Index", "Service", new {area = "Admin"})"><i class="handshake outline icon"></i> Услуги</a>
+        }
+        @if (User.IsInRole(UserRoles.Admin) || User.IsInRole(UserRoles.GlobalAdmin))
+        {
+            <div class="ui simple dropdown item">
+                <i class="list alternate outline icon"></i> Каталози <i class="dropdown icon"></i>
+                <div class="menu">
+                    @if (User.IsInRole(UserRoles.GlobalAdmin))
+                    {
+                        <a class="item" href="@Url.Action("FormIndex", "Catalog", new {area = "Admin"})"><i class="table icon"></i> Форми</a>
+                    }
+                    @if (User.IsInRole(UserRoles.Admin))
+                    {
+                        <a class ="item" href = "@Url.Action("Index", "Service", new {area = "Admin"})" ><i class ="handshake outline icon" ></i > Услуги </a>
+                        <a class ="item" href = "@Url.Action("CustomViewsIndex", "Catalog", new {area = "Admin"})" ><i class ="receipt icon" ></i > Справки </a>
+                        <a class="item" href="@Url.Action("Index", "BlanksTemplate", new { area = "Admin" })"><i class="file alternate outline icon"></i> Бланки </a>
+                        <a class="item" href="@Url.Action("Index", "PublicFieldTemplate", new { area = "Admin" })"><i class="atlas icon"></i> Публични полета</a>
+                        <a class="item" href="@Url.Action("Index", "Deadline", new { area = "Admin" })"><i class="calendar check outline icon"></i> Срокове </a>
+                        <a class="item" href="@Url.Action("Index", "Report", new { area = "Admin" })"><i class="chartline icon"></i> Статистика </a>
+                        <a class="item" href="@Url.Action("IndexDeAssign", "Process", new { area = "Admin" })"><i class="undo icon"></i> Връщане на заявена услуга за обработка </a>
+                    }
+                </div>
             </div>
-        </div>
-        <a href="/Admin/Nomenclature/IndexTypeRegister" class="brown item"><i class="list ol icon"></i> Номенклатури</a>
-        <partial name="_LoginPartial" />
+            @if (User.IsInRole(UserRoles.Admin) || User.IsInRole(UserRoles.Editor) || User.IsInRole(UserRoles.Manager) || User.IsInRole(UserRoles.Registrator))
+            {
+                <a href="/Admin/Nomenclature/IndexTypeRegister" class="brown item"><i class="list ol icon"></i> Номенклатури</a>
+            }
+            <a class="item" href="@Url.Action("Index", "AuditLog", new {area = "Admin"})"><i class="newspaper icon"></i> Системен журнал</a>
+        }
+
+        @{
+            await Html.RenderPartialAsync("~/Areas/Admin/Views/Shared/_LoginPartial.cshtml");
+        }
     </div>
 </div>

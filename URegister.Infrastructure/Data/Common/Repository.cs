@@ -2,7 +2,13 @@
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
+using System.ComponentModel.DataAnnotations;
 using System.Linq.Expressions;
+using URegister.Infrastructure.Constants;
+using URegister.Infrastructure.Contracts;
+using URegister.Infrastructure.Data.AuditLog;
+using URegister.Infrastructure.Models;
+
 
 namespace URegister.Infrastructure.Data.Common
 {
@@ -10,10 +16,11 @@ namespace URegister.Infrastructure.Data.Common
     /// Implementation of repository access methods
     /// for Relational Database Engine
     /// </summary>
-    /// <typeparam name="T">Type of the data table to which 
-    /// current reposity is attached</typeparam>
     public abstract class Repository : IRepository
     {
+        protected IAuditLogServiceClient auditLogClient { get; set; } = null!;
+        protected IAuditInfo auditInfo { get; set; } = null!;
+
         /// <summary>
         /// Entity framework DB context holding connection information and properties
         /// and tracking entity states 
@@ -118,7 +125,7 @@ namespace URegister.Infrastructure.Data.Common
         /// <summary>
         /// Deletes a record from database
         /// </summary>
-        /// <param name="id">Identificator of record to be deleted</param>
+        /// <param name="id">Identifier of the record to be deleted</param>
         public async Task DeleteAsync<T>(object id) where T : class
         {
             T entity = await GetByIdAsync<T>(id);
@@ -163,8 +170,8 @@ namespace URegister.Infrastructure.Data.Common
         }
 
         /// <summary>
-        /// Disposing the context when it is not neede
-        /// Don't have to call this method explicitely
+        /// Disposing the context when it is not needed
+        /// Don't have to call this method explicitly
         /// Leave it to the IoC container
         /// </summary>
         public void Dispose()
@@ -175,7 +182,7 @@ namespace URegister.Infrastructure.Data.Common
         /// <summary>
         /// Gets specific record from database by primary key
         /// </summary>
-        /// <param name="id">record identificator</param>
+        /// <param name="id">record identifier</param>
         /// <returns>Single record or null</returns>
         public async Task<T?> GetByIdAsync<T>(object id) where T : class
         {
@@ -183,7 +190,7 @@ namespace URegister.Infrastructure.Data.Common
         }
 
         /// <summary>
-        /// Gets specifi record from database by primary key
+        /// Gets a specific record from database by primary key
         /// </summary>
         /// <param name="id">Composite key</param>
         /// <returns>Single record or null</returns>
@@ -198,6 +205,7 @@ namespace URegister.Infrastructure.Data.Common
         /// <returns>Number of entries written to the base</returns>
         public async Task<int> SaveChangesAsync()
         {
+            await OnBeforeSaveChanges();
             return await this.Context.SaveChangesAsync();
         }
 
@@ -243,7 +251,7 @@ namespace URegister.Infrastructure.Data.Common
         }
 
         /// <summary>
-        /// Deletes records imediately from database without tracking
+        /// Deletes records immediately from database without tracking
         /// </summary>
         /// <typeparam name="T">Type of entity</typeparam>
         /// <param name="search">Predicate</param>
@@ -311,5 +319,112 @@ namespace URegister.Infrastructure.Data.Common
             return await Context.Database.BeginTransactionAsync();
         }
 
+        private async Task OnBeforeSaveChanges()
+        {
+            if (auditInfo == null)
+            {
+                return;
+            }
+            Context.ChangeTracker.DetectChanges();
+            var auditEntries = new List<AuditEntry>();
+            foreach (var entry in Context.ChangeTracker.Entries())
+            {
+                if (auditInfo.TypeAuditTask == TypeAuditTask.None ||
+                    entry.Entity is Audit ||
+                    entry.Entity is AuditEntity ||
+                    entry.State == EntityState.Detached ||
+                    entry.State == EntityState.Unchanged)
+                    continue;
+                var auditEntry = new AuditEntry(entry, auditInfo);
+                auditEntries.Add(auditEntry);
+                foreach (var property in entry.Properties)
+                {
+                    string propertyName = property.Metadata.Name;
+
+                    if (property.Metadata.IsPrimaryKey())
+                    {
+                        auditEntry.KeyValues[propertyName] = property.CurrentValue;
+                        continue;
+                    }
+
+                    var displayAttribute = Attribute.GetCustomAttribute(property.Metadata.PropertyInfo, typeof(DisplayAttribute)) as DisplayAttribute;
+
+                    if (displayAttribute != null)
+                    {
+                        propertyName = displayAttribute.GetName() ?? propertyName;
+                    }
+
+                    switch (entry.State)
+                    {
+                        case EntityState.Added:
+                            auditEntry.AuditType = AuditType.Create;
+                            auditEntry.NewValues[propertyName] = property.CurrentValue;
+                            break;
+                        case EntityState.Deleted:
+                            auditEntry.AuditType = AuditType.Delete;
+                            auditEntry.OldValues[propertyName] = property.OriginalValue;
+                            break;
+                        case EntityState.Modified:
+                            if (property.IsModified)
+                            {
+                                auditEntry.ChangedColumns.Add(propertyName);
+                                auditEntry.AuditType = AuditType.Update;
+                                auditEntry.OldValues[propertyName] = property.OriginalValue;
+                                auditEntry.NewValues[propertyName] = property.CurrentValue;
+                            }
+                            break;
+                    }
+                }
+            }
+            if (auditEntries.Any() && auditInfo.TypeAuditTask == TypeAuditTask.Repository)
+            {
+                if (!auditInfo.IsSaved)
+                {
+                    await SaveRequest();
+                }
+                foreach (var auditEntry in auditEntries)
+                {
+                    await AddAsync(auditEntry.ToAuditDataItem());
+                }
+            }
+            if (auditEntries.Any() && auditInfo.TypeAuditTask == TypeAuditTask.GrpcClient)
+            {
+                await auditLogClient.SaveAuditLogGrpc(auditInfo, auditEntries);
+            }
+        }
+        public async Task SaveRequest()
+        {
+            try
+            {
+
+                var audit = new Audit()
+                {
+                    Id = auditInfo.Id,
+                    Action = auditInfo.Action,
+                    ActivityId = auditInfo.ActivityId,
+                    ActivityFromId = auditInfo.ActivityFromId,
+                    ActivityTags = auditInfo.ActivityTags,
+                    AssemblyName = auditInfo.AssemblyName,
+                    Controller = auditInfo.Controller,
+                    Created = DateTime.UtcNow,
+                    IpAddress = auditInfo.IpAddress,
+                    Method = auditInfo.Method,
+                    Parameters = auditInfo.Parameters,
+                    PostData = auditInfo.PostData,
+                    UserId = auditInfo.UserId,
+                    TenantId = auditInfo.AdministrationId,
+                    RegisterId = auditInfo.RegisterId > 0 ? auditInfo.RegisterId : null,
+                    UserFullName = !string.IsNullOrEmpty(auditInfo.UserFullName) ? auditInfo.UserFullName : null,
+                };
+
+                await AddAsync(audit);
+                await SaveChangesAsync();
+                auditInfo.IsSaved = true;
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
     }
 }

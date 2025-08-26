@@ -1,14 +1,11 @@
-﻿@using URegister.Core.Services
-@using URegister.Infrastructure.Model.RegisterForms
-@using URegister.ObjectsCatalog
-@inject ObjectsCatalogGrpc.ObjectsCatalogGrpcClient objectCatalogGrpcClient
+﻿@using URegister.Infrastructure.Model.RegisterForms
+
 @model FormField
 @{
+    string modelTemplateName = ViewData["modelTemplateName"] as string;
+
     try
     {
-        var fieldTypes = await FieldTypeCatalogService.GetAllFieldType(objectCatalogGrpcClient);
-        string modelTemplateName = fieldTypes.First(t => t.Type == Model.Type).TemplateName;
-
         if (!Model.CanBeRepeated)
         {
             await Html.RenderPartialAsync(modelTemplateName, Model);
@@ -16,8 +13,7 @@
         else
         {
             <div class="ui form">
-                <fieldset class="person-fieldset">
-                    <legend>Списък</legend>
+                <fieldset class="fieldgroup-fieldset">
                     @{
                         await Html.RenderPartialAsync(modelTemplateName, Model);
                         if (Model.Repetitions != null)
@@ -31,7 +27,6 @@
                     @if (!Model.IsReadonly)
                     {
                         <div class="circular ui mini icon button repeat-field"><i class="plus icon"></i></div>
-                        <div class="circular ui mini icon button delete-field" style="@(Model.Repetitions.Any() ? "" : "display: none;")"><i class="minus icon"></i></div>
                     }
                 </fieldset>
             </div>

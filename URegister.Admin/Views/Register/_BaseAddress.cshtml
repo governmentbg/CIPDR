@@ -1,0 +1,27 @@
+﻿@using URegister.Core.Models.Register
+@model RegisterBaseAddressVM
+@{
+    var header = $"{Model.Code} {Model.Name}";
+}
+<div class="ui small modal confirm-dialog">
+    <div class="header">@header</div>
+    <form id="formUpdateRegisterBaseAddress" class="ui sixteen wide column" action="@Url.Action("UpdateRegisterBaseAddress")" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+        @Html.HiddenFor(x => x.Id)
+        <div class="content">
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.BaseAddress, "String")
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+    <div class="actions">
+        <button type="button" onclick="updateRegisterBaseAddress()" class="ui positive right labeled icon button">Запис<i class="check icon"></i></button>
+        <button class="ui negative button">Отказ</button>
+    </div>
+</div>

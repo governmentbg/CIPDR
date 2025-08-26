@@ -10,7 +10,7 @@ namespace URegister.RegistersCatalog.Data.Models
     /// </summary>
     [Comment("Администрации")]
     [Index(nameof(Uic), IsUnique = true)]
-    public class Administration : SoftDeletable
+    public class Administration : EntityBaseWithLastModifiedInfo
     {
         /// <summary>
         /// Идентификатор
@@ -36,6 +36,26 @@ namespace URegister.RegistersCatalog.Data.Models
         public string Name { get; set; } = null!;
 
         /// <summary>
+        /// Код за връзка с е-форми
+        /// </summary>
+        [Comment("Код за връзка с е-форми")]
+        [MaxLength(500)]
+        public string? EFormCode { get; set; }
+
+        /// <summary>
+        /// api-key за opendata
+        /// </summary>
+        [Comment("api-key за opendata")]
+        [MaxLength(500)]
+        public string? OpenDataApiKey { get; set; }
+
+        /// <summary>
+        /// Идентификатор на организация в  opendata
+        /// </summary>
+        [Comment("Идентификатор на организация в  opendata")]
+        public int OpenDataOrgId { get; set; }
+
+        /// <summary>
         /// Дата на създаване
         /// </summary>
         [Required]
@@ -46,5 +66,10 @@ namespace URegister.RegistersCatalog.Data.Models
         /// Лица от администрацията
         /// </summary>
         public List<AdministrationPerson> People { get; set; } = new List<AdministrationPerson>();
+
+        /// <summary>
+        /// Администрации
+        /// </summary>
+        public List<RegisterAdministration> RegisterAdministrations { get; set; } = new();
     }
 }

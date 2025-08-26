@@ -4,6 +4,8 @@ using Microsoft.Extensions.Logging;
 using URegister.Core.Contracts;
 using URegister.Infrastructure.Model.RegisterForms;
 using System.Text.RegularExpressions;
+using URegister.Core.Models.Process;
+using URegister.Infrastructure.Constants;
 
 namespace URegister.Core.Services
 {
@@ -31,7 +33,8 @@ namespace URegister.Core.Services
 
             foreach (var pair in form)
             {
-                if (pair.Key.StartsWith("__"))
+                if (pair.Key.StartsWith("__") || 
+                    pair.Key.StartsWith(FormConstants.FormFieldIgnoreValuePrefix, StringComparison.InvariantCultureIgnoreCase))
                 {
                     continue;
                 }
@@ -45,11 +48,23 @@ namespace URegister.Core.Services
                     viewModel.FormTitle = pair.Value!;
                     continue;
                 }
-                if (pair.Key is nameof(FormViewModel.SelectedType))
+                if (pair.Key is nameof(FormViewModel.UserTimeZoneOffsetInMinutes))
+                {
+                    viewModel.UserTimeZoneOffsetInMinutes = int.Parse(pair.Value);
+                }
+                if (pair.Key is nameof(FormViewModel.SelectedType) or 
+                        nameof(ProcessStepVM.ProcessId) or
+                        nameof(ProcessStepVM.FromProcessId) or
+                        nameof(ProcessStepVM.ServiceStepId) or
+                        nameof(ProcessStepVM.ServiceId) or
+                        nameof(ProcessStepVM.IncomingNumber) or
+                        nameof(ProcessStepVM.IncomingDate) or
+                        nameof(ProcessStepVM.OrderNum) or
+                        nameof(FormViewModel.DontUploadFilesToStorage) or 
+                        nameof(FormViewModel.UserTimeZoneOffsetInMinutes))
                 {
                     continue;
                 }
-
                 #region За повтарящи се елементи добавени от потребителя във формата
 
                 Match match = Regex.Match(pair.Key, repeatingFieldValuePattern);
@@ -70,37 +85,20 @@ namespace URegister.Core.Services
 
                 AssignPostedElementValueToFormField(pair.Key, pair.Value!, viewModel.FormFields);
             }
-
-            foreach (var file in form.Files)
-            {
-                #region За повтарящи се елементи добавени от потребителя във формата
-
-                Match match = Regex.Match(file.Name, repeatingFieldValuePattern);
-                if (match.Success)
-                {
-                    try
-                    {
-                        HandleValueDistributionForRepeatingValues(viewModel, match, file.Name, null, file);
-                    }
-                    catch (Exception e)
-                    {
-                        _logger.LogError(e, $"Проблем в {nameof(HandleValueDistributionForRepeatingValues)}");
-                    }
-                    continue;
-                }
-
-                #endregion
-
-                AssignPostedElementValueToFormField(file.Name, string.Empty, viewModel.FormFields, file);
-            }
         }
 
-        private void HandleValueDistributionForRepeatingValues(
+        /// <summary>
+        /// Разпределя повторяемите стойности във вю модел
+        /// </summary>
+        /// <param name="viewModel">Вю модел</param>
+        /// <param name="match">Съвпадение по регулярен израз</param>
+        /// <param name="postedName">Име на поле</param>
+        /// <param name="postedValue">Стойност на поле</param>
+        public void HandleValueDistributionForRepeatingValues(
             FormViewModel viewModel, 
             Match match,
             string postedName,
-            string? postedValue,
-            IFormFile file = null)
+            string? postedValue)
         {
             // Extract values from named groups
             string repeaterParentName = match.Groups["repeaterParentName"].Value;
@@ -123,21 +121,30 @@ namespace URegister.Core.Services
 
                 var repeaterParentEquivalentSubfield = repeaterParent.Fields!.First(f => f.Name == $"{repeaterParentName}_{restOfName}");
                 var clone = repeaterParentEquivalentSubfield.CreateRepeaterClone(postedName, postedValue);
-                clone.File = file;
                 clonedParent.Fields!.Add(clone);
             }
             else
             {
-                var repeatedField = repeaterParent.CreateRepeaterClone(postedName, postedValue);
-                repeatedField.File = file;
-                repeaterParent.Repetitions!.Add(repeatedField);
+                FormField? clonedParent =
+                    repeaterParent.Repetitions!.SingleOrDefault(cp => cp.Name == repeaterParentName + "#" + index);
+
+                if (clonedParent == null)
+                {
+                    var repeatedField = repeaterParent.CreateRepeaterClone(postedName, postedValue);
+                    repeaterParent.Repetitions!.Add(repeatedField);
+                }
             }
         }
 
-        private void AssignPostedElementValueToFormField(string postedName,
+        /// <summary>
+        /// Записва стойност към поле на форма
+        /// </summary>
+        /// <param name="postedName">Име на поле</param>
+        /// <param name="postedValue">Стойност на поле</param>
+        /// <param name="formFields">Поле на форма</param>
+        public void AssignPostedElementValueToFormField(string postedName,
             string postedValue,
-            IEnumerable<FormField> formFields,
-            IFormFile? file = null)
+            IEnumerable<FormField> formFields)
         {
             if (!postedName.Contains(ComplexFieldPathSeparator))
             {
@@ -145,11 +152,10 @@ namespace URegister.Core.Services
                 if (foundField != null)
                 {
                     foundField.Value = postedValue;
-                    foundField.File = file;
                 }
                 else
                 {
-                    _logger.LogError($"Field with name {postedName} not found in {nameof(AssignPostedElementValueToFormField)}");
+                    _logger.LogError($"Поле с име {postedName} не е намерено в {nameof(AssignPostedElementValueToFormField)}");
                 }
                 return;
             }
@@ -163,14 +169,13 @@ namespace URegister.Core.Services
 
                 if (targetField == null)
                 {
-                    _logger.LogError($"Поле с път {pathSoFar} не в намерено. Метод {nameof(AssignPostedElementValueToFormField)}");
+                    _logger.LogInformation($"Поле с път {pathSoFar} не e намерено. Нормално състояние ако полето не е публично а извличаме само публични данни. Метод {nameof(AssignPostedElementValueToFormField)}");
                     return;
                 }
 
                 if (i == pathParts.Length - 1)
                 {
                     targetField.Value = postedValue;
-                    targetField.File = file;
                     return;
                 }
 

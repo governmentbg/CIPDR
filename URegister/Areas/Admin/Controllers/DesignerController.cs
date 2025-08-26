@@ -1,16 +1,23 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using System.ComponentModel;
+using Microsoft.Extensions.Primitives;
+using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
 using URegister.Common;
 using URegister.Core.Contracts;
 using URegister.Core.Services;
+using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Model.RegisterForms;
 using URegister.NomenclaturesCatalog;
 using URegister.ObjectsCatalog;
+using System.Security.Claims;
+using System.ComponentModel.DataAnnotations;
 
 namespace URegister.Areas.Admin.Controllers
 {
     [Area("Admin")]
+    [Authorize(Roles = $"{UserRoles.Admin},{UserRoles.GlobalAdmin}")]
+    [Display(Name = "Дизайнер")]
     public class DesignerController : BaseController
     {
         private readonly IFormFieldsLayoutService formFieldsLayoutService;
@@ -20,6 +27,7 @@ namespace URegister.Areas.Admin.Controllers
         private readonly IFormConfigurationPersistenceService _formConfigurationPersistenceService;
         private readonly IRegisterService registerService;
         public readonly ILogger<DesignerController> Logger;
+
         public DesignerController(IFormFieldsLayoutService formFieldsLayoutService,
             IFormValidationService formValidationService,
             NomenclatureGrpc.NomenclatureGrpcClient nomenclatureGrpcClient,
@@ -41,10 +49,11 @@ namespace URegister.Areas.Admin.Controllers
         /// Дизайнер на форма от регистър
         /// </summary>
         /// <returns></returns>
-        [DisplayName("Дизайнер на форма от регистър")]
+        [Display(Name = "Отваряне на дизайнер за форма от регистър")]
+        [HttpGet]
         public async Task<IActionResult> Index(int formParentId)
         {
-            FormViewModel formViewModel = await _formConfigurationPersistenceService.GetFormViewModel(formParentId);
+            FormViewModel formViewModel = await _formConfigurationPersistenceService.GetFormViewModel(formParentId, true);
             if (formViewModel == null)
             {
                 Logger.LogError($"Не е намерена форма с parentId {formParentId} в {nameof(Index)}");
@@ -52,19 +61,13 @@ namespace URegister.Areas.Admin.Controllers
                 return View(new DesignerViewModel());
             }
 
-            DesignerViewModel viewModel = new DesignerViewModel
-            {
-                FormParentId = formParentId,
-                FormTitle = formViewModel.FormTitle
-            };
-
             IEnumerable<CatalogFieldType> fieldTypes = await FieldTypeCatalogService.GetAllFieldType(objectCatalogGrpcClient);
 
             if (fieldTypes == null)
             {
                 SetErrorMessage("Проблем при зареждане на типовете полета");
                 Logger.LogError($"Проблем при зареждане на типовете полета в {nameof(Index)}");
-                return View(viewModel);
+                return View(formViewModel);
             }
 
             ViewBag.DesignerFieldTypes_ddl = fieldTypes.Select(t => new SelectListItem
@@ -100,7 +103,7 @@ namespace URegister.Areas.Admin.Controllers
                 ViewBag.NomenclatureTypes_ddl = new List<SelectListItem>();
             }
 
-            return View(viewModel);
+            return View(formViewModel);
         }
 
         /// <summary>
@@ -111,11 +114,16 @@ namespace URegister.Areas.Admin.Controllers
         /// <param name="formTitle">Заглавие на формата</param>
         /// <returns></returns>
         [HttpPost]
-        [DisplayName("Запис на конфигурация на форма")]
+        [Display(Name = "Запис на конфигурация на форма")]
         [ValidateAntiForgeryToken]
         public async Task<bool> SaveConfiguration(string jsonFieldsModel, int formParentId, string formTitle)
         {
-            bool result = await _formConfigurationPersistenceService.SaveDesignerJson(jsonFieldsModel, formParentId, formTitle);
+            bool isApproved = User.Claims
+                .Where(c => c.Type == ClaimTypes.Role)
+                .Any(c => c.Value == UserRoles.GlobalAdmin);
+
+            bool result = await _formConfigurationPersistenceService.SaveDesignerJson(jsonFieldsModel, formParentId, formTitle, isApproved);
+            SetSuccessMessage("Конфигурацията е записана успешно");
             return result;
         }
 
@@ -123,10 +131,11 @@ namespace URegister.Areas.Admin.Controllers
         /// Показване на изглед
         /// </summary>
         [HttpGet]
-        [DisplayName("Генериране на изглед")]
+        [Display(Name = "Генериране на изглед на форма")]
         public async Task<IActionResult> ShowPreview(int formParentId)
         {
-            FormViewModel viewModel = await _formConfigurationPersistenceService.GetFormViewModel(formParentId);
+            FormViewModel viewModel = await _formConfigurationPersistenceService.GetFormViewModel(formParentId, true);
+            viewModel.DontUploadFilesToStorage = true;
 
             if (viewModel == null || !viewModel.FormFields.Any())
             {
@@ -141,13 +150,26 @@ namespace URegister.Areas.Admin.Controllers
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [DisplayName("Генериране на изглед")]
-        public async Task<IActionResult> ShowPreview(IFormCollection form)
+        [Display(Name = "Валидиране и преглед на форма")]
+        public async Task<IActionResult> ShowPreview(IFormCollection form, int formId = 0)
         {
             try
             {
-                int formParentId = int.Parse(form[nameof(FormViewModel.FormParentId)]);
-                FormViewModel viewModel = await _formConfigurationPersistenceService.GetFormViewModel(formParentId);
+                FormViewModel viewModel;
+
+                if (formId == 0)
+                {
+                    int formParentId = int.Parse(form[nameof(FormViewModel.FormParentId)]);
+                    viewModel =
+                        await _formConfigurationPersistenceService.GetFormViewModel(formParentId, true);
+                }
+                else
+                {
+                    viewModel =
+                        await _formConfigurationPersistenceService.GetFormViewModelByFormId(formId);
+                }
+
+                viewModel.DontUploadFilesToStorage = true;
 
                 formFieldsLayoutService.DistributePostedFieldValuesToViewModel(form, viewModel);
                 bool isViewModelValidationSuccess = await formValidationService.ValidateViewModel(
@@ -157,6 +179,7 @@ namespace URegister.Areas.Admin.Controllers
 
                 if (isViewModelValidationSuccess)
                 {
+                    SetSuccessMessage(MessageConstant.SuccessfulValidation);
                     return View(nameof(ShowPreview), viewModel);
                     //return View("ShowReadonlyForm", viewModel);
                 }
@@ -167,6 +190,58 @@ namespace URegister.Areas.Admin.Controllers
             {
                 Logger.LogError(ex, $"Грешка в {nameof(ShowPreview)}");
                 SetErrorMessage("Проблем при зареждане на формата");
+                return View(nameof(ShowPreview), new FormViewModel { FormFields = new List<FormField>(), DontUploadFilesToStorage = true });
+            }
+        }
+
+        /// <summary>
+        /// Подаване на JSON данни
+        /// </summary>
+        [HttpGet]
+        [Display(Name = "Зареждане на форма за подаване на JSON данни")]
+        public async Task<IActionResult> SubmitJson(int formId)
+        {
+            Dictionary<string, string> fieldFlatList = await _formConfigurationPersistenceService.GetFormFieldNamesInFlatList(formId);
+
+            string json = JsonSerializer.Serialize(fieldFlatList.Keys.ToDictionary(v => v, v => string.Empty));
+
+            JsonFormDataViewModel model = new JsonFormDataViewModel
+            {
+                //FormParentId = formParentId
+                FormId = formId,
+                JsonData = json
+            };
+
+            return View(model);
+        }
+
+
+        /// <summary>
+        /// Потвърждаване на формата с JSON данни
+        /// </summary>
+        [HttpPost]
+        [Display(Name = "Обработка и генериране на изглед по JSON данни")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SubmitJson(JsonFormDataViewModel model)
+        {
+            try
+            {
+                var formData = new Dictionary<string, StringValues>();
+
+                var jsonDocument = JsonDocument.Parse(model.JsonData);
+                foreach (var element in jsonDocument.RootElement.EnumerateObject())
+                {
+                    formData[element.Name] = new StringValues(element.Value.ToString());
+                }
+
+                IFormCollection form = new FormCollection(formData);
+
+                return await ShowPreview(form, model.FormId);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, $"Грешка в {nameof(SubmitJson)}");
+                SetErrorMessage("Проблем при четене на JSON данните");
                 return View(nameof(ShowPreview), new FormViewModel { FormFields = new List<FormField>() });
             }
         }
@@ -176,11 +251,31 @@ namespace URegister.Areas.Admin.Controllers
         /// </summary>
         /// <returns>JSON масив</returns>
         [HttpGet]
-        [DisplayName("Зареждане на конфигурацията на форма от базата данни")]
+        [Display(Name = "Извличане на конфигурация на форма от базата данни")]       
         public async Task<string> LoadConfiguration(int formParentId)
         {
             string result = await _formConfigurationPersistenceService.LoadDesignerJson(formParentId);
             return result;
+        }
+
+        /// <summary>
+        /// Зареждане на конфигурацията на формата на услугата за вписване от базата данни
+        /// </summary>
+        /// <returns>JSON</returns>
+        [HttpGet]
+        [Display(Name = "Импортиране на конфигурация на форма от базата данни")]
+        public async Task<JsonResult> ImportRegisterFormConfiguration()
+        {
+            try
+            {
+                string result = await _formConfigurationPersistenceService.ImportRegisterFormConfiguration();
+                return new JsonResult(new { notFound = string.IsNullOrEmpty(result), config = result });
+            }
+            catch (Exception e)
+            {
+                Logger.LogError(e, $"Проблем в {nameof(ImportRegisterFormConfiguration)}");
+                return new JsonResult(string.Empty);
+            }
         }
 
         /// <summary>
@@ -189,7 +284,7 @@ namespace URegister.Areas.Admin.Controllers
         /// <param name="type">Тип на полето</param>
         /// <returns>JSON обект</returns>
         [HttpGet]
-        [DisplayName("Зареждане на конфигурацията по подразбиране за тип поле")]
+        [Display(Name = "Извличане на конфигурацията по подразбиране за тип поле")]
         public async Task<string> GetFieldDefaultConfiguration(string type)
         {
             try
@@ -211,6 +306,27 @@ namespace URegister.Areas.Admin.Controllers
                 Logger.LogError(ex, $"Проблем при извличане на данни в {nameof(GetFieldDefaultConfiguration)} за тип {type.ToString()}");
                 return "{}";
             }
+        }
+
+        /// <summary>
+        /// Одобряване на конфигурация
+        /// </summary>
+        /// <returns>Празен низ при успех, съобщение за грешка при неуспех</returns>
+        [HttpPost]
+        [Display(Name = "Одобряване на конфигурация на форма")]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = UserRoles.GlobalAdmin)]
+        public async Task<IActionResult> ApproveConfiguration(int formId)
+        {
+            OperationResult result = await _formConfigurationPersistenceService.ApproveConfiguration(formId);
+
+            if (result.IsSuccess)
+            {
+                SetSuccessMessage("Конфигурацията е записана успешно");
+                return new JsonResult(new { success = true, message = string.Empty });
+            }
+
+            return new JsonResult(new { success = false, message = result.ErrorMessage });
         }
     }
 }

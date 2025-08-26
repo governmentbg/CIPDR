@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using URegister.Infrastructure.Data.Common;
 
 namespace URegister.ObjectsCatalog.Data.Models
 {
@@ -7,7 +8,7 @@ namespace URegister.ObjectsCatalog.Data.Models
     /// Тип на услуга
     /// </summary>
     [Comment("Тип на услуга")]
-    public class ServiceType
+    public class ServiceType : SoftDeletable
     {
         /// <summary>
         /// Идентификатор на тип на услуга

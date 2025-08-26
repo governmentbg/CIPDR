@@ -68,7 +68,7 @@ async function get_drop_down_async(url, data, dropdown, selected) {
 
 async function get_fetch_json_async(url, data) {
     const response = await fetch(url + "?" + new URLSearchParams(data));
-    return ResolveResponseJson(response);
+    return await ResolveResponseJson(response);
 }
 
 async function get_fetch_string_async(url, data) {
@@ -101,18 +101,45 @@ async function post_fetch_json_async(url, data) {
                 "X-CSRF-TOKEN": getRequestVerificationToken()
             }
         });
-    return ResolveResponseJson(response);
+    return await ResolveResponseJson(response);
+}
+
+function showErrorModal(text = "Изтекла е потребителската сесия.") {
+    const modalHtml = `
+                        <div class="ui small modal center aligned" id="sessionExpiredModal">
+                          <div class="center aligned header">Внимание</div>
+                          <div class="center aligned content">
+                            <i class="exclamation triangle icon" style="color: red; font-size: 2rem;"></i>
+                            <p>${text}</p>
+                          </div>
+                          <div class="actions">
+                            <div class="ui primary button ok-button">OK</div>
+                          </div>
+                        </div>
+                      `;
+
+    // Append the modal to the body
+    $('body').append(modalHtml);
+
+    // Initialize and show the modal
+    $('#sessionExpiredModal')
+        .modal({
+            onHidden: function () {
+                // Clean up after closing
+                $('#sessionExpiredModal').remove();
+            },
+        })
+        .modal('show');
 }
 
 async function ResolveResponseString(response) {
     if (response.redirected) {
-        await Swal.fire(
-            "Изтекла е потребителската сесия",
-            '',
-            'error'
-        )
-        window.location.href = window.location.href
-        return null;
+        showErrorModal();
+        $('#sessionExpiredModal .ok-button').on('click', function () {
+            $('#sessionExpiredModal').modal('hide');
+            window.location.href = window.location.href
+            return null;
+        });
     }
     let text = await response.text();
     return text;
@@ -130,23 +157,18 @@ async function ResolveResponseJson(response) {
         }
     } else {
         if (response.redirected) {
-            text = "Изтекла е потребителската сесия";
-            await Swal.fire(
-                text,
-                '',
-                'error'
-            )
-            window.location.href = window.location.href
+            showErrorModal();
+            $('#sessionExpiredModal .ok-button').on('click', function () {
+                $('#sessionExpiredModal').modal('hide');
+                window.location.href = window.location.href
+            });
         }
         else {
-            text = await response.text();
-            await Swal.fire(
-                text,
-                '',
-                'error'
-            )
+            showErrorModal(await response.text());
+            $('#sessionExpiredModal .ok-button').on('click', function () {
+                $('#sessionExpiredModal').modal('hide');
+            });
         }
-
     }
 }
 
@@ -197,16 +219,35 @@ var messageHelper = (function () {
     };
 })();
 
+function fomanticConfirm(text, callBackApprove) {
+    // Create the modal dynamically
+    const modalHtml = `
+        <div class="ui small modal center aligned" id="fomantic-confirm-modal">
+            <div class="center aligned header">Потвърди</div>
+            <div class="center aligned content">
+                <p>${text}</p>
+            </div>
+            <div class="actions">
+                <button class="ui red cancel button">Отказ</button>
+                <button class="ui green approve button">Потвърди</button>
+            </div>
+        </div>
+    `;
 
-async function swalConfirmAsync(text) {
-    const dialogResult = await Swal.fire({
-        title: 'Потвърди',
-        text: text,
-        showCancelButton: true,
-        confirmButtonText: "Потвърди",
-        cancelButtonText: "Отказ"
-    });
-    return !!dialogResult.isConfirmed;
+    // Append the modal to the body
+    $('body').append(modalHtml);
+
+    // Initialize the modal
+    const $modal = $('#fomantic-confirm-modal');
+
+    $modal.modal({
+        onApprove: function () {
+            callBackApprove();
+        },
+        onHidden: function () {
+            $modal.remove();
+        },
+    }).modal('show');
 }
 
 async function PerformAddItem(addItem, addData) {
@@ -238,7 +279,7 @@ async function PerformAddItem(addItem, addData) {
     $.validator.unobtrusive.parse(form);
 }
 function initDynamicForms(addCallback) {
-   
+
     $('button.add-item').each(function (i, btn) {
         if ($(btn).data("is-set-click") !== undefined)
             return;
@@ -255,16 +296,12 @@ function initDynamicForms(addCallback) {
 
     async function PerformRemoveItem(removeLink) {
         if (removeLink.data('alert')) {
-            const confirm = await swalConfirmAsync(removeLink.data('alert'));
-            if (confirm) {
-                removeLink.parents('.item-template:first').hide('normal').remove();
-            }
-            return false;
+            fomanticConfirm(removeLink.data('alert'), function () { removeLink.parents('.item-template:first').hide('normal').remove() });
         } else {
             removeLink.parents('.item-template:first').hide('normal').remove();
-            return false;
         }
     }
+
     $('button.remove-item').each(function (i, btn) {
         if ($(btn).data("is-set-click") !== undefined) {
             return;
@@ -370,6 +407,9 @@ async function post_fetch_async(url, request) {
 async function post_fetch_form_async(url, formSelector) {
     try {
         const form = $(formSelector)
+        if (url == '') {
+            url = form.prop('action')
+        }
         const data = new FormData(form[0]);
         const responce = await fetch(url, {
             method: 'post',
@@ -411,7 +451,28 @@ function JsonBGdateTS(value) {
         return '';
     }
     try {
-        return new Intl.DateTimeFormat('bg-BG').format(value.seconds*1000);
+        return new Intl.DateTimeFormat('bg-BG').format(value.seconds * 1000);
+    }
+    catch (e) {
+        console.log(value);
+        return '';
+    }
+}
+
+function JsonBGdateTSWithTime(value) {
+    if (!value) {
+        return '';
+    }
+    try {
+        return new Intl.DateTimeFormat('bg-BG', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        }).format(new Date(value.seconds * 1000));
     }
     catch (e) {
         console.log(value);
@@ -431,6 +492,27 @@ function JsonBGDateTime(value) {
             day: "2-digit",
             hour: "2-digit",
             minute: "2-digit"
+        }).format(date);
+    }
+    catch (e) {
+        console.log(value);
+        return '';
+    }
+}
+
+function JsonBGDateTimeWithSeconds(value) {
+    if (!value) {
+        return '';
+    }
+    try {
+        let date = Date.parse(value);
+        return new Intl.DateTimeFormat('bg-BG', {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
         }).format(date);
     }
     catch (e) {
@@ -464,4 +546,96 @@ function EndButtonAction(btn) {
 function refreshTable(dataTableID) {
     $(dataTableID).DataTable().ajax.reload(null, true);
     return true;
+}
+
+async function confirmDialog(title, text, action) {
+    const dialog = `<div class="ui small modal confirm-dialog">
+        <div class="header">${title}</div>
+        <div class="content">
+            <p>${text}</p>
+        </div>
+        <div class="actions">
+            <button class="ui positive right labeled icon button">${action}<i class="check icon"></i></button>
+            <button class="ui negative button">Затвори</button>
+        </div>
+    </div>`;
+    return new Promise((resolve, reject) => {
+        $(dialog).modal({
+            centered: true,
+            closable: false,
+            onApprove: function () {
+                resolve(true);
+            },
+            onDeny: function () {
+                resolve(false);
+            }
+        })
+            .modal('show');
+    });
+}
+
+// Async post request
+async function upload_file_async(url, data) {
+    return new Promise((resolve, reject) => {
+        $.ajax({
+            type: 'POST',
+            async: true,
+            cache: false,
+            dataType: 'json',
+            url: url,
+            data: data,
+            processData: false,
+            contentType: false,
+            success: function (result) {
+                resolve(result);
+            },
+            error: function (err) {
+                reject(err);
+            },
+        });
+    });
+}
+
+function setDataTablesFilter(container, storageName) {
+    return;
+    const elements = $(container).find('input, select, textarea');
+    let obj = {};
+    elements.each(function () {
+        const val = $(this).val()
+        obj[this.name] = val;
+    })
+    localStorage.setItem(storageName, JSON.stringify(obj))
+}
+
+function getDataTablesFilter(container, storageName) {
+    return;
+    const clear_filter = $(container).find('#ClearFilter').val();
+    if (clear_filter && clear_filter.toString().toLowerCase() == "true") {
+        return;
+    }
+    const obj = JSON.parse(localStorage.getItem(storageName))
+    for (let key in obj) {
+        $(`#${key}`).val(obj[key]);
+    }
+    openAccordionFilter()
+}
+
+function openAccordionFilter() {
+    $('.accordion').accordion("open", 0);
+}
+
+async function uploadRegisterFile(url, file) {
+    showLoader('body');
+    var data = new FormData()
+    data.append('file', file)
+    const response = await fetch(url,
+        {
+            method: "POST",
+            body: data,
+            headers: {
+                "X-CSRF-TOKEN": getRequestVerificationToken()
+            }
+        });
+    hideLoader('body');
+    return await ResolveResponseJson(response);
 }

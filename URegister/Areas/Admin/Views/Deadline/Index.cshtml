@@ -1,0 +1,20 @@
+﻿@{
+    ViewData["Title"] = "Срокове за изпълнение на услуга";
+}
+
+<div class="ui grid">
+    <div class="column">
+        <div class="column">
+            <table id="deadline"
+                class="ui celled striped very compact table" style="width:100%; padding:0px;"
+                   data-url="@Url.Action("GetDeadlineList", "Deadline")"
+                   data-add-url="@Url.Action("Add", "Deadline")">
+             </table>
+        </div>
+    </div>
+</div>
+@await Html.PartialAsync("_BackButton", @Url.Action("Index", "Home", new { area = "" }))
+@section Scripts
+{
+    <script src="~/js/admin/deadline/deadlineList.js" asp-append-version="true"></script>
+}

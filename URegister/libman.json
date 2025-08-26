@@ -15,14 +15,6 @@
       "destination": "wwwroot/library/jquery-validation-unobtrusive"
     },
     {
-      "library": "bootstrap@5.3.3",
-      "destination": "wwwroot/library/bootstrap"
-    },
-    {
-      "library": "sweetalert2@11.14.0",
-      "destination": "wwwroot/library/sweetalert2"
-    },
-    {
       "library": "jquery.form@4.3.0",
       "destination": "wwwroot/library/jquery-form"
     },
@@ -59,17 +51,22 @@
       "destination": "wwwroot/library/pdfmake"
     },
     {
-      "library": "fomantic-ui@2.9.3",
-      "destination": "wwwroot/lib/fomantic-ui/"
-    },
-    {
       "library": "mermaid@10.4.0",
       "destination": "wwwroot/lib/mermaid"
     },
     {
+      "library": "tinymce@7.6.0",
+      "destination": "wwwroot/lib/tinymce/"
+    },
+    {
       "provider": "cdnjs",
       "library": "jqueryui@1.14.1",
-      "destination": "wwwroot/lib/jqueryui/"
+      "destination": "wwwroot/library/jqueryui"
+    },
+    {
+      "provider": "cdnjs",
+      "library": "pdf.js@5.0.375",
+      "destination": "wwwroot/library/pdf.js"
     }
   ]
 }

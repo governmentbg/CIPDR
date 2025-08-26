@@ -1,24 +1,59 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>dee689b0-63cb-43af-a71f-12d256d043f2</UserSecretsId>
-    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<UserSecretsId>dee689b0-63cb-43af-a71f-12d256d043f2</UserSecretsId>
+		<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <Protobuf Include="Protos\greet.proto" GrpcServices="Server" />
-  </ItemGroup>
+	<ItemGroup>
+		<Compile Remove="Certificates\**" />
+		<Content Remove="Certificates\**" />
+		<EmbeddedResource Remove="Certificates\**" />
+		<None Remove="Certificates\**" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Grpc.AspNetCore" Version="2.66.0" />
-    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="EPPlus" Version="7.6.0" />
+		<PackageReference Include="Grpc.AspNetCore" Version="2.71.0" />
+		<PackageReference Include="itext7" Version="7.2.6" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.10">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="IO.RegixClient" Version="8.0.8" />
+		<PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="3.1.32" />
+		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.2" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="OpenTelemetry.Api" Version="1.11.2" />
+		<PackageReference Include="Quartz" Version="3.14.0" />
+		<PackageReference Include="Quartz.Extensions.DependencyInjection" Version="3.14.0" />
+		<PackageReference Include="Quartz.Extensions.Hosting" Version="3.14.0" />
+		<PackageReference Include="Quartz.Plugins" Version="3.14.0" />
+		<PackageReference Include="Quartz.Serialization.Json" Version="3.14.0" />
+		<PackageReference Include="System.Linq.Dynamic.Core" Version="1.6.7" />
+		<PackageReference Include="System.Text.Json" Version="9.0.1" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\URegister.ServiceDefaults\URegister.ServiceDefaults.csproj" />
-  </ItemGroup>
-
+	<ItemGroup>
+		<ProjectReference Include="..\EDelivery\EDelivery.csproj" />
+		<ProjectReference Include="..\URegister.Infrastructure\URegister.Infrastructure.csproj" />
+		<ProjectReference Include="..\URegister.ServiceDefaults\URegister.ServiceDefaults.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<Protobuf Include="..\protos\integration.proto" GrpcServices="Server" />
+		<Protobuf Include="..\protos\register.proto" GrpcServices="Client" />
+		<Protobuf Include="..\protos\nomenclature.proto" GrpcServices="Client" />
+		<Protobuf Include="..\protos\user.proto" GrpcServices="Client" />
+	</ItemGroup>
+	<ItemGroup>
+	  <None Update="credentials">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	  <None Update="quartz_jobs.xml">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	</ItemGroup>
 </Project>

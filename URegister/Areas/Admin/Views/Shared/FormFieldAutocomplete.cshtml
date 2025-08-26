@@ -16,7 +16,8 @@
         GetValueRequest getValueRequest = new GetValueRequest
                 {
                     NomenclatureType = Model.NomenclatureType,
-                    NomenclatureCode = Model.Value
+                    NomenclatureCode = Model.Value,
+                    SkipDateCheck = Model.IsReadonly
                 };
 
         try
@@ -26,7 +27,7 @@
 
             if (response.ResultStatus.Code != ResultCodes.Ok)
             {
-                TempData[MessageConstant.ErrorMessage] = "Проблем с връзката, презаредете страницата";
+                TempData[MessageConstant.ErrorMessage] = MessageConstant.NetworkProblemReload;
             }
             else
             {

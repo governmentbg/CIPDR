@@ -134,6 +134,11 @@ namespace URegister.ObjectsCatalog.Migrations
                         .HasColumnName("id")
                         .HasComment("Идентификатор");
 
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_on")
+                        .HasComment("Дата на изтриване");
+
                     b.Property<string>("FieldData")
                         .IsRequired()
                         .HasColumnType("jsonb")
@@ -144,6 +149,11 @@ namespace URegister.ObjectsCatalog.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("field_type_id")
                         .HasComment("Тип на поле");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active")
+                        .HasComment("Дали записът е активен");
 
                     b.Property<bool>("IsCurrent")
                         .HasColumnType("boolean")
@@ -185,6 +195,82 @@ namespace URegister.ObjectsCatalog.Migrations
                         });
                 });
 
+            modelBuilder.Entity("URegister.ObjectsCatalog.Data.Models.FieldTemplate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id")
+                        .HasComment("Идентификатор");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("BlankIfNoValue")
+                        .HasColumnType("boolean")
+                        .HasColumnName("blank_if_no_value")
+                        .HasComment("Празен резултат ако няма стойност за полето");
+
+                    b.Property<string>("Content")
+                        .HasColumnType("text")
+                        .HasColumnName("content")
+                        .HasComment("Съдържание на бланка");
+
+                    b.Property<string>("ContentText")
+                        .HasColumnType("text")
+                        .HasColumnName("content_text")
+                        .HasComment("Съдържание на бланка текст");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by")
+                        .HasComment("Създадена от");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_on")
+                        .HasComment("Дата на създаване");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_on")
+                        .HasComment("Дата на изтриване");
+
+                    b.Property<int>("FieldTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("field_type_id")
+                        .HasComment("Идентификатор на поле");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active")
+                        .HasComment("Дали записът е активен");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("modified_by")
+                        .HasComment("Създадена от");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("modified_on")
+                        .HasComment("Дата на създаване");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("name")
+                        .HasComment("Име");
+
+                    b.HasKey("Id")
+                        .HasName("pk_field_templates");
+
+                    b.HasIndex("FieldTypeId")
+                        .HasDatabaseName("ix_field_templates_field_type_id");
+
+                    b.ToTable("field_templates", (string)null);
+                });
+
             modelBuilder.Entity("URegister.ObjectsCatalog.Data.Models.FieldType", b =>
                 {
                     b.Property<int>("Id")
@@ -195,10 +281,20 @@ namespace URegister.ObjectsCatalog.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_on")
+                        .HasComment("Дата на изтриване");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active")
+                        .HasComment("Дали записът е активен");
+
                     b.Property<bool>("IsComplexField")
                         .HasColumnType("boolean")
                         .HasColumnName("is_complex_field")
-                        .HasComment("Дали полето е комплексно");
+                        .HasComment("Дали полето е сложно");
 
                     b.Property<string>("Label")
                         .IsRequired()
@@ -244,6 +340,16 @@ namespace URegister.ObjectsCatalog.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_on")
+                        .HasComment("Дата на изтриване");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active")
+                        .HasComment("Дали записът е активен");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -272,6 +378,16 @@ namespace URegister.ObjectsCatalog.Migrations
                         .HasColumnName("step_id")
                         .HasComment("Идентификатор на стъпка");
 
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_on")
+                        .HasComment("Дата на изтриване");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active")
+                        .HasComment("Дали записът е активен");
+
                     b.HasKey("ServiceTypeId", "StepId")
                         .HasName("pk_service_type_steps");
 
@@ -299,6 +415,16 @@ namespace URegister.ObjectsCatalog.Migrations
                         .HasColumnName("configuration")
                         .HasComment("Конфигурация на стъпка");
 
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_on")
+                        .HasComment("Дата на изтриване");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active")
+                        .HasComment("Дали записът е активен");
+
                     b.Property<bool>("IsForOfficialUse")
                         .HasColumnType("boolean")
                         .HasColumnName("is_for_official_use")
@@ -310,7 +436,6 @@ namespace URegister.ObjectsCatalog.Migrations
                         .HasComment("Стъпката е достъпна при публична услуга");
 
                     b.Property<string>("Method")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("method")
@@ -323,8 +448,12 @@ namespace URegister.ObjectsCatalog.Migrations
                         .HasColumnName("name")
                         .HasComment("Име на стъпка");
 
+                    b.Property<Guid?>("RoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_id")
+                        .HasComment("Идентификатор на роля");
+
                     b.Property<string>("Type")
-                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("type")
@@ -368,11 +497,23 @@ namespace URegister.ObjectsCatalog.Migrations
             modelBuilder.Entity("URegister.ObjectsCatalog.Data.Models.Field", b =>
                 {
                     b.HasOne("URegister.ObjectsCatalog.Data.Models.FieldType", "FieldType")
-                        .WithMany()
+                        .WithMany("Fields")
                         .HasForeignKey("FieldTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_fields_field_types_field_type_id");
+
+                    b.Navigation("FieldType");
+                });
+
+            modelBuilder.Entity("URegister.ObjectsCatalog.Data.Models.FieldTemplate", b =>
+                {
+                    b.HasOne("URegister.ObjectsCatalog.Data.Models.FieldType", "FieldType")
+                        .WithMany()
+                        .HasForeignKey("FieldTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_field_templates_field_types_field_type_id");
 
                     b.Navigation("FieldType");
                 });
@@ -410,6 +551,11 @@ namespace URegister.ObjectsCatalog.Migrations
                     b.Navigation("GlobalParams");
 
                     b.Navigation("Rules");
+                });
+
+            modelBuilder.Entity("URegister.ObjectsCatalog.Data.Models.FieldType", b =>
+                {
+                    b.Navigation("Fields");
                 });
 
             modelBuilder.Entity("URegister.ObjectsCatalog.Data.Models.ServiceType", b =>

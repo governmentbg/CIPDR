@@ -1,6 +1,8 @@
 syntax = "proto3";
 import "common.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+import "google/protobuf/timestamp.proto";
 
 option csharp_namespace = "URegister.Users";
 
@@ -8,11 +10,28 @@ package user;
 
 service AppUserManager {
   rpc GetRoles (google.protobuf.Empty) returns (AppRoles);
-  rpc UpsertUser (UserData) returns (common.ResultStatus);
+  rpc UpsertUser (UserData) returns (UpsertUserResponse);
   rpc AuthorizeUser (AuthorizeUserData) returns (AppUser);
   rpc GetUserById (UserFilter) returns (UserResult);
   rpc GetUserList (UserFilter) returns (UserList);
+  rpc GetUserListForLocalAdmin (UserFilter) returns (UserList);
   rpc RemoveUserLogin (UserFilter) returns (common.ResultStatus);
+  rpc UserAddRole (UserRoleData) returns (common.ResultStatus);
+  rpc UserAddRoles (UserRolesData) returns (common.ResultStatus);
+  rpc UserRemoveRole (UserRoleData) returns (common.ResultStatus);
+  rpc HasAdministration(HasAdministrationRequest) returns (common.ResultStatus);
+  rpc GetUserAvailableAdministrationsId(UserAvaliableAdministrationsIdRequest) returns (UserAvaliableAdministrationsId);
+  rpc AddUserAdministration(UserClaimsDataRequest) returns (common.ResultStatus);
+  rpc UserRemoveAdministration(UserClaimsData) returns (common.ResultStatus);
+  rpc GetUsersDashboard(GetUsersRequest) returns (UsersInfoDashboard);
+  rpc GetClaimsByUserId(UserAvaliableAdministrationsIdRequest) returns (UserClaims);
+  rpc GetUserNamesByGuids(UserGuidsRequest) returns (UserNamesByGuidsResponse);
+  rpc GetUserGuidsByName(UserNameSearchRequest) returns (UserGuidsResponse);
+  rpc GetCurrentRegisterUsersCount(UserCountRequest) returns (UserCountResponse);
+  rpc GetAllRoles (GetAllRolesRequest) returns (AppRoles);
+  rpc UpsertRole(RoleData) returns (common.ResultStatus);
+  rpc DeleteRole(RoleData) returns (common.ResultStatus);
+  rpc UserReceiveEmails(UserReceiveEmailsRequest)  returns (UserReceiveEmailsResponse);
 }
 
 message UserData {
@@ -20,17 +39,39 @@ message UserData {
 	string pid = 2;
 	string user_name = 3;
 	optional string email = 4;
-	string first_name = 5;
-	string last_name = 6;
-	string administration_id = 7;
-	string administration = 8;
-	repeated RoleData roles = 9;
+	string phone_number = 5;
+	string first_name = 6;
+	string middle_name = 7;
+	string last_name = 8;
+	string administration_id = 9;
+	string administration = 10;
+	string position = 11;
+	bool enabled = 12;
+	repeated RoleData roles = 13;
+	optional bool receive_e_form_notification = 14;
+	optional string register_code = 15;
+}
+
+message UpsertUserResponse {
+	string userId = 1;
+	common.ResultStatus status = 2;
+}
+
+message UserRoleData {
+	string userId = 1;
+	RoleData role = 2;
+}
+
+message UserRolesData {
+	string userId = 1;
+	repeated RoleData roles = 2;
 }
 
 message RoleData {
 	string roleId = 1;
 	string label = 2;
 	optional string register_code = 3;
+	optional string name = 4;
 }
 
 message AppRoles {
@@ -64,6 +105,9 @@ message UserFilter {
 	optional string administration_id = 2;
 	int32 page = 3;
 	int32 page_size = 4;
+	common.DatatableRequest datatable_request = 5;
+	optional google.protobuf.BoolValue active_users = 6;
+	optional string register_code = 7;
 }
 
 message UserListData {
@@ -71,13 +115,113 @@ message UserListData {
 	string first_name = 2;
 	string last_name = 3;
 	string email = 4;
+	bool enabled = 5;
+	string role_name = 6;
+	string middle_name = 7;
 }
 
 message UserList {
 	repeated UserListData users = 1;
 	common.ResultStatus status = 2;
+	int32 user_count = 3;	
 }
 message UserResult {
 	UserData user = 1;
 	common.ResultStatus status = 2;
+}
+
+message HasAdministrationRequest {
+   string administration_id = 1;
+   string userId = 2;
+   string administrationName = 3;
+}
+
+message UserAvaliableAdministrationsIdRequest {
+	string user_id = 1;
+}
+
+message UserAvaliableAdministrationsId {
+	common.ResultStatus status = 1;
+	repeated UserClaimsData user_claims_data = 2;
+}
+
+message UserClaimsData {
+	int32 id = 1;
+	optional string user_id = 2;
+	optional string claim_type = 3;
+	string claim_value = 4;
+}
+
+message UserClaimsDataRequest {
+	string user_id = 1;
+	repeated UserClaimsData user_claims_data = 2;
+}
+
+message GetUsersRequest{
+	string administration_id = 1;
+	optional string register_code = 2;
+}
+
+message UsersInfoDashboard {
+	common.ResultStatus status = 1;
+	int32 users_count = 2;
+	int32 enable_users_count = 3;
+	int32 disable_users_count = 4;
+}
+
+message UserClaims{
+	common.ResultStatus status = 1;
+	repeated UserClaimsData user_claims_data = 2;
+}
+
+message UserGuidsRequest{
+	repeated string user_guids = 1;
+}
+
+message UserNamesByGuidsResponse{
+	repeated UserNamesByGuid user_names_by_guid = 1;
+	common.ResultStatus status = 2;
+}
+
+message UserNamesByGuid{
+	string guid = 1;
+	string first_name = 2;
+	string middle_name = 3;
+	string last_name = 4;
+}
+
+message UserNameSearchRequest {
+  string search_term = 1;
+}
+
+message UserGuidsResponse {
+  repeated string user_guids = 1;
+  common.ResultStatus status = 2;
+}
+
+message UserCountRequest {
+  string register_code = 1;
+  optional google.protobuf.Timestamp date_from = 2;
+  optional google.protobuf.Timestamp date_to = 3;
+}
+
+message UserCountResponse {
+  common.ResultStatus status = 1;
+  int32 active_users = 2;
+  int32 inactive_users = 3;
+  int32 created_users = 4;
+}
+
+message GetAllRolesRequest {
+	optional string search = 1;
+}
+
+message UserReceiveEmailsRequest {
+   string register_code = 1;	
+   string administration_id = 2;
+}
+
+message UserReceiveEmailsResponse{
+	common.ResultStatus status = 1;
+	repeated UserListData user_data = 2;
 }

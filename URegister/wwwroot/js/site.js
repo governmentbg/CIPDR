@@ -8,6 +8,7 @@ $(function () {
     });
 });
 
+
 function ShowModalDialog(title, html, wide, big) {
     let modalDialog = $('.master-modal').find('.modal-dialog');
     modalDialog.removeClass('wide');

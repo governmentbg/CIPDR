@@ -1,4 +1,5 @@
-﻿using URegister.Infrastructure.Data.Common;
+﻿using Microsoft.EntityFrameworkCore.Infrastructure;
+using URegister.Infrastructure.Data.Common;
 
 namespace Uregister.Users.Data
 {
@@ -8,5 +9,7 @@ namespace Uregister.Users.Data
         {
             Context = userDbContext;
         }
+
+        public DatabaseFacade Db { get => Context.Database; }
     }
 }

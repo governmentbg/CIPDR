@@ -1,14 +1,20 @@
 ﻿using DataTables.AspNet.Core;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 using URegister.Core.Contracts;
 using URegister.Core.Models.CurrentRegister;
+using URegister.Infrastructure.Constants;
 
 namespace URegister.Areas.Admin.Controllers
 {
     [Area("Admin")]
+    [Authorize(Roles = $"{UserRoles.Admin},{UserRoles.Manager}, {UserRoles.Editor}")]
+    [Display(Name = "Регистър")]
     public class RegisterController(
         INomenclatureClientService nomenclatureClient,
         IRegisterService registerService,
+        IRegisterClientService registerClient,
         ILogger<RegisterController> logger
     ) : BaseController
     {
@@ -16,6 +22,7 @@ namespace URegister.Areas.Admin.Controllers
         /// Списък регистри
         /// </summary>
         /// <returns></returns>
+        [Display(Name = "Зареждане на списък с регистри")]
         public IActionResult IndexAdministration()
         {
             return View();
@@ -28,57 +35,24 @@ namespace URegister.Areas.Admin.Controllers
         /// <param name="filter"></param>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Извличане на списък с администрации към регистър")]
         public async Task<IActionResult> GetAdministrationList(IDataTablesRequest request)
         {
-            return await registerService.GetAdministrationList(request);
-        }
-
-        /// <summary>
-        /// Редакция на администрация към регистър
-        /// </summary>
-        /// <param name="nomenclatureType"></param>
-        /// <returns></returns>
-        [HttpGet]
-        public async Task<IActionResult> EditAdministration(Guid administrationId)
-        {
-            await nomenclatureClient.SetViewBagRegister(ViewData);
-            var model = await registerService.GetAdministration(administrationId);
-            return View(nameof(EditAdministration), model);
-        }
-        
-        /// <summary>
-        /// Промяна на администрация
-        /// </summary>
-        /// <param name="model">Модел на администрация</param>
-        /// <returns></returns>
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditAdministration(AdministrationVM model)
-        {
-            if (ModelState.IsValid)
+            // return await registerService.GetAdministrationList(request);
+            var filter = new Core.Models.Register.AdministrationFilterVM
             {
-                try
-                {
-                    await registerService.SaveAdministration(model);
-                    SetSuccessMessage("Успешно добавена администрация");
-                    return RedirectToAction("IndexAdministration");
-                }
-                catch (Exception ex)
-                {
-                    {
-                        logger.LogError(ex, "Проблем при запис на администрация");
-                        SetErrorMessage($"Проблем при запис!{Environment.NewLine}{ex.Message}");
-                    }
-                }
-            }
-            return View(nameof(EditAdministration), model);
+                RegisterId = await registerService.GetCurrentRegisterId()
+            };
+            return await registerClient.GetAdministrationList(request, filter);
         }
 
+      
         /// <summary>
         /// Страница за редакция на регистър
         /// </summary>
         /// <returns></returns>
         [HttpGet]
+        [Display(Name = "Зареждане на форма за редакция на регистър")]
         public async Task<IActionResult> Edit()
         {
             await nomenclatureClient.SetViewBagRegister(ViewData);
@@ -92,6 +66,7 @@ namespace URegister.Areas.Admin.Controllers
         /// <param name="model">Модел на регистъра</param>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Редактиране на регистър")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(RegisterVM model)
         {
@@ -116,41 +91,31 @@ namespace URegister.Areas.Admin.Controllers
         }
 
         /// <summary>
-        /// Стартиране на регистър
+        /// Списък от оторозирани лица
         /// </summary>
         /// <returns></returns>
-        [HttpGet]
-        public async Task<IActionResult> Start()
+        [Display(Name = "Зареждане на списък с упълномощени лица")]
+        public IActionResult IndexPerson(Guid administrationId)
         {
-            var model = new RegisterStartVM();
-            ViewBag.Id_ddl = await registerService.GetRegisterNotStartedDdl();
-            return View(nameof(Start), model);
+            var filter = new PersonFilterVM
+            {
+                AdministrationId = administrationId,
+            };
+            return View(filter);
         }
-
         /// <summary>
-        /// Запис стартиране на регистър
+        /// Списък на оторозирани лица към администрация
         /// </summary>
-        /// <param name="model">Модел на стартиране на регистър</param>
+        /// <param name="request"></param>
+        /// <param name="filter"></param>
         /// <returns></returns>
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Start(RegisterStartVM model)
+        [Display(Name = "Извличане на списък с упълномощени лица към администрация")]
+        public async Task<IActionResult> GetPersonList(IDataTablesRequest request, Core.Models.Register.PersonFilterVM filter)
         {
-            try
-            {
-                await registerService.StartRegister(model.Id);
-                SetSuccessMessage("Успешно стартиране на регистър");
-                return RedirectToAction("Index", "Home", new { area = string.Empty });
-            }
-            catch (Exception ex)
-            {
-                {
-                    logger.LogError(ex, "Проблем при запис на данни за регистър");
-                    SetErrorMessage($"Проблем при стартиране на регистър!{Environment.NewLine}{ex.Message}");
-                }
-            }
-            ViewBag.Id_ddl = await registerService.GetRegisterNotStartedDdl();
-            return View(nameof(Start), model);
+            return await registerClient.GetPersonList(request, filter);
+            //  return await registerService.GetPersonList(request, filter.AdministrationId);
         }
+
     }
 }

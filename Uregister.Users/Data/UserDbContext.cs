@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Uregister.Users.Data.Identity;
+using Uregister.Users.Data.Models;
 using URegister.Infrastructure.Data.Configuration;
 
 namespace Uregister.Users.Data
@@ -28,7 +29,7 @@ namespace Uregister.Users.Data
 
             builder.ApplyConfiguration(new DataProtectionKeysConfiguration());
         }
-
+        public DbSet<UserEMailReceive>  UserEMailRecives { get; set; }
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
     }
 }

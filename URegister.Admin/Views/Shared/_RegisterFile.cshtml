@@ -1,0 +1,45 @@
+﻿@using URegister.Core.Models.Register
+@model RegisterFileVM
+@{
+    var currentHtmlPrefix = ViewData.TemplateInfo.HtmlFieldPrefix;
+    var filesId = $"{currentHtmlPrefix}.files";
+    var indexPath = currentHtmlPrefix.GetIndexPath();
+    var display = string.IsNullOrEmpty(Model.FileName) ? "display:none" : string.Empty;
+}
+<div class="fields item-template">
+    <input type="hidden" name="@indexPath" value="@Model.Index" />
+    @if (!string.IsNullOrEmpty(Model.NomenclatureType))
+    {
+        <div class='four wide field'>
+            @Html.EditorFor(x => x.CodeableConceptCode, "DropDown", new { Ddl = Model.CodeableConceptCode })
+        </div>
+        <div class='twelve wide field'>
+            @Html.EditorFor(x => x.Description, "String")
+        </div>
+    }
+    else
+    {
+        <div class='six wide field'>
+            @Html.EditorFor(x => x.Description, "String")
+        </div>
+    }
+    <div class='ten wide field'>
+        <label>&nbsp; </label>
+        <div class="ui file action input">
+            <label for="@filesId" class="ui blue icon button">
+                <i class="upload icon"></i>
+                Изберете файл
+            </label>
+            <input hidden type="file" class="upload-file-input" name="@filesId" id="@filesId" accept="*.xlsx;*.pdf;*.docx">
+            <input hidden asp-for="@Model.MetaFileId" class="upload-file-id" />
+            <button type="button" class='ui icon button selected-file-button' style="max-width: calc(100% - 140px); @display" onclick="downloadRegisterFile(this)">
+                <i class="download icon"></i>
+                <span class='selected-file' style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; padding-right: 2px;">@Model.FileName</span>
+            </button>
+            <button type="button" class='ui icon button remove-item'>
+                <i class="delete icon remove-register-file"></i>
+            </button>
+            </div>
+        <span id="uploadProgress"></span>
+    </div>
+</div>

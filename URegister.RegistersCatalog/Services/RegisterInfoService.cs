@@ -1,9 +1,15 @@
-﻿using Amazon.Runtime.Internal;
-using Grpc.Core;
+﻿using Google.Protobuf.Collections;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.EntityFrameworkCore;
-using System;
+using System.Linq.Dynamic.Core;
+using System.Linq.Expressions;
+using System.Security.AccessControl;
+using URegister.Common;
 using URegister.Infrastructure.Constants;
+using URegister.Infrastructure.Contracts;
+using URegister.Infrastructure.Data.Common;
 using URegister.Infrastructure.Extensions;
+using URegister.Infrastructure.Helper;
 using URegister.NomenclaturesCatalog;
 using URegister.RegistersCatalog.Contracts;
 using URegister.RegistersCatalog.Data;
@@ -18,9 +24,31 @@ namespace URegister.RegistersCatalog.Services
     /// <param name="nomenclatureGrpcClient">grpc клиент за номенклатури</param>
     public class RegisterInfoService(
        IRegistersCatalogRepository repo,
-       NomenclatureGrpc.NomenclatureGrpcClient nomenclatureGrpcClient
-    ) : IRegisterInfoService
+       NomenclatureGrpc.NomenclatureGrpcClient nomenclatureGrpcClient,
+       IObjectStoreService objectStoreService,
+       IHttpRequester httpRequester,
+       IConfiguration configuration,
+       IAuditInfo auditInfo,
+       ILogger<RegisterInfoService> logger) : IRegisterInfoService
     {
+
+        private Expression<Func<Register, RegisterItem>> RegisterToItem()
+        {
+            return r => new RegisterItem
+            {
+                Id = r.Id,
+                Type = r.Type,
+                Code = r.Code,
+                LegalBasis = r.LegalBasis,
+                Name = r.Name,
+                Description = r.Description,
+                EntryType = r.TypeEntry,
+                IdentitySecurityLevel = r.IdentitySecurityLevel,
+                BaseAddress = r.BaseAddress,
+                Deployed = r.Deployed,
+                StatusId = r.StatusId
+            };
+        }
 
         /// <summary>
         /// Списък регистри за checklist
@@ -53,6 +81,57 @@ namespace URegister.RegistersCatalog.Services
                              .ToListAsync();
         }
 
+        /// <summary>
+        /// Списък с всички активни администрации.
+        /// </summary>
+        /// <returns></returns>
+
+        public async Task<List<Administration>> GetAdministrations()
+        {
+            return await repo.AllReadonly<Administration>().OrderBy(a => a.Name).ThenBy(a => a.Uic).ToListAsync();
+        }
+
+        public async Task<Administration> GetAdministrationById(Guid administrationId)
+        {
+            return await repo.AllReadonly<Administration>().FirstOrDefaultAsync(x => x.Id == administrationId);
+        }
+        public async Task<Administration> GetAdminAdministration()
+        {
+            return await repo.AllReadonly<Administration>().FirstOrDefaultAsync(x => x.Uic == "000000000");
+        }
+        
+        public async Task<ICollection<RegisterItem>> GetAdministrationRegistries(Guid administrationId)
+        {
+            var globalAdminAdministration =
+                await repo.AllReadonly<Administration>().FirstOrDefaultAsync(a => a.Id == administrationId) ?? new Administration();
+
+            Expression<Func<RegisterAdministration, bool>> predicate;
+
+            if (globalAdminAdministration.Uic == "000000000")
+            {
+                predicate = x => true;
+            }
+            else
+            {
+                predicate = x => x.AdministrationId == administrationId;
+            }
+
+            List<RegisterItem> administrationRegistries = await repo.AllReadonly<RegisterAdministration>()
+                 .TagWith(nameof(GetAdministrationRegistries))
+                 .Where(predicate)
+                 .Include(x => x.Register)
+                 .Select(x => new RegisterItem
+                 {
+                     Id = x.Register.Id,
+                     Code = x.Register.Code,
+                     Name = x.Register.Name
+                 })
+                 .GroupBy(x=> x.Id)
+                 .Select(g=>g.First())
+                 .ToListAsync();
+
+            return administrationRegistries;
+        }
 
         /// <summary>
         /// Страницирани данни за datatables с регистри
@@ -65,22 +144,16 @@ namespace URegister.RegistersCatalog.Services
             nomenclatureRequest.NomenclatureTypes.Add(InternalNomenclatureTypes.RegisterType);
             nomenclatureRequest.NomenclatureTypes.Add(InternalNomenclatureTypes.RegisterEntryType);
             nomenclatureRequest.NomenclatureTypes.Add(InternalNomenclatureTypes.RegisterIdentitySecurityLevel);
+            nomenclatureRequest.NomenclatureTypes.Add(InternalNomenclatureTypes.RegisterStatus);
             var nomenclatureTypes = (await nomenclatureGrpcClient.GetNomenclaturePublicAsync(nomenclatureRequest))
                                     .NomenclatureTypes
                                     .ToList();
 
             var query = repo.AllReadonly<Register>()
-                            .Select(x => new RegisterListItem
-                            {
-                                Id = x.Id,
-                                Code = x.Code,
-                                Name = x.Name,
-                                Description = x.Description,
-                                LegalBasis = x.LegalBasis,
-                                Type = x.Type,
-                                EntryType = x.TypeEntry,
-                                IdentitySecurityLevel = x.IdentitySecurityLevel,
-                            });
+                .TagWith(nameof(GetRegisterFullList))
+                .IgnoreQueryFilters();
+                            
+
             if (!string.IsNullOrEmpty(request.Code))
             {
                 query = query.Where(x => EF.Functions.ILike(x.Code, request.Code.ToPaternSearch()));
@@ -93,14 +166,70 @@ namespace URegister.RegistersCatalog.Services
             {
                 query = query.Where(x => EF.Functions.ILike(x.Description, request.Description.ToPaternSearch()));
             }
+            if (!string.IsNullOrEmpty(request.Type))
+            {
+                query = query.Where(x => x.Type == request.Type);
+            }
+            if (!string.IsNullOrEmpty(request.TypeEntry))
+            {
+                query = query.Where(x => x.TypeEntry == request.TypeEntry);
+            }
+            if (request.StatusId > 0)
+            {
+                query = query.Where(x => x.StatusId == request.StatusId);
+            }
+            if (!string.IsNullOrEmpty(request.AdministrationId))
+            {
+                Guid firlterAdministationIdGuid = new Guid(request.AdministrationId);
+                query = query.Where(x => x.RegisterAdministrations.Any(a => a.AdministrationId == firlterAdministationIdGuid));
+            }
+            if (!string.IsNullOrEmpty(request.IdentitySecurityLevel))
+            {
+                query = query.Where(x => x.IdentitySecurityLevel == request.IdentitySecurityLevel);
+            }
+            if (request.DateFrom != null)
+            {
+                DateTime dateFrom = request.DateFrom.ToDateTime();//it's UTC
+                query = query.Where(x => x.CreatedOn >= dateFrom);
+            }
+            if (request.DateTo != null)
+            {
+                DateTime dateTo = request.DateTo.ToDateTime().AddDays(1);//it's UTC
+                query = query.Where(x => x.CreatedOn <= dateTo);
+            }
+            if (request.DeployedOnly)
+            {
+                query = query.Where(x => x.Deployed);
+            }
+
+            var queryRegisterListItem = query.Select(x => new RegisterListItem
+            {
+                Id = x.Id,
+                Code = x.Code,
+                Name = x.Name,
+                Description = x.Description,
+                LegalBasis = x.LegalBasis,
+                Type = x.Type,
+                EntryType = x.TypeEntry,
+                IdentitySecurityLevel = x.IdentitySecurityLevel,
+                BaseAddress = x.BaseAddress,
+                Status = x.StatusId.ToString(),
+                Deployed = x.Deployed,
+                SoleAdministrationId = x.RegisterAdministrations.Count != 1 ? 
+                    null : x.RegisterAdministrations.Single().AdministrationId.ToString(),
+                SoleAdministrationName = x.RegisterAdministrations.Count != 1 ?
+                null : x.RegisterAdministrations.Single().Administration.Name
+            });
+
             var countAll = 0;
-            (query, countAll) = await request.DataTableRequest.GetFilteredData(query);
-            var data = await query.ToListAsync();
+            (queryRegisterListItem, countAll) = await request.DataTableRequest.GetFilteredData(queryRegisterListItem);
+            var data = await queryRegisterListItem.ToListAsync();
             data.ForEach(x =>
             {
                 x.Type = GetNomenclatureValue(nomenclatureTypes, InternalNomenclatureTypes.RegisterType, x.Type);
                 x.EntryType = GetNomenclatureValue(nomenclatureTypes, InternalNomenclatureTypes.RegisterEntryType, x.EntryType);
                 x.IdentitySecurityLevel = GetNomenclatureValue(nomenclatureTypes, InternalNomenclatureTypes.RegisterIdentitySecurityLevel, x.IdentitySecurityLevel);
+                x.Status = GetNomenclatureValue(nomenclatureTypes, InternalNomenclatureTypes.RegisterStatus, x.Status);
             });
 
             return (data, countAll);
@@ -109,7 +238,8 @@ namespace URegister.RegistersCatalog.Services
         private async Task<string> GetNewRegNumber()
         {
             var regNumber = await repo.AllReadonly<Register>()
-                                          .MaxAsync(x => (string?)x.Code);
+                .IgnoreQueryFilters()
+                .MaxAsync(x => (string?)x.Code);
             var num = 0;
             if (!string.IsNullOrEmpty(regNumber))
             {
@@ -120,6 +250,66 @@ namespace URegister.RegistersCatalog.Services
             return $"{RegisterConstants.CodePrefix}{num:00000}";
         }
 
+        public async Task SaveRegisterInfo(RegisterItem request)
+        {
+            var register = await repo.All<Register>()
+                                  .Where(x => x.Id == request.Id)
+                                  .FirstAsync();
+            register.Name = request.Name;
+            register.Description = request.Description;
+            register.LegalBasis = request.LegalBasis;
+            register.Type = request.Type;
+            register.TypeEntry = request.EntryType;
+            register.IdentitySecurityLevel = request.IdentitySecurityLevel;
+            SetBaseAddress(register);
+            await SaveRegisterFiles(
+                register.Id,
+                (int)RegisterFileSourceType.Register,
+                register.Id.ToString(),
+                request.RegisterFiles.ToList()
+            );
+            register.ModifiedOn = DateTime.UtcNow;
+            register.ModifiedByUserId = auditInfo?.UserId ?? Guid.Empty;
+            await repo.SaveChangesAsync();
+        }
+
+        private async Task SaveRegisterFiles(int registerId, int sourceType, string sourceId, List<RegisterFileItem> registerFiles)
+        {
+            foreach (var file in registerFiles.Where(x => x.SourceType == sourceType).ToList())
+            {
+                var savedFile = await repo.All<RegisterFileMetadata>()
+                                          .Where(x => x.Id == file.MetaFileId.ToGuid())
+                                          .FirstAsync();
+                savedFile.IsActive = true;
+                savedFile.FileSourceTypeId = sourceType;
+                savedFile.SourceId = sourceId;
+                savedFile.RegisterId = registerId;
+                savedFile.Description = file.Description;
+                savedFile.NomenclatureType = file.NomenclatureType;
+                savedFile.CodeableConceptCode = file.CodeableConceptCode;
+                savedFile.ModifiedOn = DateTime.UtcNow;
+                savedFile.ModifiedByUserId = auditInfo?.UserId ?? Guid.Empty;
+            }
+            await DeleteRegisterFiles(sourceType, sourceId, registerFiles);
+        }
+        private async Task DeleteRegisterFiles(int sourceType, string sourceId, List<RegisterFileItem> registerFiles)
+        {
+            var savedFiles = await repo.All<RegisterFileMetadata>()
+                                      .Where(x => x.FileSourceTypeId == sourceType &&
+                                                  x.SourceId == sourceId)
+                                      .ToListAsync();
+            foreach (var file in savedFiles)
+            {
+                if (!registerFiles.Any(x => x.MetaFileId == file.Id.ToString()))
+                {
+                    file.IsActive = false;
+                    file.DeletedOn = DateTime.UtcNow;
+                    file.ModifiedOn = DateTime.UtcNow;
+                    file.ModifiedByUserId = auditInfo?.UserId ?? Guid.Empty;
+                }
+            }
+        }
+
         /// <summary>
         /// Добавяне на регистър
         /// </summary>
@@ -128,11 +318,19 @@ namespace URegister.RegistersCatalog.Services
         /// <exception cref="ArgumentException"></exception>
         public async Task AddRegister(RegisterItem request)
         {
+            if (!request.Administrations.Any())
+            {
+                await SaveRegisterInfo(request);
+                return;
+            }
+
             var administrationItem = request.Administrations.First();
             Register? register = new();
             var administration = await repo.All<Administration>()
+                                           .Include(x => x.People)
                                            .Where(x => x.Uic == administrationItem.Uic)
                                            .FirstOrDefaultAsync();
+
             if (request.Id > 0)
             {
                 var administrationId = administration?.Id;
@@ -144,54 +342,114 @@ namespace URegister.RegistersCatalog.Services
                 {
                     throw new ArgumentException($"Не намирам запис за регистър с Id {request.Id}");
                 }
-                if (register.RegisterAdministrations.Any())
+                if (register.RegisterAdministrations.Any() && administrationItem.Id == Guid.Empty.ToString())
                 {
                     throw new ArgumentException($"Администрация с ЕИК/БУЛСТАТ {administrationItem.Uic} вече е добавена");
                 }
+                //if (!register.RegisterAdministrations.Any() && administrationItem.Id != Guid.Empty.ToString())
+                //{
+                //    throw new ArgumentException($"Не намирам администрация с ЕИК/БУЛСТАТ {administrationItem.Uic}");
+                //}
             }
             else
             {
                 register.Code = await GetNewRegNumber();
                 await repo.AddAsync(register);
             }
+            SetBaseAddress(register);
             register.Name = request.Name;
             register.Description = request.Description;
             register.LegalBasis = request.LegalBasis;
             register.Type = request.Type;
             register.TypeEntry = request.EntryType;
             register.IdentitySecurityLevel = request.IdentitySecurityLevel;
+            register.ModifiedOn = DateTime.UtcNow;
+            register.ModifiedByUserId = auditInfo?.UserId ?? Guid.Empty;
 
             if (administration == null)
             {
                 administration = new Administration
                 {
                     Uic = administrationItem.Uic,
-                    Name = register.Name,
+                    Name = administrationItem.Name,
                 };
                 await repo.AddAsync(administration);
             }
-            var registerAdministration = new RegisterAdministration
+            else
             {
-                LegalBasis = register.LegalBasis,
-                AdministrationId = administration.Id
-            };
+                administration.Name = administrationItem.Name;
+            }
+            var registerAdministration = register.RegisterAdministrations.FirstOrDefault();
+
+            if (registerAdministration == null)
+            {
+                registerAdministration = new RegisterAdministration
+                {
+                    LegalBasis = register.LegalBasis,
+                    AdministrationId = administration.Id,
+                    Register = register
+                };
+                await repo.AddAsync(registerAdministration);
+            }
+            registerAdministration.ModifiedOn = DateTime.UtcNow;
+            registerAdministration.ModifiedByUserId = auditInfo?.UserId ?? Guid.Empty;
+
+            foreach (var person in administration.People)
+            {
+                if (administrationItem.Persons.Any(x => x.Id == person.Id))
+                {
+                    person.IsActive = false;
+                    person.ModifiedOn = DateTime.UtcNow;
+                    person.ModifiedByUserId = auditInfo?.UserId ?? Guid.Empty;
+
+                }
+
+            }
             foreach (var personItem in administrationItem.Persons)
             {
-                administration.People.Add(new AdministrationPerson
+                var person = administration.People.Where(x => x.Id == personItem.Id).FirstOrDefault();
+                if (person == null)
                 {
-                    FirstName = personItem.FirstName,
-                    MiddleName = personItem.MiddleName,
-                    LastName = personItem.LastName,
-                    Email = personItem.Email,
-                    Phone = personItem.Phone,
-                    Position = personItem.Position,
-                    Type = personItem.Type,
-                    AdministrationId = administration.Id,
-                    Register = register,
-                });
+                    person = new AdministrationPerson
+                    {
+                        Register = register
+                    };
+                    await repo.AddAsync(person);
+                }
+                person.FirstName = personItem.FirstName;
+                person.MiddleName = personItem.MiddleName;
+                person.LastName = personItem.LastName;
+                person.Email = personItem.Email;
+                person.Phone = personItem.Phone;
+                person.Position = personItem.Position;
+                person.Type = personItem.Type;
+                person.AdministrationId = administration.Id;
+                person.IsActive = true;
+                person.ModifiedOn = DateTime.UtcNow;
+                person.ModifiedByUserId = auditInfo?.UserId ?? Guid.Empty;
             }
-            register.RegisterAdministrations.Add(registerAdministration);
+            await SaveRegisterFiles(
+                register.Id,
+                (int)RegisterFileSourceType.Register,
+                register.Id.ToString(),
+                request.RegisterFiles.ToList()
+            );
+            await SaveRegisterFiles(
+                register.Id,
+                (int)RegisterFileSourceType.Administration,
+                registerAdministration.Id.ToString(),
+                request.RegisterFiles.ToList()
+            );
             await repo.SaveChangesAsync();
+        }
+
+        private void SetBaseAddress(Register register)
+        {
+            if (string.IsNullOrEmpty(register.BaseAddress))
+            {
+                register.BaseAddress = configuration.GetValue<string>("Infrastructure:RegisterBaseUrl");
+                register.BaseAddress = register.BaseAddress?.Replace("RegisterCode", register.Code);
+            }
         }
 
         /// <summary>
@@ -209,6 +467,7 @@ namespace URegister.RegistersCatalog.Services
                                 Uic = x.Administration.Uic,
                                 Name = x.Administration.Name,
                                 LegalBasis = x.LegalBasis,
+                                AdministrationId = x.AdministrationId.ToString()
                             });
             var countAll = 0;
             (query, countAll) = await request.DataTableRequest.GetFilteredData(query);
@@ -239,13 +498,13 @@ namespace URegister.RegistersCatalog.Services
         /// <returns></returns>
         public async Task<(List<PersonListItem>, int)> GetPersonList(PersonListRequest request)
         {
-            var administrationId = Guid.Parse(request.AdministrationId);
-            var administration = await repo.AllReadonly<RegisterAdministration>()
-                                           .Where(x => x.Id == administrationId)
+            var registerAdministrationId = Guid.Parse(request.RegisterAdministrationId);
+            var registerAdministration = await repo.AllReadonly<RegisterAdministration>()
+                                           .Where(x => x.Id == registerAdministrationId)
                                            .FirstAsync();
             var nomenclatureRequest = new NomenclaturePublicRequest
             {
-                RegisterId = administration.RegisterId,
+                RegisterId = registerAdministration.RegisterId,
             };
             nomenclatureRequest.NomenclatureTypes.Add(InternalNomenclatureTypes.PersonType);
             var nomenclatureTypes = (await nomenclatureGrpcClient.GetNomenclaturePublicAsync(nomenclatureRequest))
@@ -253,7 +512,8 @@ namespace URegister.RegistersCatalog.Services
                                     .ToList();
 
             var query = repo.AllReadonly<AdministrationPerson>()
-                            .Where(x => x.AdministrationId == administrationId)
+                            .Where(x => x.AdministrationId == registerAdministration.AdministrationId &&
+                                        x.RegisterId == registerAdministration.RegisterId)
                             .Select(x => new PersonListItem
                             {
                                 Id = x.Id,
@@ -279,20 +539,10 @@ namespace URegister.RegistersCatalog.Services
         /// <returns>регистър</returns>
         public async Task<RegisterItem> GetRegisterForAddAdministration(int registerId)
         {
-            var register = await repo.AllReadonly<Register>()
-                               .Where(x => x.Id == registerId)
-                               .FirstAsync();
-            return new RegisterItem
-            {
-                Id = register.Id,
-                Type = register.Type,
-                Code = register.Code,
-                LegalBasis = register.LegalBasis,
-                Name = register.Name,
-                Description = register.Description,
-                EntryType = register.TypeEntry,
-                IdentitySecurityLevel = register.IdentitySecurityLevel,
-            };
+            return await repo.AllReadonly<Register>()
+                        .Where(x => x.Id == registerId)
+                        .Select(RegisterToItem())
+                        .FirstAsync();
         }
 
         public async Task<RegisterItem> CreateRegister()
@@ -302,26 +552,35 @@ namespace URegister.RegistersCatalog.Services
                 Code = await GetNewRegNumber()
             };
         }
+        private async Task<List<RegisterFileItem>> GetRegisterFiles(int soutceType, string sourceId)
+        {
+            return await repo.AllReadonly<RegisterFileMetadata>()
+                             .Where(x => x.FileSourceTypeId == soutceType &&
+                                         x.SourceId == sourceId)
+                             .Select(x => new RegisterFileItem
+                             {
+                                 SourceType = x.FileSourceTypeId,
+                                 SourceId = x.SourceId,
+                                 MetaFileId = x.Id.ToString(),
+                                 Description = x.Description,
+                                 FileName = x.FileName,
+                                 NomenclatureType = x.NomenclatureType,
+                                 CodeableConceptCode = x.CodeableConceptCode,
+                             })
+                             .ToListAsync();
+        }
 
         public async Task<RegisterItem> GetRegister(int registerId)
         {
             var register = await repo.AllReadonly<Register>()
+                             .IgnoreQueryFilters() 
                              .Include(x => x.RegisterAdministrations)
                              .ThenInclude(x => x.Administration)
-                             .ThenInclude(x => x.People)
+                             .ThenInclude(x => x.People.Where(p => p.RegisterId == registerId))
                              .Where(x => x.Id == registerId)
                              .FirstAsync();
-            var result = new RegisterItem
-            {
-                Id = register.Id,
-                Type = register.Type,
-                Code = register.Code,
-                LegalBasis = register.LegalBasis,
-                Name = register.Name,
-                Description = register.Description,
-                EntryType = register.TypeEntry,
-                IdentitySecurityLevel = register.IdentitySecurityLevel,
-            };
+            var result = RegisterToItem().Compile().Invoke(register);
+            result.RegisterFiles.AddRange(await GetRegisterFiles((int)RegisterFileSourceType.Register, registerId.ToString()));
             foreach (var administration in register.RegisterAdministrations)
             {
                 var administrationItem = new AdministrationItem
@@ -344,10 +603,216 @@ namespace URegister.RegistersCatalog.Services
                         Email = x.Email,
                     }));
                 result.Administrations.Add(administrationItem);
+                result.RegisterFiles.AddRange(await GetRegisterFiles((int)RegisterFileSourceType.Administration, administration.Id.ToString()));
             }
             return result;
         }
+        public async Task<RegisterItem?> GetRegisterByCode(GetRegisterByCodeRequest request)
+        {
+            return await repo.AllReadonly<Register>().TagWith(nameof(GetRegisterByCode))
+                    .Select(RegisterToItem())
+                    .FirstOrDefaultAsync(r => r.Code == request.RegisterCode);
+        }
+       
+        public async Task<string> AddMasterPersonRecordIndex(MasterPersonRecordIndexAddMessage request)
+        {
+            var result = string.Empty;
+            var mpri = await repo.All<MasterPersonRecordsIndex>()
+                                 .Include(x => x.RegisterPersonRecords)
+                                 .Where(x => x.Pid == request.Pid &&
+                                             x.PidType == request.PidType)
+                                 .FirstOrDefaultAsync();
 
+            if (mpri == null)
+            {
+                mpri = new MasterPersonRecordsIndex
+                {
+                    Id = Guid.NewGuid(),
+                    Pid = request.Pid,
+                    PidType = request.PidType,
+                    Name = request.Name,
+                };
+                await repo.AddAsync(mpri);
+            }
+            else
+            {
+                mpri.Name = request.Name;
+            }
+
+            if (!mpri.RegisterPersonRecords.Any(x => x.RegisterId == request.RegisterId && x.RoleId == request.RoleId))
+            {
+                mpri.RegisterPersonRecords.Add(
+                    new RegisterPersonRecord
+                    {
+                        RegisterId = request.RegisterId,
+                        MasterPersonRecordId = mpri.Id,
+                        RoleId = request.RoleId
+                    }
+                );
+            }
+            await repo.SaveChangesAsync();
+            result = mpri.Id.ToString();
+            return result;
+        }
+
+        public async Task<List<MPRILisItemMessage>> GetMasterPersonRecordIndex(GetMasterPersonRecordIndexMessage request)
+        {
+            Expression<Func<MasterPersonRecordsIndex, bool>> pidTypeExp = x => true;
+            if (!string.IsNullOrEmpty(request.PidType))
+            {
+                pidTypeExp = x => x.PidType == request.PidType;
+            }
+
+            return await repo.All<MasterPersonRecordsIndex>()
+                                 .Include(x => x.RegisterPersonRecords)
+                                 .Where(x => x.Pid == request.Pid)
+                                 .Where(pidTypeExp)
+                                 .Select(x => new MPRILisItemMessage
+                                 {
+                                     Id = x.Id.ToString(),
+                                     Name = x.Name,
+                                     PidType = x.PidType,
+                                     Pid = x.Pid
+                                 })
+                                 .ToListAsync();
+        }
+
+        public async Task<List<MPRILisItemMessage>> GetMasterPersonRecordIndexList(List<Guid> ids)
+        {
+            return await repo.All<MasterPersonRecordsIndex>()
+                                .Include(x => x.RegisterPersonRecords)
+                                .Where(x => ids.Contains(x.Id))
+                                .Select(x => new MPRILisItemMessage
+                                {
+                                    Id = x.Id.ToString(),
+                                    Name = x.Name,
+                                    PidType = x.PidType,
+                                    Pid = x.Pid
+                                })
+                                .ToListAsync();
+        }
+
+        /// <summary>
+        /// Премахване на администрация от регистър
+        /// </summary>
+        /// <param name="registerAdministrationId">Идентификатор на регистърната администрация</param>
+        /// <returns></returns>
+        public async Task<ResultStatus> RemoveAdministrationFromRegister(Guid registerAdministrationId)
+        {
+            try
+            {
+                await repo.DeleteAsync<RegisterAdministration>(registerAdministrationId);
+                await repo.SaveChangesAsync();
+                return CommonGrpcHelper.CreateStatusOK();
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, $"Проблем при премахване на администрация към регистър с идентификатор {registerAdministrationId} в {nameof(RemoveAdministrationFromRegister)}");
+                return new ResultStatus
+                {
+                    Code = ResultCodes.InternalServerError,
+                    Message = "Проблем при премахване на администрация към регистър"
+                };
+            }
+        }
+
+        public async Task<IList<AppAdministration>> GetAdministrationsByIds(RepeatedField<string> ids, int registerId)
+        {
+            IList<Guid> parsedIds = new List<Guid>();
+
+            foreach (var item in ids)
+            {
+                if (Guid.TryParse(item, out Guid id))
+                {
+                    parsedIds.Add(id);
+                }
+            }
+
+            if (parsedIds.Count == 0)
+            {
+                throw new ArgumentException("Невалидни идентификатори на администрации");
+            }
+
+            var administrations = await repo.AllReadonly<Administration>()
+                .Where(x => parsedIds.Contains(x.Id) && 
+                            x.RegisterAdministrations.Any(ra => ra.RegisterId == registerId))
+                .Select(x => new
+                {
+                    x.Id,
+                    x.Name
+                })
+                .ToListAsync();
+
+            return administrations.Select(x => new AppAdministration()
+            {
+                Id = x.Id.ToString(),
+                Name = x.Name
+            })
+            .ToList();
+        }
+
+        public async Task AddRegisterStatus(RegisterStatusItem request)
+        {
+            await repo.AddAsync(new RegisterStatus
+            {
+                Id = Guid.Parse(request.Id),
+                RegisterId = request.RegisterId,
+                StatusId = request.StatusId,
+                IsActive = request.IsActive,
+                Remark = request.Remark,
+                ModifiedOn = DateTime.UtcNow,
+                ModifiedByUserId = auditInfo?.UserId ?? Guid.Empty,
+            });
+            var register = await repo.All<Register>()
+                                     .Where(x => x.Id == request.RegisterId) 
+                                     .IgnoreQueryFilters()
+                                     .FirstAsync();
+            register.StatusId = request.StatusId;
+            register.IsActive = request.IsActive;
+            register.ModifiedOn = DateTime.UtcNow;
+            register.ModifiedByUserId = auditInfo?.UserId ?? Guid.Empty;
+            await SaveRegisterFiles(
+                     register.Id,
+                     (int)RegisterFileSourceType.RegisterStatus,
+                     request.Id,
+                     request.RegisterFiles.ToList()
+                 );
+
+            await repo.SaveChangesAsync();
+            if (request.StatusId == (int)RegisterStatusType.Register && !register.Deployed)
+            {
+                await CreateRegister(register);
+            }
+        }
+
+        public async Task<Guid> UploadFile(byte[] filesAsBytes, string fileName, string contentType, int sourceTypeId, Guid sourceId)
+        {
+            var fileId = await objectStoreService.SaveObject(fileName, filesAsBytes, contentType, null);
+            var fileMetadata = new RegisterFileMetadata
+            {
+                FileId = Guid.Parse(fileId),
+                FileName = fileName,
+                FileSourceTypeId = sourceTypeId,
+                SourceId = sourceId.ToString(),
+                IsActive = true,
+                ModifiedOn = DateTime.UtcNow,
+                ModifiedByUserId = auditInfo?.UserId ?? Guid.Empty,
+
+            };
+            await repo.AddAsync(fileMetadata);
+            await repo.SaveChangesAsync();
+            return fileMetadata.Id;
+        }
+        private async Task CreateRegister(Register register)
+        {
+            var baseAddress = configuration.GetValue<string>("Infrastructure:BaseUrl") ?? string.Empty;
+            var pass = Guid.NewGuid().ToString("d");
+            var result = await httpRequester.PostAsync(string.Empty, baseAddress, new { name = register.Code, pass });
+            if (result.IsSuccessStatusCode)
+            {
+                logger.LogError($"CreateRegister {baseAddress} {result.StatusCode} {result.Content}");
+            }
+        }
         public async Task SetRegisterAsStarted(int registerId)
         {
             var register = await repo.All<Register>()
@@ -358,39 +823,230 @@ namespace URegister.RegistersCatalog.Services
             await repo.SaveChangesAsync();
         }
 
-        public async Task<string> AddMasterPersonRecordsIndex(MasterPersonRecordsIndexAddMessage request)
+        public async Task<List<AdministrationUicItem>> GetAdministrationUicList()
         {
-            var result = string.Empty;
-            var mpri = await repo.All<MasterPersonRecordsIndex>()
-                                 .Include(x => x.RegisterPersonRecords) 
-                                 .Where(x => x.Pid == request.Pid &&
-                                             x.PidType == request.PidType)
-                                 .FirstOrDefaultAsync();
+            var result = new List<AdministrationUicItem>();
+            var administrations = await repo.All<Administration>()
+                                            .IgnoreQueryFilters()
+                                            .Include(x => x.RegisterAdministrations)
+                                            .ToListAsync();
 
-            if (mpri == null)
+            foreach (var administration in administrations)
             {
-                mpri = new MasterPersonRecordsIndex
+                var adminictrationItem = new AdministrationUicItem
                 {
-                    Id = Guid.NewGuid(), 
-                    Pid = request.Pid,
-                    PidType = request.PidType,
-                    Name = request.Name,
+                    AdministrationId = administration.Id.ToString(),
+                    Name = administration.Name,
+                    Uic = administration.Uic,
                 };
-                await repo.AddAsync(mpri);
+                IList<int> registerIds = administration.RegisterAdministrations.Where(x => x.IsActive).Select(x => x.RegisterId).ToList();
+                adminictrationItem.RegisterIds.AddRange(registerIds);
+                result.Add(adminictrationItem);
             }
-            if (!mpri.RegisterPersonRecords.Any(x => x.RegisterId == request.RegisterId))
-            {
-                mpri.RegisterPersonRecords.Add(
-                    new RegisterPersonRecord
-                    {
-                        RegisterId = request.RegisterId,
-                        MasterPersonRecordId = mpri.Id
-                    }
-                );
-            }
-            await repo.SaveChangesAsync();
-            result = mpri.Id.ToString();
             return result;
+        }
+
+        public async Task<List<ServiceItem>> GetServiceList()
+        {
+            var result = new List<ServiceItem>();
+            result.AddRange(await repo.AllReadonly<Data.Models.RegisterService>()
+                                      .Where(x => !string.IsNullOrEmpty(x.EFormCode)) 
+                                      .Select(x => new ServiceItem
+                                      {
+                                          RegisterId = x.RegisterId,
+                                          EformCode = x.EFormCode,
+                                          ServiceId = x.ServiceId,
+                                          IsActive = x.IsActive,
+                                          RegisterCode = x.Register.Code
+                                      })
+                                      .ToListAsync()
+                );
+            return result;
+        }
+
+        public async Task SaveService(ServiceItem request) {
+            var service = await repo.All<Data.Models.RegisterService>()
+                                    .Where(x => x.RegisterId == request.RegisterId && 
+                                                x.ServiceId == request.ServiceId)
+                                    .FirstOrDefaultAsync();
+            if (service == null)
+            {
+                service = new Data.Models.RegisterService
+                {
+                    RegisterId = request.RegisterId,
+                    ServiceId = request.ServiceId
+                };
+                await repo.AddAsync(service);
+            }
+            service.IsActive = request.IsActive;
+            service.EFormCode = request.EformCode;
+            service.ModifiedOn = DateTime.UtcNow;
+            service.ModifiedByUserId = auditInfo?.UserId ?? Guid.Empty;
+            await repo.SaveChangesAsync();
+        }
+
+        public async Task<(RegisterFileMetadata, byte[], string)> DownloadFile(Guid id)
+        {
+            var metaFile = await repo.AllReadonly<RegisterFileMetadata>()
+                                     .Where(x => x.Id == id)
+                                     .FirstAsync();
+            (var data, var contentType) = await objectStoreService.GetObject(metaFile.FileId.ToString());
+            return (metaFile, data, contentType);
+        }
+        public async Task<List<RegisterStatusItem>> GetRegisterStatusList(int registerId)
+        {
+            return await repo.AllReadonly<RegisterStatus>()
+                                      .Where(x => x.RegisterId == registerId)
+                                      .Select(x => new RegisterStatusItem
+                                      {
+                                          Id = x.Id.ToString(),
+                                          RegisterId = x.RegisterId,
+                                          IsActive = x.IsActive,
+                                          Remark = x.Remark,
+                                          StatusId = x.StatusId,
+                                          ModifiedBy = x.ModifiedByUserId.ToString(),
+                                          ModifiedOn = x.ModifiedOn.ToUniversalTime().ToTimestamp()
+                                      })
+                                      .ToListAsync();
+        }
+
+        public async Task<AppAdministration> GetAdministrationNameByUic(StringValue uic)
+        {
+            Administration foundAdministration = await repo.AllReadonly<Administration>()
+                .FirstOrDefaultAsync(x => x.Uic == uic.Value);
+
+            if (foundAdministration == null)
+            {
+                return null;
+            }
+
+            return new AppAdministration
+            {
+                Id = foundAdministration.Id.ToString(),
+                Name = foundAdministration.Name,
+                Uic = foundAdministration.Uic
+            };
+        }
+
+        public async Task SaveCalendarDay(CalendarDayItem request)
+        {
+            var calendarDay = await repo.All<CalendarDay>()
+                                        .IgnoreQueryFilters()
+                                        .Where(x => x.Id == request.Id)
+                                        .FirstOrDefaultAsync();
+            if (calendarDay == null)
+            {
+                calendarDay = new CalendarDay();
+                await repo.AddAsync(calendarDay);
+            }
+            calendarDay.CurrentDate = request.CurrentDate.ToDateTime().ConvertUtcToBGTime().Date;
+            calendarDay.KindId = request.KindId;
+            calendarDay.Description = request.Description;
+            calendarDay.IsActive = true;
+            await repo.SaveChangesAsync();
+        }
+
+        public async Task<CalendarDayItem> GetCalendarDay(int id)
+        {
+            return await repo.All<CalendarDay>()
+                             .IgnoreQueryFilters()
+                             .Where(x => x.Id == id)
+                             .Select(x => new CalendarDayItem
+                             {
+                               Id =  x.Id,
+                               CurrentDate = x.CurrentDate.ToUniversalTime().ToTimestamp(),
+                               KindId = x.KindId,
+                               Description = x.Description,
+                             } )
+                             .FirstAsync();
+            
+        }
+
+        /// <summary>
+        /// Списък с календар
+        /// </summary>
+        /// <param name="request">идентификатор на регистър</param>
+        /// <returns>администрации</returns>
+        public async Task<(List<CalendarDayItem>, int)> GetCalendarDayList(CalendarDayListRequest request)
+        {
+            DateTime dateFrom = request.FromDate.ToDateTime().ConvertUtcToBGTime().Date;
+            DateTime dateTo = request.ToDate.ToDateTime().ConvertUtcToBGTime();
+
+            var query = repo.AllReadonly<CalendarDay>()
+                            .Where(x => dateFrom <= x.CurrentDate &&
+                                        x.CurrentDate <= dateTo);
+
+            var countAll = 0;
+            (query, countAll) = await request.DataTableRequest.GetFilteredData(query);
+            var data = await query.ToListAsync();
+            var nomenclatureRequest = new NomenclaturePublicRequest();
+            nomenclatureRequest.NomenclatureTypes.Add(InternalNomenclatureTypes.CalendarDayKind);
+            var nomenclatureTypes = (await nomenclatureGrpcClient.GetNomenclaturePublicAsync(nomenclatureRequest))
+                                    .NomenclatureTypes
+                                    .ToList();
+            var result = data.Select(x => new CalendarDayItem
+            {
+                Kind = GetNomenclatureValue(nomenclatureTypes, InternalNomenclatureTypes.CalendarDayKind, x.KindId.ToString()),
+                Id = x.Id,
+                CurrentDate = x.CurrentDate.ToUniversalTime().ToTimestamp(),
+                KindId = x.KindId,
+                Description = x.Description
+            })
+            .ToList();
+            return (result, countAll);
+        }
+
+        public async Task<DateTime> CalcWorkDays (DateTime dateFrom, int days) 
+        {
+            var calendarDays = await  repo.AllReadonly<CalendarDay>()
+                                          .Where(x => dateFrom <= x.CurrentDate)
+                                          .ToListAsync();
+            for (int i = 0; i < days; i++)
+            {
+                bool isAddedDay = false;
+                while (!isAddedDay)
+                {
+                    dateFrom = dateFrom.AddDays(1);
+                    var calendarDay = calendarDays.Where(x => x.CurrentDate == dateFrom).FirstOrDefault();
+                    if (calendarDay?.KindId == CalendarDayKind.WorkDay)
+                        break;
+                    if (dateFrom.DayOfWeek != DayOfWeek.Saturday && dateFrom.DayOfWeek != DayOfWeek.Sunday)
+                        break;
+                }
+            }
+            return dateFrom;
+        }
+
+        public async Task<RegisterStatusItem> GetRegisterStatus(Guid id)
+        {
+            var registerStatus = await repo.AllReadonly<RegisterStatus>()
+                                           .Where(x => x.Id == id)
+                                           .FirstAsync();
+            var result = new RegisterStatusItem
+            {
+                Id = registerStatus.Id.ToString(),
+                StatusId = registerStatus.StatusId,
+                Remark = registerStatus.Remark,
+                IsActive = registerStatus.IsActive,
+                ModifiedOn = registerStatus.ModifiedOn.ToUniversalTime().ToTimestamp(),
+                ModifiedBy = registerStatus.ModifiedByUserId.ToString(),
+                RegisterId = registerStatus.RegisterId,
+            };
+            result.RegisterFiles.AddRange(await repo.AllReadonly<RegisterFileMetadata>()
+                                                    .Where(x => x.SourceId == id.ToString() &&
+                                                                x.FileSourceTypeId == (int)RegisterFileSourceType.RegisterStatus)
+                                                    .Select(x => new RegisterFileItem
+                                                    {
+                                                        SourceId = x.SourceId,
+                                                        CodeableConceptCode = x.CodeableConceptCode,
+                                                        FileName= x.FileName,
+                                                        Description = x.Description,
+                                                        MetaFileId = x.Id.ToString(),
+                                                        NomenclatureType = x.NomenclatureType,
+                                                        SourceType = x.FileSourceTypeId,
+                                                    })
+                                                    .ToListAsync());
+            return result;   
         }
     }
 }

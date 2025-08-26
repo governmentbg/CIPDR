@@ -1,0 +1,76 @@
+﻿@using Microsoft.AspNetCore.Mvc.TagHelpers
+@model URegister.Infrastructure.Model.RegisterForms.CustomTableViewViewModel
+@{
+    ViewData["Title"] = $"Табличен вид за справка '{Model.Title}'";
+}
+@Html.HiddenFor(m => m.ServiceId)
+@Html.HiddenFor(m => m.CustomViewId)
+@Html.HiddenFor(m => m.Title)
+@Html.AntiForgeryToken()
+<div class="ui form">
+    
+</div>
+<div class="ui grid">
+    <div class="column">
+        <div class="ui fluid container basic clearing">
+            <div class="ui accordion">
+                <div class="title">
+                    <i class="dropdown icon"></i>
+                    Филтър
+                </div>
+                <div class="content">
+                    <div class="column ui segment green">
+                        <div class="ui form">
+                            <div class="fields">
+                                <div class="two wide field">
+                                    @Html.EditorFor(model => model.IncomingDateFrom, "DateTime")
+                                </div>
+                                <div class="two wide field">
+                                    @Html.EditorFor(model => model.IncomingDateTo, "DateTime")
+                                </div>
+                                <div class="four wide field">
+                                    @Html.EditorFor(model => model.IncomingNumber, "String")
+                                </div>
+                                <div class="four wide field">
+                                    @Html.EditorFor(model => model.RegisterNumber, "String")
+                                </div>
+                                <div class="two wide field">
+                                    @Html.EditorFor(model => model.SubmitterId, "String")
+                                </div>
+                                <div class="two wide field">
+                                    @Html.EditorFor(model => model.MprId, "String")
+                                </div>
+                            </div>
+                            <div class="fields">
+                                <div class="six wide field">
+                                    @Html.EditorFor(model => model.FieldName, "DropDown")
+                                </div>
+                                <div class="four wide field">
+                                    @Html.EditorFor(model => model.SearchPattern, "String")
+                                </div>
+                                <div class="three wide field"></div>
+                                <div class="three wide right aligned field custom buttons">
+                                    <div class="ui fluid container basic clearing">
+                                        <a href="javascript:LoadItems()" class="ui primary button right floated" style="margin-top:1.5rem">
+                                            <i class="icon search"></i>
+                                            Търси
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <table id="registeredEntities"
+               class="ui celled striped very compact table" style="width:100%; padding:0px;"
+               data-url="@Url.Action("GetRegisteredEntitiesList", "Process")">
+        </table>
+    </div>
+</div>
+@* @await Html.PartialAsync("_BackButton", @Url.Action("Index", "Home", new { area = "" })) *@
+@section Scripts
+{
+    <script src="~/js/admin/process/registeredEntitiesList.js" asp-append-version="true"></script>
+}

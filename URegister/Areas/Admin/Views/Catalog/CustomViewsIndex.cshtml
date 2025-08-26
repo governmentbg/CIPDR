@@ -1,0 +1,16 @@
+﻿@{
+    ViewData["Title"] = "Списък на потребителските справки";
+}
+
+<table id="custom-views" class="ui celled striped very compact table" style="width:100%; padding:0px;"
+       data-url="@Url.Action("GetCustomViews", "Catalog")"
+       data-add-url="@Url.Action("UpsertCustomView", "Catalog")">
+</table>
+@* </div> *@
+@* </div> *@
+@{                
+    await Html.RenderPartialAsync("_ConfirmAction");
+}
+@section Scripts {
+    <script src="~/js/admin/catalog/customViewList.js" asp-append-version="true"></script>
+}

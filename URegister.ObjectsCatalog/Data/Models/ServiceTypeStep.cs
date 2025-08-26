@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using URegister.Infrastructure.Data.Common;
 
 namespace URegister.ObjectsCatalog.Data.Models
 {
@@ -7,7 +8,7 @@ namespace URegister.ObjectsCatalog.Data.Models
     /// </summary>
     [PrimaryKey(nameof(ServiceTypeId), nameof(StepId))]
     [Comment("Стъпки към вид услуга")]
-    public class ServiceTypeStep
+    public class ServiceTypeStep : SoftDeletable
     {
         /// <summary>
         /// Идентификатор на вид услуга

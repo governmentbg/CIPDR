@@ -2,13 +2,12 @@
 function showToast(classType, toastMessage) {
     let displayTime = 5000;
     $.toast({
-        class: classType,
+        class: classType === 'warning' ? 'inverted yellow' : classType,
         message: toastMessage,
         displayTime: displayTime,
         compact: false
     });
 }
-
 
 $(function () {
     if ($('#ServerErrorMessage').val()) {
@@ -28,40 +27,6 @@ $(function () {
     if ($('#ServerSuccessMessage').val()) {
         showToast("success", $('#ServerSuccessMessage').val());
         $('#ServerSuccessMessage').val('');
-    }
-});
-
-
-$(function () {
-    if ($('#SwalServerErrorMessage').val()) {
-        Swal.fire(
-            "Грешка",
-            $('#SwalServerErrorMessage').val(),
-            'error',
-        )
-        $('#SwalServerErrorMessage').val('');
-    }
-});
-
-$(function () {
-    if ($('#SwalServerWarningMessage').val()) {
-        Swal.fire(
-            "Предупреждение",
-            $('#SwalServerWarningMessage').val(),
-            'warning',
-        )
-        $('#SwalServerWarningMessage').val('');
-    }
-});
-
-$(function () {
-    if ($('#SwalServerSuccessMessage').val()) {
-        Swal.fire({
-            title: 'Резултат',
-            text: $('#SwalServerSuccessMessage').val(),
-            confirmButtonText: "OK",
-        });
-        $('#SwalServerSuccessMessage').val('')
     }
 });
 

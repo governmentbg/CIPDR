@@ -15,7 +15,6 @@ namespace URegister.Infrastructure.Services
     public class HttpRequester : IHttpRequester
     {
         public string ApiKey { get; set; }
-        public bool IgnoreSSLErrors { get; set; } = false;
 
         public string BasicAuth { get; set; }
 
@@ -35,19 +34,19 @@ namespace URegister.Infrastructure.Services
             clientFactory = _clientFactory;
         }
 
-        public async Task<HttpResponseMessage> DeleteAsync(string url)
+        public async Task<HttpResponseMessage> DeleteAsync(string? httpClientName, string url)
         {
-            return await Request(url, HttpMethod.Delete);
+            return await Request(httpClientName, url, HttpMethod.Delete);
         }
 
-        public async Task<HttpResponseMessage> DeleteAsync(string url, object data)
+        public async Task<HttpResponseMessage> DeleteAsync(string? httpClientName, string url, object data)
         {
-            return await Request(url, HttpMethod.Delete, data);
+            return await Request(httpClientName, url, HttpMethod.Delete, data);
         }
 
-        public async Task<T> GetAsync<T>(string url)
+        public async Task<T> GetAsync<T>(string? httpClientName, string url)
         {
-            var response = await Request(url, HttpMethod.Get);
+            var response = await Request(httpClientName, url, HttpMethod.Get);
             var content = await response.Content.ReadAsStringAsync();
 
             if (response.IsSuccessStatusCode)
@@ -59,39 +58,49 @@ namespace URegister.Infrastructure.Services
                 new ApplicationException(response.ReasonPhrase));
         }
 
-        public async Task<HttpResponseMessage> GetAsync(string url, object data = null)
+        public async Task<byte[]> GetFileAsync(string? httpClientName, string url)
         {
-            return await Request(url, HttpMethod.Get, data);
+            var response = await Request(httpClientName, url, HttpMethod.Get);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadAsByteArrayAsync();
+            };
+            throw new InvalidOperationException("Unexpected error!",
+                new ApplicationException(response.ReasonPhrase));
+        }
+        public async Task<HttpResponseMessage> GetAsync(string? httpClientName, string url, object data = null)
+        {
+            return await Request(httpClientName, url, HttpMethod.Get, data);
         }
 
-        public async Task<HttpResponseMessage> PostAsync(string url, object data)
+        public async Task<HttpResponseMessage> PostAsync(string? httpClientName, string url, object data)
         {
-            return await Request(url, HttpMethod.Post, data);
+            return await Request(httpClientName, url, HttpMethod.Post, data);
         }
 
-        public async Task<HttpResponseMessage> PutAsync(string url, object data = null)
+        public async Task<HttpResponseMessage> PutAsync(string? httpClientName, string url, object data = null)
         {
-            return await Request(url, HttpMethod.Put, data);
+            return await Request(httpClientName, url, HttpMethod.Put, data);
         }
 
-        public async Task<HttpResponseMessage> PostFileAsync(string url, object data)
+        public async Task<HttpResponseMessage> PostFileAsync(string? httpClientName, string url, object data)
         {
-            return await RequestFile(url, HttpMethod.Post, data);
+            return await RequestFile(httpClientName, url, HttpMethod.Post, data);
         }
 
-        private async Task<HttpResponseMessage> Request(string url, HttpMethod method, object data = null)
+        private async Task<HttpResponseMessage> Request(string? httpClientName, string url, HttpMethod method, object data = null)
         {
             var request = new HttpRequestMessage(method, url);
             request.Version = new Version(2, 0);
             HttpClient client;
 
-            if (IgnoreSSLErrors)
+            if (string.IsNullOrEmpty(httpClientName))
             {
-                client = clientFactory.CreateClient("insecureClient");
+                client = clientFactory.CreateClient();
             }
             else
             {
-                client = clientFactory.CreateClient();
+                client = clientFactory.CreateClient(httpClientName);
             }
 
             if (data != null)
@@ -134,19 +143,19 @@ namespace URegister.Infrastructure.Services
             return await client.SendAsync(request);
         }
 
-        private async Task<HttpResponseMessage> RequestFile(string url, HttpMethod method, object data = null)
+        private async Task<HttpResponseMessage> RequestFile(string? httpClientName, string url, HttpMethod method, object data = null)
         {
             var request = new HttpRequestMessage(method, url);
             request.Version = new Version(2, 0);
             HttpClient client;
 
-            if (IgnoreSSLErrors)
+            if (string.IsNullOrEmpty(httpClientName))
             {
-                client = clientFactory.CreateClient("insecureClient");
+                client = clientFactory.CreateClient();
             }
             else
             {
-                client = clientFactory.CreateClient();
+                client = clientFactory.CreateClient(httpClientName);
             }
 
             if (data != null)

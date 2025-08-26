@@ -12,7 +12,7 @@
         </legend>
         <div id="StepList">
             <a href="@Url.Action("Flowchart", "Service", new { serviceId = @Model.Id })" id="flowcart" class="ui secondary button">Диаграма</a>
-            <div id="main-container" data-index="@dataIndex" data-prefix="@htmlFieldPrefix">
+            <div id="main-container"  class="step-container" data-index="@dataIndex" data-prefix="@htmlFieldPrefix">
                 @for (int i = 0; i < Model.Steps.Count; i++)
                 {
                     Model.Steps[i].Index = i;

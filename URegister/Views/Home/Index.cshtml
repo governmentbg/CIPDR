@@ -1,6 +1,154 @@
-﻿@{
-    ViewData["Title"] = "Начална страница";
+﻿@using System.Globalization
+@using URegister.Core.Contracts
+@using URegister.Infrastructure.Constants
+@model URegister.Core.Models.Process.DashboardVM
+
+@inject IRegisterService registerService;
+@{
+    CultureInfo bgCulture = new CultureInfo("bg-BG");
+    var register = await registerService.GetCurrentRegister();
+    var baseUrl = Model.RegisterBaseURL;
+    ViewData["Title"] = $"{register.Name}";
+}
+@Html.AntiForgeryToken()
+<div class="ui button primary" id="toggleRegisters">
+    <i class="caret down icon"></i> Регистри в '@Model.CurrentAdministrationName'
+</div>
+<span />
+@if (Model.UserAssignedProcessCount <= 0)
+{
+    <div class="ui button primary" onclick="location.href='@Url.Action("GenerateItems", "Home")'">
+        Изтегли заявени услуги за обработка
+    </div>
+}
+@if (Model.UserAssignedProcessCount > 0)
+{
+    <div class="ui segment">
+        <h3>Заявени услуги за обработка</h3>
+        <table id="processes_assigned"
+               class="ui celled striped very compact table" style="width:100%; padding:0px;"
+               data-url="@Url.Action("GetProcessListAssigned", "Process", new {area="Admin"})"
+               data-applicant="@((register.TypeEntry == RegisterTypeEntry.Applicant).ToString().ToLower())">
+        </table>
+    </div>
 }
 
-<div class="ui grid">
+
+<div id="registersContainer" style="display: none;">
+    <table id="registersTable"
+           class="ui celled striped very compact table" style="width:100%; padding:0px; margin-bottom: 20px;"
+           data-url="@Url.Action("GetRegisters", "Home")" data-baseurl="@baseUrl">
+    </table>
 </div>
+<div class="container">
+    <div class="ui one horizontal cards">
+        @if (User.IsInRole(UserRoles.Editor) || User.IsInRole(UserRoles.Manager) || User.IsInRole(UserRoles.Registrator))
+        {
+            <div class="basic card">
+                <div class="content">
+                    <div class="header">
+                        <a href="@Url.Action("Index", "Process", new { Area = "Admin" })" style="color: black !important;">
+                            <i class="layer group icon"></i> Заявени услуги
+                        </a>
+                    </div>
+                    <div class="description">
+                        <div class="ui multiple progress" data-total="@Model.Process.ProcessAllCount" data-value="@Model.Process.ProcessSentCount,@Model.Process.ProcessInProgressCount,@Model.Process.ProcessRegisteredCount,@Model.Process.ProcessRefusedCount,@Model.Process.ProcessCertificateCount">
+                            <div class="blue bar pointable hover-black" onclick="loadProcesses(1, this)">
+                                <div class="progress"></div>
+                            </div>
+                            <div class="yellow bar pointable hover-black" onclick="loadProcesses(2, this)">
+                                <div class="progress"></div>
+                            </div>
+                            <div class="green bar pointable hover-black" onclick="loadProcesses(3, this)">
+                                <div class="progress"></div>
+                            </div>
+                            <div class="red bar pointable hover-black" onclick="loadProcesses(4, this)">
+                                <div class="progress"></div>
+                            </div>
+                            <div class="orange bar pointable hover-black" onclick="loadProcesses(5, this)">
+                                <div class="progress"></div>
+                            </div>
+                            <div class="label">
+                                <a href="javascript:void(0);" class="hover-black" onclick="loadProcesses(-1, this)">Всички @Model.Process.ProcessAllCount.ToString("N0", bgCulture)</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        @if (User.IsInRole(UserRoles.Admin))
+        {
+            <div class="basic card">
+                <div class="content">
+                    <div class="header">
+                        <a href="@Url.Action("Index", "Admin", new { Area = "Admin" })" style="color: black !important;">
+                            <i class="users icon"></i> Потребители в "@Model.Users.AdminisrationName"
+                        </a>
+                    </div>
+                    <div class="description">
+                        <div id="usersDashboardInfo" class="ui multiple progress" data-total="@Model.Users.UsersCount" data-value="@Model.Users.EnableUsersCount,@Model.Users.DisableUsersCount">
+                            <div class="green bar pointable hover-black" onclick="loadUsers(true, this)">
+                                <div class="progress"></div>
+                            </div>
+                            <div class="red bar pointable hover-black" onclick="loadUsers(false, this)">
+                                <div class="progress"></div>
+                            </div>
+                            <div class="label">
+                                <a href="javascript:void(0);" class="hover-black" onclick="loadUsers(null, this)">Всички @Model.Users.UsersCount.ToString("N0", bgCulture)</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        @if (User.IsInRole(UserRoles.GlobalAdmin))
+        {
+            <div class="basic card">
+                <div class="content">
+                    <div class="header">
+                        <a href="@Url.Action("FormIndex", "Catalog", new { Area = "Admin" })" style="color: black !important;">
+                            <i class="table icon"></i> Форми
+                        </a>
+                    </div>
+                    <div class="description">
+                        <div id="formsDashboardInfo" class="ui multiple progress" data-total="@Model.Form.FormAllCount" data-value="@Model.Form.FormApprovedCount,@Model.Form.FormWaitingApprovalCount">
+                            <div class="green bar pointable hover-black" onclick="loadForms(2, this)">
+                                <div class="progress"></div>
+                            </div>
+                            <div class="red bar pointable hover-black" onclick="loadForms(1, this)">
+                                <div class="progress"></div>
+                            </div>
+                            <div class="label">
+                                <a href="javascript:void(0);" class="hover-black" onclick="loadForms(-1, this)">Всички @Model.Form.FormAllCount.ToString("N0", bgCulture)</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+    </div>
+</div>
+
+<table id="processesDashboard"
+       class="ui table table-content hoverable-table black" style="width:100%; padding:0px; display:none;"
+       data-url="@Url.Action("GetProcessListDashboard", "Process", new { Area = "Admin" })">
+</table>
+
+<table id="usersDashboard"
+       class="ui table table-content hoverable-table black" style="width:100%; padding:0px; display:none;"
+       data-url="@Url.Action("GetUsersDashboard", "Admin", new { Area = "Admin" })">
+</table>
+
+<table id="formsDashboard"
+       class="ui table table-content hoverable-table black" style="width:100%; padding:0px; display:none;"
+       data-url="@Url.Action("GetFormListDashboard", "Catalog", new { Area = "Admin" })">
+</table>
+
+
+@section Scripts {
+    <script src="~/js/home/index.js"></script>
+    <script src="~/js/admin/process/processCommon.js" asp-append-version="true"></script>
+    <script src="~/js/admin/process/processAssignedList.js" asp-append-version="true"></script>
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

@@ -1,9 +1,17 @@
-﻿@using URegister.Core.Models.Process
-@model ProcessFilterVM 
+﻿@using URegister.Core.Contracts
+@using URegister.Core.Models.Process
+@using URegister.Infrastructure.Constants
+@inject IRegisterService registerService;
+@model ProcessFilterVM
 @{
-    ViewData["Title"] = "Заявени услуги";
+    ViewData["Title"] = Model.ForDeAssignUser ? "Връщане на заявенa услуга за обработка" : "Заявени услуги";
+    var register = await registerService.GetCurrentRegister();
+    var addUrl = Model.ForDeAssignUser ? string.Empty : @Url.Action("Add", "Process");
+    var canAddOldRecords = User.IsInRole(UserRoles.Admin) && !Model.ForDeAssignUser;
 }
-
+@Html.Hidden("canAddOldRecords", canAddOldRecords)
+@Html.AntiForgeryToken()
+@Html.HiddenFor(x => x.ForDeAssignUser)
 <div class="ui grid">
     <div class="column">
         <div class="ui fluid container basic clearing">
@@ -17,21 +25,40 @@
                         <div class="ui form">
                             <div class="fields">
                                 <div class="three wide field">
-                                    @Html.EditorFor(model => model.IncomingNumber)
-                                </div>
-                                <div class="three wide field">
-                                    @Html.EditorFor(model => model.IncomingDate, "DateTime")
-                                </div>
-                                <div class="three wide field">
-                                    @Html.EditorFor(model => model.RegisterNumber)
-                                </div>
-                                <div class="three wide field">
                                     @Html.EditorFor(model => model.ServiceId, "DropDownInt")
                                 </div>
                                 <div class="three wide field">
                                     @Html.EditorFor(model => model.StepId, "DropDownInt")
                                 </div>
-                                <div class="ui two wide right aligned field custom buttons">
+                                <div class="three wide field">
+                                    @Html.EditorFor(model => model.IncomingDateFrom, "DateTime")
+                                </div>
+                                <div class="three wide field">
+                                    @Html.EditorFor(model => model.IncomingDateTo, "DateTime")
+                                </div>
+                                <div class="three wide field">
+                                    @Html.EditorFor(model => model.IncomingNumber)
+                                </div>
+                            </div>
+                            <div class="fields">
+                                <div class="three wide field">
+                                    @Html.EditorFor(model => model.StatusId, "DropDownInt", new { Ddl = ViewData[$"{NomenclatureTypes.Status}_ddl"] })
+                                </div>
+                                <div class="three wide field">
+                                    @Html.EditorFor(model => model.RegisterNumber)
+                                </div>
+                                <div class="three wide field">
+                                    @Html.EditorFor(model => model.PersonIdentifier, "PersonIdentifierPid")
+                                </div>
+
+                                <div class="three wide field">
+                                    @if (register.TypeEntry == RegisterTypeEntry.Applicant)
+                                    {
+                                        @Html.EditorFor(model => model.PersonIdentifierApplicant, "PersonIdentifierPid")
+                                    }
+                                </div>
+
+                                <div class="ui four wide right aligned field custom buttons">
                                     <div class="ui fluid container basic clearing">
                                         <a href="javascript:LoadProcesses()" class="ui primary button right floated" style="margin-top:1.5rem">
                                             <i class="icon search"></i>
@@ -48,12 +75,32 @@
         <table id="processes"
                class="ui celled striped very compact table" style="width:100%; padding:0px;"
                data-url="@Url.Action("GetProcessList", "Process")"
-               data-add-url="@Url.Action("Add", "Process")">
+               data-add-url="@addUrl"
+               data-applicant="@((register.TypeEntry == RegisterTypeEntry.Applicant).ToString().ToLower())">
         </table>
+    </div>
+</div>
+<div class="ui small modal confirm-action">
+    @Html.AntiForgeryToken()
+    <div class="header">Потвърди действието</div>
+    <div class="content">
+        <p id="confirmActionText">Сигурни ли сте, че искате да изтриете елемента?</p>
+        <div class="ui form">
+            <div class="field required">
+                <label for="reasonForRejection">Причина за прекратяване</label>
+                <textarea id="reasonForRejection" rows="3"></textarea>
+            </div>
+        </div>
+    </div>
+    <div class="actions">
+        <div class="ui positive right labeled icon button">Продължи<i class="check icon"></i></div>
+        <div class="ui negative button">Откажи</div>
     </div>
 </div>
 @await Html.PartialAsync("_BackButton", @Url.Action("Index", "Home", new { area = "" }))
 @section Scripts
 {
-    <script src="~/js/Admin/Process/processList.js" asp-append-version="true"></script>
+    <script src="~/js/admin/process/processCommon.js" asp-append-version="true"></script>
+    <script src="~/js/admin/process/processList.js" asp-append-version="true"></script>
+    <script src="~/js/admin/process/processHistoryList.js" asp-append-version="true"></script>
 }

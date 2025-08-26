@@ -1,0 +1,24 @@
+﻿@{
+    ViewData["Title"] = "Бланки";
+}
+
+<div class="ui grid">
+    <div class="column">
+        <div class="column">
+            <table id="field_template"
+                class="ui celled striped very compact table" style="width:100%; padding:0px;"
+                   data-url="@Url.Action("GetTemplateList", "PublicFieldTemplate")"
+                   data-add-url="@Url.Action("Add", "PublicFieldTemplate")">
+             </table>
+        </div>
+    </div>
+</div>
+@await Html.PartialAsync("_BackButton", @Url.Action("Index", "Home", new { area = "" }))
+@{
+    await Html.RenderPartialAsync("_ConfirmAction");
+}
+
+@section Scripts
+{
+    <script src="~/js/admin/public_field_template/templateList.js" asp-append-version="true"></script>
+}

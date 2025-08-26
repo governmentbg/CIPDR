@@ -1,23 +1,35 @@
+using URegister.AuditLog;
+using URegister.Infrastructure.Filters;
 using URegister.NomenclaturesCatalog;
 using URegister.RegistersCatalog.Services;
-
+using URegister.Infrastructure.Extensions;
+using URegister.Infrastructure.Constants;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
-// Добавяне на услуги на приложението
+// Р”РѕР±Р°РІСЏРЅРµ РЅР° СѓСЃР»СѓРіРё РЅР° РїСЂРёР»РѕР¶РµРЅРёРµС‚Рѕ
 builder.Services.AddApplicationServices();
+builder.Services.AddObjectStore(builder.Configuration);
 
 builder.Services.AddGrpcClient<NomenclatureGrpc.NomenclatureGrpcClient>(o =>
 {
-    o.Address = new("https://uregister-nomenclaturescatalog");
-});
+    o.Address = new(string.Format(builder.Configuration[ContainerNameConstants.ContainerAddressMask], ContainerNameConstants.NomenclaturesCatalog));
+})
+.AddCallCredentialsGrpc();
 
-// Добавяне на поддръжка за база данни
+builder.Services.AddGrpcClient<AuditLogGrpc.AuditLogGrpcClient>(o =>
+{
+    o.Address = new(string.Format(builder.Configuration[ContainerNameConstants.ContainerAddressMask], ContainerNameConstants.AuditLog));
+});
+// Р”РѕР±Р°РІСЏРЅРµ РЅР° РїРѕРґРґСЂСЉР¶РєР° Р·Р° Р±Р°Р·Р° РґР°РЅРЅРё
 builder.Services.AddDbSupport(builder.Configuration);
 
 // Add services to the container.
-builder.Services.AddGrpc();
+builder.Services.AddGrpc(options =>
+{
+    options.Interceptors.Add<ServerAuditLogInterceptor>();
+}); ;
 
 var app = builder.Build();
 

@@ -1,0 +1,11 @@
+/*!
+ * Tiny Accessibility Checker Plugin
+ *
+ * Copyright (c) 2023 Ephox Corporation DBA Tiny Technologies, Inc.
+ * Licensed under the Tiny commercial license. See https://www.tiny.cloud/legal/
+ *
+ * Version: 7.7.0-137
+ */
+
+tinymce.Resource.add('a11ychecker/css/annotations.css', `/** This file is no longer used as all styles were moved to oxide. It was left on purpose and will be removed in TinyMCE 8 #TINY-11645 */
+`)

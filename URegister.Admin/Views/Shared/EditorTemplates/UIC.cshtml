@@ -1,0 +1,18 @@
+﻿@model string
+@{
+    var reqClass = ViewData.ModelMetadata.GetIOReqClass();
+    var container_css = (string)(ViewData["container_css"] ?? String.Empty);
+}
+
+<div class="ui form @container_css">
+    <div class="field @reqClass">
+        <label asp-for="@Model"></label>
+        <div class="ui left labeled input">
+            <input asp-for="@Model" class="ui input uic" type="text" placeholder="@ViewData.ModelMetadata.Placeholder"/>
+            <span asp-validation-for="@Model" class="validation-error" tabindex="-1"></span>
+            <div class="ui icon button load-company-info" data-tooltip="Зареди данни за компанията">
+                <i class="play icon"></i>
+            </div>
+        </div>
+    </div>
+</div>

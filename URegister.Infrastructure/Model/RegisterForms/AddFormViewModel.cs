@@ -1,6 +1,5 @@
 ﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using Infrastructure.Constants;
 using URegister.Infrastructure.Constants;
 
 namespace URegister.Infrastructure.Model.RegisterForms

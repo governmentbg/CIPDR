@@ -23,7 +23,7 @@
         if (nomenclatureResult.ResultStatus.Code != ResultCodes.Ok)
         {
             //Logger.LogError($"Проблем при зареждане на номенклатура {Model.NomenclatureType} в FormFieldSelect)");
-            TempData[MessageConstant.ErrorMessage] = "Проблем с връзката, презаредете страницата";
+            TempData[MessageConstant.ErrorMessage] = MessageConstant.NetworkProblemReload;
         }
         else
         {
@@ -35,7 +35,7 @@
     catch (Exception ex)
     {
         //Logger.LogError(ex, $"Проблем при зареждане на номенклатура {Model.NomenclatureType} в FormFieldSelect)");
-        TempData[MessageConstant.ErrorMessage] = "Проблем с връзката, презаредете страницата";
+        TempData[MessageConstant.ErrorMessage] = MessageConstant.NetworkProblemReload;
     }
 
     string placeHolder = string.IsNullOrEmpty(Model.Placeholder) ? string.Empty : Model.Placeholder;
@@ -59,11 +59,17 @@
                     <div class="menu">
                         @foreach (SelectListItem item in list)
                         {
-                                <div class="item" data-value="@item.Value">@item.Text</div>
+                            <div class="item" data-value="@item.Value">@item.Text</div>
                         }
                     </div>
                 </div>
                 <input class="@(Model.IsReadonly ? "ui disabled input" : "ui input")" @(Model.IsReadonly ? "readonly" : String.Empty) type="text" placeholder="@placeHolder" value="@pid" @(Model.IsRequired ? "required" : String.Empty)>
+                @if (!Model.IsReadonly)
+                {
+                    <div class="ui icon button load-person-info" style="display: none;" data-tooltip="Зареди данни за лицето">
+                        <i class="play icon"></i>
+                    </div>
+                }
             </div>
         </div>
     </div>

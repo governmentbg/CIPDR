@@ -21,6 +21,8 @@
         public static string FirstName = "urn:io:first_name";
         public static string MiddleName = "urn:io:middle_name";
         public static string LastName = "urn:io:last_name";
+        public static string AdministrationId = "urn:io:administration_id";
+        public static string AvailableAdministration = "urn:io:available_administration";
 
 
         /// <summary>
@@ -28,9 +30,5 @@
         /// </summary>
         public static string FullName = "urn:io:full_name";
 
-        /// <summary>
-        /// Офис
-        /// </summary>
-        public static string AvOffice = "urn:io:av_office";
     }
 }

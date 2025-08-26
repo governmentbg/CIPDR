@@ -1,13 +1,11 @@
 ﻿@{
     ViewData["Title"] = "Преглед на стъпки";
 }
-<div class="mermaid" style="text-align: center;">
+<div class="mermaid" style="text-align: center; display: none;">
     @ViewBag.Flow
 </div>
 @section Scripts
 {
     <script src="~/lib/mermaid/mermaid.min.js"></script>
-    <script>
-        mermaid.initialize({ startOnLoad: true });
-    </script>
+    <script src="~/js/admin/service/flowchart.js"></script>
 }

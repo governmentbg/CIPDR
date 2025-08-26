@@ -6,7 +6,7 @@
 
 <div class="ui grid">
     <div class="column">
-        <div class="ui fluid container basic clearing">
+        <div class="ui fluid container basic clearing" id="filterNomenclatureType" name="filterNomenclatureType">
             <div class="ui accordion">
                 <div class="title">
                     <i class="dropdown icon"></i>
@@ -47,6 +47,9 @@
     </div>
 </div>
 @await Html.PartialAsync("_ConfirmDelete")
+@{
+    await Html.RenderPartialAsync("_ConfirmAction");
+}
 @section Scripts
 {
     <script src="~/js/nomenclature/nomenclatureType.js" asp-append-version="true"></script>

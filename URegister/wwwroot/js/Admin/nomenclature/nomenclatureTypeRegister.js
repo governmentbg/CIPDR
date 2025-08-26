@@ -13,6 +13,7 @@ function LoadNomenclatureTypeRegisters() {
         refreshTable(tableId);
     }
     else {
+        openAccordionFilter();
         let url = $(tableId).data('url');
         let dt = $(tableId).DataTable({
             'order': [[0, 'asc']],

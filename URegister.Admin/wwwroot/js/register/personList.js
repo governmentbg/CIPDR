@@ -17,7 +17,8 @@ function LoadPersons() {
                 "datatype": "json",
                 data: function (d) {
                     d.filter = {
-                        administrationId: $('#AdministrationId').val(),
+                        registerAdministrationId: $('#RegisterAdministrationId').val(),
+                        registerId: $('#RegisterId').val(),
                     }
                 },
                 error: function (error) {
@@ -58,6 +59,20 @@ function LoadPersons() {
                     name: 'lastName',
                     data: 'lastName',
                     title: 'Фамилия',
+                    sortable: true,
+                    searchable: true
+                },
+                {
+                    name: 'phone',
+                    data: 'phone',
+                    title: 'Телефон',
+                    sortable: true,
+                    searchable: true
+                },
+                {
+                    name: 'email',
+                    data: 'email',
+                    title: 'Електронна поща',
                     sortable: true,
                     searchable: true
                 },

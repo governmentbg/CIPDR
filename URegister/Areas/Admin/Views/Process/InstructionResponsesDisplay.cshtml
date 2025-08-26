@@ -1,0 +1,28 @@
+﻿@using URegister.Core.Models.Process
+@model InstructionResponseVM
+<div class="ui grid">
+    <div class="ui sixteen wide column content">
+        <div class="column ui segment green">
+            <div class="ui form">
+                <fieldset>
+                    <legend>
+                        <b>&nbsp; Файлове от отговори на указания &nbsp;</b>
+                    </legend>
+                    @foreach (var item in Model.Items)
+                    {
+                        <div class="fields">
+                            <div class='sixteen wide field'>
+                                @item.Content
+                            </div>
+                        </div>
+                        @foreach (var file in item.Files)
+                        {
+                            @await Html.PartialAsync("_DownloadFile", file);
+                        }
+                    }
+                </fieldset>
+            </div>
+        </div>
+    </div>
+</div>
+

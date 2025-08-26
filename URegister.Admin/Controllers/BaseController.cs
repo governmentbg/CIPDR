@@ -1,28 +1,30 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using URegister.Core.Contracts;
 using URegister.Infrastructure.Constants;
 
 namespace URegister.Admin.Controllers
 {
+    [Authorize(Roles = UserRoles.GlobalAdmin)]
     //[Authorize]
     public class BaseController : Controller
     {
-        //private IUserContext _userContext;
+        private IUserContext _userContext;
 
-        //protected IUserContext userContext
-        //{
-        //    get
-        //    {
-        //        if (_userContext == null)
-        //        {
-        //            _userContext = (IUserContext)HttpContext
-        //                 .RequestServices
-        //                 .GetService(typeof(IUserContext));
-        //        }
+        protected IUserContext UserContext
+        {
+            get
+            {
+                if (_userContext == null)
+                {
+                    _userContext = (IUserContext)HttpContext
+                         .RequestServices
+                         .GetService(typeof(IUserContext));
+                }
 
-        //        return _userContext;
-        //    }
-        //}
+                return _userContext;
+            }
+        }
 
         //private IValidateService _validateService;
 

@@ -2,12 +2,11 @@
 @model ServiceVM
 
 @{
-    ViewBag.Title = Model.IsInsert ? "Добавяне на тип услуга" : "Редакция на тип услуга";
-    var htmlFieldPrefix = ViewData.TemplateInfo.HtmlFieldPrefix;
+    ViewBag.Title = Model.IsInsert ? "Добавяне на услуга" : "Редакция на услуга";
 }
 
 <div class="ui grid">   
-    <form id="formService" class="ui sixteen wide column" action="Edit" method="post" enctype="multipart/form-data">
+    <form id="formService" class="ui sixteen wide column" action="@Url.Action("Edit", "Service")" method="post" enctype="multipart/form-data">
         <div class="content">           
             <div class="column ui segment green">
                 <div class="ui form">
@@ -19,7 +18,17 @@
                     </div>
                     <div class="fields">
                         <div class='sixteen wide field'>
-                            @Html.EditorFor(model => model.ServiceTypeId, "DropDownInt", new{ @class="service-type-id"})
+                            @Html.EditorFor(model => model.ServiceTypeId, "DropDownInt", new { @class = "service-type-id" })
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.FormParentId, "DropDownInt")
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.EFormCode, "String")
                         </div>
                     </div>
                 </div>
@@ -40,8 +49,8 @@
 </div>
 @section Scripts {
     @await Html.PartialAsync("_ValidationScriptsPartial")
-    <link href="~/lib/jqueryui/themes/smoothness/jquery-ui.min.css" rel="stylesheet" />
-    <script src="~/lib/jqueryui/jquery-ui.min.js"></script>
-    <script src="~/js/Admin/service/serviceEdit.js" asp-append-version="true"></script>
+    <link href="~/library/jqueryui/themes/smoothness/jquery-ui.min.css" rel="stylesheet" />
+    <script src="~/library/jqueryui/jquery-ui.min.js"></script>
+    <script src="~/js/admin/service/serviceEdit.js" asp-append-version="true"></script>
 
 }

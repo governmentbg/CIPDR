@@ -21,7 +21,7 @@ namespace URegister.Core.Validation
                 return new ValidationResult(ErrorMessage);
             if (codeableConcept.DateFrom < codeableConcept.DateFromInit)
                 return new ValidationResult(ErrorMessage);
-            if (codeableConcept.DateTo != null && codeableConcept.DateFrom < codeableConcept.DateTo)
+            if (codeableConcept.DateTo != null && codeableConcept.DateFrom > codeableConcept.DateTo)
                 return new ValidationResult(ErrorMessage);
             return ValidationResult.Success;
         }

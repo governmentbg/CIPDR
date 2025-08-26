@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using URegister.Infrastructure.Data.Common;
 
 namespace URegister.ObjectsCatalog.Data.Models
 {
@@ -8,7 +9,7 @@ namespace URegister.ObjectsCatalog.Data.Models
     /// </summary>
     [Comment("Типове полета")]
     [Index(nameof(Name), IsUnique = true)]
-    public class FieldType
+    public class FieldType : SoftDeletable
     {
         /// <summary>
         /// Идентификатор
@@ -34,10 +35,10 @@ namespace URegister.ObjectsCatalog.Data.Models
         public string Label { get; set; } = null!;
 
         /// <summary>
-        /// Дали полето е комплексно
+        /// Дали полето е сложно
         /// </summary>
         [Required]
-        [Comment("Дали полето е комплексно")]
+        [Comment("Дали полето е сложно")]
         public bool IsComplexField { get; set; }
 
         /// <summary>
@@ -47,5 +48,10 @@ namespace URegister.ObjectsCatalog.Data.Models
         [MaxLength(50)]
         [Comment("Шаблон за визуализация")]
         public string Template { get; set; } = null!;
+
+        /// <summary>
+        /// Списък от конфигурации за типа
+        /// </summary>
+        public List<Field> Fields { get; set; } = new List<Field>();
     }
 }

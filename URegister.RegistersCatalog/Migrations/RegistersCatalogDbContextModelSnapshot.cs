@@ -140,14 +140,30 @@ namespace URegister.RegistersCatalog.Migrations
                         .HasComment("Дата на създаване");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamptz")
                         .HasColumnName("deleted_on")
                         .HasComment("Дата на изтриване");
+
+                    b.Property<string>("EFormCode")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("e_form_code")
+                        .HasComment("Код за връзка с е-форми");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
                         .HasComment("Дали записът е активен");
+
+                    b.Property<Guid>("ModifiedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by_user_id")
+                        .HasComment("Идентификатор на потребителят променил последно записа");
+
+                    b.Property<DateTime>("ModifiedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("modified_on")
+                        .HasComment("Дата на последна промяна");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -155,6 +171,17 @@ namespace URegister.RegistersCatalog.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("name")
                         .HasComment("Име");
+
+                    b.Property<string>("OpenDataApiKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("open_data_api_key")
+                        .HasComment("api-key за opendata");
+
+                    b.Property<int>("OpenDataOrgId")
+                        .HasColumnType("integer")
+                        .HasColumnName("open_data_org_id")
+                        .HasComment("Идентификатор на организация в  opendata");
 
                     b.Property<string>("Uic")
                         .IsRequired()
@@ -197,7 +224,7 @@ namespace URegister.RegistersCatalog.Migrations
                         .HasComment("Дата на създаване");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamptz")
                         .HasColumnName("deleted_on")
                         .HasComment("Дата на изтриване");
 
@@ -231,6 +258,16 @@ namespace URegister.RegistersCatalog.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("middle_name")
                         .HasComment("Презиме");
+
+                    b.Property<Guid>("ModifiedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by_user_id")
+                        .HasComment("Идентификатор на потребителят променил последно записа");
+
+                    b.Property<DateTime>("ModifiedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("modified_on")
+                        .HasComment("Дата на последна промяна");
 
                     b.Property<string>("Phone")
                         .HasMaxLength(20)
@@ -271,6 +308,58 @@ namespace URegister.RegistersCatalog.Migrations
                         });
                 });
 
+            modelBuilder.Entity("URegister.RegistersCatalog.Data.Models.CalendarDay", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CurrentDate")
+                        .HasColumnType("date")
+                        .HasColumnName("current_date");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_on")
+                        .HasComment("Дата на изтриване");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active")
+                        .HasComment("Дали записът е активен");
+
+                    b.Property<string>("KindId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("kind_id");
+
+                    b.Property<Guid>("ModifiedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by_user_id")
+                        .HasComment("Идентификатор на потребителят променил последно записа");
+
+                    b.Property<DateTime>("ModifiedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("modified_on")
+                        .HasComment("Дата на последна промяна");
+
+                    b.HasKey("Id")
+                        .HasName("pk_calendar_days");
+
+                    b.ToTable("calendar_days", null, t =>
+                        {
+                            t.HasComment("Работни дни");
+                        });
+                });
+
             modelBuilder.Entity("URegister.RegistersCatalog.Data.Models.MasterPersonRecordsIndex", b =>
                 {
                     b.Property<Guid>("Id")
@@ -285,7 +374,7 @@ namespace URegister.RegistersCatalog.Migrations
                         .HasComment("Дата на създаване");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamptz")
                         .HasColumnName("deleted_on")
                         .HasComment("Дата на изтриване");
 
@@ -343,6 +432,11 @@ namespace URegister.RegistersCatalog.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("BaseAddress")
+                        .HasColumnType("text")
+                        .HasColumnName("base_address")
+                        .HasComment("Базов адрес");
+
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -356,9 +450,14 @@ namespace URegister.RegistersCatalog.Migrations
                         .HasComment("Дата на създаване");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamptz")
                         .HasColumnName("deleted_on")
                         .HasComment("Дата на изтриване");
+
+                    b.Property<bool>("Deployed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("deployed")
+                        .HasComment("Стартиран ли е контейнер за регистъра");
 
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
@@ -367,7 +466,6 @@ namespace URegister.RegistersCatalog.Migrations
                         .HasComment("Описание");
 
                     b.Property<string>("IdentitySecurityLevel")
-                        .IsRequired()
                         .HasMaxLength(5)
                         .HasColumnType("character varying(5)")
                         .HasColumnName("identity_security_level")
@@ -385,6 +483,16 @@ namespace URegister.RegistersCatalog.Migrations
                         .HasColumnName("legal_basis")
                         .HasComment("Правно основание");
 
+                    b.Property<Guid>("ModifiedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by_user_id")
+                        .HasComment("Идентификатор на потребителят променил последно записа");
+
+                    b.Property<DateTime>("ModifiedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("modified_on")
+                        .HasComment("Дата на последна промяна");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -392,10 +500,26 @@ namespace URegister.RegistersCatalog.Migrations
                         .HasColumnName("name")
                         .HasComment("Име на регистър");
 
+                    b.Property<int>("OpenDataCategoryId")
+                        .HasColumnType("integer")
+                        .HasColumnName("open_data_category_id")
+                        .HasComment("Категория opendata");
+
+                    b.Property<string>("OpenDataTags")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("open_data_tags")
+                        .HasComment("Тагове opendata");
+
                     b.Property<DateTime?>("StartedOn")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("started_on")
                         .HasComment("Дата на стартиране");
+
+                    b.Property<int>("StatusId")
+                        .HasColumnType("integer")
+                        .HasColumnName("status_id")
+                        .HasComment("Идентификатор на статус");
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -443,7 +567,7 @@ namespace URegister.RegistersCatalog.Migrations
                         .HasComment("Дата на създаване");
 
                     b.Property<DateTime?>("DeletedOn")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("timestamptz")
                         .HasColumnName("deleted_on")
                         .HasComment("Дата на изтриване");
 
@@ -458,6 +582,22 @@ namespace URegister.RegistersCatalog.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("legal_basis")
                         .HasComment("Правно основание");
+
+                    b.Property<Guid>("ModifiedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by_user_id")
+                        .HasComment("Идентификатор на потребителят променил последно записа");
+
+                    b.Property<DateTime>("ModifiedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("modified_on")
+                        .HasComment("Дата на последна промяна");
+
+                    b.Property<string>("OpenDataDataSetId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("open_data_data_set_id")
+                        .HasComment("OpenData DataSetId");
 
                     b.Property<int>("RegisterId")
                         .HasColumnType("integer")
@@ -480,6 +620,102 @@ namespace URegister.RegistersCatalog.Migrations
                         });
                 });
 
+            modelBuilder.Entity("URegister.RegistersCatalog.Data.Models.RegisterFileMetadata", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasComment("Идентификатор");
+
+                    b.Property<string>("CodeableConceptCode")
+                        .HasColumnType("text")
+                        .HasColumnName("codeable_concept_code")
+                        .HasComment("Тип файл");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_on")
+                        .HasComment("Дата на изтриване");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description")
+                        .HasComment("Описание");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("file_id")
+                        .HasComment("Идентификатор на файла в хранилището");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("file_name")
+                        .HasComment("Име на файла");
+
+                    b.Property<int>("FileSourceTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("file_source_type_id")
+                        .HasComment("Идентификатор на роля на файла");
+
+                    b.Property<string>("Hash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("hash")
+                        .HasComment("Хеш сума");
+
+                    b.Property<string>("HashingAlgorithm")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("hashing_algorithm")
+                        .HasComment("Алгоритъм за изчисляване на хеш сума");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active")
+                        .HasComment("Дали записът е активен");
+
+                    b.Property<Guid>("ModifiedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by_user_id")
+                        .HasComment("Идентификатор на потребителят променил последно записа");
+
+                    b.Property<DateTime>("ModifiedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("modified_on")
+                        .HasComment("Дата на последна промяна");
+
+                    b.Property<string>("NomenclatureType")
+                        .HasColumnType("text")
+                        .HasColumnName("nomenclature_type")
+                        .HasComment("Type of NomenclatureType");
+
+                    b.Property<int?>("RegisterId")
+                        .HasColumnType("integer")
+                        .HasColumnName("register_id");
+
+                    b.Property<string>("Signature")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("signature")
+                        .HasComment("Подпис");
+
+                    b.Property<string>("SourceId")
+                        .HasColumnType("text")
+                        .HasColumnName("source_id")
+                        .HasComment("Идентификатор на сорс");
+
+                    b.HasKey("Id")
+                        .HasName("pk_register_file_metadata");
+
+                    b.ToTable("register_file_metadata", null, t =>
+                        {
+                            t.HasComment("Инфорация за качен от потребител файл");
+                        });
+                });
+
             modelBuilder.Entity("URegister.RegistersCatalog.Data.Models.RegisterPersonRecord", b =>
                 {
                     b.Property<int>("RegisterId")
@@ -492,7 +728,12 @@ namespace URegister.RegistersCatalog.Migrations
                         .HasColumnName("master_person_record_id")
                         .HasComment("Идентификатор на партида");
 
-                    b.HasKey("RegisterId", "MasterPersonRecordId")
+                    b.Property<int>("RoleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("role_id")
+                        .HasComment("Роля партида/заявител");
+
+                    b.HasKey("RegisterId", "MasterPersonRecordId", "RoleId")
                         .HasName("pk_register_person_records");
 
                     b.HasIndex("MasterPersonRecordId")
@@ -501,6 +742,108 @@ namespace URegister.RegistersCatalog.Migrations
                     b.ToTable("register_person_records", null, t =>
                         {
                             t.HasComment("Записи на лица в регистър");
+                        });
+                });
+
+            modelBuilder.Entity("URegister.RegistersCatalog.Data.Models.RegisterService", b =>
+                {
+                    b.Property<int>("RegisterId")
+                        .HasColumnType("integer")
+                        .HasColumnName("register_id")
+                        .HasComment("Идентификатор на регистър");
+
+                    b.Property<int>("ServiceId")
+                        .HasColumnType("integer")
+                        .HasColumnName("service_id")
+                        .HasComment("Идентификатор на услуга");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_on")
+                        .HasComment("Дата на изтриване");
+
+                    b.Property<string>("EFormCode")
+                        .HasColumnType("text")
+                        .HasColumnName("e_form_code")
+                        .HasComment("Референтен номер на услуга (РНУ)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active")
+                        .HasComment("Дали записът е активен");
+
+                    b.Property<Guid>("ModifiedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by_user_id")
+                        .HasComment("Идентификатор на потребителят променил последно записа");
+
+                    b.Property<DateTime>("ModifiedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("modified_on")
+                        .HasComment("Дата на последна промяна");
+
+                    b.HasKey("RegisterId", "ServiceId")
+                        .HasName("pk_register_services");
+
+                    b.ToTable("register_services", null, t =>
+                        {
+                            t.HasComment("Услуга в регистъра");
+                        });
+                });
+
+            modelBuilder.Entity("URegister.RegistersCatalog.Data.Models.RegisterStatus", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasComment("Идентификатор");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_on")
+                        .HasComment("Дата на изтриване");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active")
+                        .HasComment("Дали записът е активен");
+
+                    b.Property<Guid>("ModifiedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by_user_id")
+                        .HasComment("Идентификатор на потребителят променил последно записа");
+
+                    b.Property<DateTime>("ModifiedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("modified_on")
+                        .HasComment("Дата на последна промяна");
+
+                    b.Property<int>("RegisterId")
+                        .HasColumnType("integer")
+                        .HasColumnName("register_id")
+                        .HasComment("Идентификатор на регистър");
+
+                    b.Property<string>("Remark")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("remark")
+                        .HasComment("Забележка");
+
+                    b.Property<int>("StatusId")
+                        .HasColumnType("integer")
+                        .HasColumnName("status_id")
+                        .HasComment("Идентификатор на статус");
+
+                    b.HasKey("Id")
+                        .HasName("pk_register_status");
+
+                    b.HasIndex("RegisterId")
+                        .HasDatabaseName("ix_register_status_register_id");
+
+                    b.ToTable("register_status", null, t =>
+                        {
+                            t.HasComment("Статуси на регистър");
                         });
                 });
 
@@ -554,7 +897,7 @@ namespace URegister.RegistersCatalog.Migrations
             modelBuilder.Entity("URegister.RegistersCatalog.Data.Models.RegisterAdministration", b =>
                 {
                     b.HasOne("URegister.RegistersCatalog.Data.Models.Administration", "Administration")
-                        .WithMany()
+                        .WithMany("RegisterAdministrations")
                         .HasForeignKey("AdministrationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
@@ -593,6 +936,30 @@ namespace URegister.RegistersCatalog.Migrations
                     b.Navigation("Register");
                 });
 
+            modelBuilder.Entity("URegister.RegistersCatalog.Data.Models.RegisterService", b =>
+                {
+                    b.HasOne("URegister.RegistersCatalog.Data.Models.Register", "Register")
+                        .WithMany()
+                        .HasForeignKey("RegisterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_register_services_registers_register_id");
+
+                    b.Navigation("Register");
+                });
+
+            modelBuilder.Entity("URegister.RegistersCatalog.Data.Models.RegisterStatus", b =>
+                {
+                    b.HasOne("URegister.RegistersCatalog.Data.Models.Register", "Register")
+                        .WithMany()
+                        .HasForeignKey("RegisterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_register_status_registers_register_id");
+
+                    b.Navigation("Register");
+                });
+
             modelBuilder.Entity("RulesEngine.Models.Rule", b =>
                 {
                     b.Navigation("LocalParams");
@@ -610,6 +977,8 @@ namespace URegister.RegistersCatalog.Migrations
             modelBuilder.Entity("URegister.RegistersCatalog.Data.Models.Administration", b =>
                 {
                     b.Navigation("People");
+
+                    b.Navigation("RegisterAdministrations");
                 });
 
             modelBuilder.Entity("URegister.RegistersCatalog.Data.Models.MasterPersonRecordsIndex", b =>

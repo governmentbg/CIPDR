@@ -1,0 +1,20 @@
+﻿@using URegister.Core.Models.Common
+@using URegister.Infrastructure.Extensions
+
+@model PersonIdentifierVM
+@{
+    var onchange = (string)(ViewData["onchange"] ?? String.Empty);
+    var class_css = (string)(ViewData["class"] ?? String.Empty);
+    var container_css = (string)(ViewData["container_css"] ?? String.Empty);
+}
+
+<div class="ui form person-identifier">
+    <div class="field">
+        <div class="field">
+            <label asp-for="@Model"></label>
+            <div class="ui left labeled input">
+                 <input class="ui input"  type="text" asp-for="@Model.Pid">
+            </div>
+        </div>
+    </div>
+</div>

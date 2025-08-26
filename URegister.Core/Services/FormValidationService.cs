@@ -2,13 +2,15 @@
 using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Text.RegularExpressions;
-using MHRegistries.Core.Services;
+using URegister.Core.Services;
+using Google.Protobuf.WellKnownTypes;
 using URegister.Common;
 using URegister.Core.Contracts;
 using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Extensions;
 using URegister.Infrastructure.Model.RegisterForms;
 using URegister.NomenclaturesCatalog;
+using Enum = System.Enum;
 
 namespace URegister.Core.Services
 {
@@ -18,15 +20,14 @@ namespace URegister.Core.Services
     public class FormValidationService : IFormValidationService
     {
         private readonly ILogger<FormFieldsLayoutService> _logger;
-        const string DateOnlyFormat = "dd.MM.yyyy";
-        const string DateTimeFormat = "dd.MM.yyyy HH:mm";
+
         private static readonly Dictionary<string, List<string>> fileExtensionsHexSignatures = new Dictionary<string, List<string>>
             {
                 { ".xml", new List<string> { "3C 3F 78 6D 6C 20" } },
                 { ".pdf", new List<string> { "25 50 44 46 2D" } },
                 { ".doc", new List<string> { "D0 CF 11 E0 A1 B1 1A E1" } },
                 { ".sxw", new List<string> { "50 4B 03 04", "50 4B 05 06", "50 4B 07 08" } },
-                { ".txt", new List<string> { "EF BB BF", "FF FE", "FE FF", "FF FE 00 00", "00 00 FE FF" } },
+                { ".txt", new List<string> { "EF BB BF", "FF FE", "FE FF", "FF FE 00 00", "00 00 FE FF", "" } },
                 { ".rtf", new List<string> { "7B 5C 72 74 66 31" } },
                 { ".jpg", new List<string> { "FF D8 FF DB", "FF D8 FF E0", "FF D8 FF EE", "FF D8 FF E1" } },
                 { ".jpeg", new List<string> { "FF D8 FF DB", "FF D8 FF E0", "FF D8 FF EE", "FF D8 FF E1" } },
@@ -49,39 +50,66 @@ namespace URegister.Core.Services
         /// Валидира стойностите на полетата във формата
         /// </summary>
         /// <param name="viewModel">Моделът за валидация</param>
-        /// <param name="nomenclatureGrpcClient">GRPC клиент за номенклатуро</param>
+        /// <param name="nomenclatureGrpcClient">GRPC клиент за номенклатура</param>
         /// <param name="registerId">Идентификатор на регистъра</param>
+        /// <param name="processRegistrationDateUtc">Дата на създаване на заяявената услуга</param>
+        /// <param name="skipRequiredTest">Да се пропусне ли проверка за задължителни полета</param>
         /// <returns>Всички стойности ли са валидни</returns>
         public async Task<bool> ValidateViewModel(FormViewModel viewModel,
             NomenclatureGrpc.NomenclatureGrpcClient nomenclatureGrpcClient,
-            int registerId)
+            int registerId, DateTime? processRegistrationDateUtc = null, 
+            bool skipRequiredTest = false)
         {
-            return await ValidateViewModelFields(viewModel.FormFields, nomenclatureGrpcClient, registerId);
+            return await ValidateViewModelFields(
+                viewModel.FormFields, 
+                nomenclatureGrpcClient,
+                processRegistrationDateUtc,
+                registerId,
+                viewModel.UserTimeZoneOffsetInMinutes,
+                true,
+                skipRequiredTest);
         }
 
         private async Task<bool> ValidateViewModelFields(IEnumerable<FormField> formFieldsForValidation,
             NomenclatureGrpc.NomenclatureGrpcClient nomenclatureGrpcClient,
+            DateTime? processRegistrationDateUtc,
             int registerId,
-            bool validSoFar = true)
+            int userTimeZoneOffsetInMinutes,
+            bool validSoFar = true,
+            bool skipRequiredTest = false)
         {
             foreach (FormField field in formFieldsForValidation)
             {
-                if ((string.IsNullOrWhiteSpace(field.Value) || 
-                     (field.Type == "PersonIdentifier" && field.Value.Trim().Split(':').Any(p => string.IsNullOrWhiteSpace(p))))
-                       && field.Type != "File"
-                       && (field.Fields == null || field.Fields.IsEmpty()))
+                if (field.Repetitions != null && field.Repetitions.Any())
                 {
-                    if (field.Type == "Boolean")
+                    validSoFar = await ValidateViewModelFields(field.Repetitions, 
+                        nomenclatureGrpcClient, 
+                        processRegistrationDateUtc,
+                        registerId, 
+                        userTimeZoneOffsetInMinutes, 
+                        validSoFar, 
+                        skipRequiredTest) && validSoFar;
+                }
+
+                if (
+                    (string.IsNullOrWhiteSpace(field.Value) || 
+                     ((field.Type == SimpleFormFieldType.PersonIdentifier.ToString() || field.Type == SimpleFormFieldType.CompanyIdentifier.ToString())
+                      && field.Value.Trim().Split(':').Any(p => string.IsNullOrWhiteSpace(p)))
+                     )//идентификатор
+                    && (field.Fields == null || field.Fields.IsEmpty()))//Не е сложен тип
+                {
+                    if (field.Type == SimpleFormFieldType.Boolean.ToString() && !skipRequiredTest)
                     {
                         field.ValidationError = MessageConstant.InvalidValue;
                         validSoFar = false;
                         continue;
                     }
-                    if (field.Type == "PersonIdentifier")
+                    if (field.Type == SimpleFormFieldType.PersonIdentifier.ToString() ||
+                        field.Type == SimpleFormFieldType.CompanyIdentifier.ToString())
                     {
                         field.Value = string.Empty;
                     }
-                    if (field.IsRequired)
+                    if (field.IsRequired && !skipRequiredTest)
                     {
                         field.ValidationError = MessageConstant.FieldIsRequiredNoParam;
                         validSoFar = false;
@@ -89,70 +117,117 @@ namespace URegister.Core.Services
                     continue;
                 }
 
-                if (string.IsNullOrWhiteSpace(field.Value) && field.Type != "File")
+                if (string.IsNullOrWhiteSpace(field.Value) && field.Type != SimpleFormFieldType.File.ToString())
                 {
                     //Всички сложни типове
                     if (field.Fields != null && field.Fields.Any())
                     {
-                        validSoFar = await ValidateViewModelFields(field.Fields, nomenclatureGrpcClient, registerId) && validSoFar;
+                        validSoFar = await ValidateViewModelFields(field.Fields, 
+                            nomenclatureGrpcClient,
+                            processRegistrationDateUtc,
+                            registerId, 
+                            userTimeZoneOffsetInMinutes, 
+                            validSoFar, 
+                            !field.IsRequired || skipRequiredTest) && validSoFar;
                     }
 
-                    switch (field.Type)
+                    if (field.Type == SimpleFormFieldType.IndividualIdentifier.ToString())
                     {
-                        case "IndividualIdentifier":
-                            validSoFar = ValidateIndividualIdentifier(field) && validSoFar;
-                            break;
-                        case "Address":
-                            validSoFar = await ValidateAddress(field, nomenclatureGrpcClient, registerId) && validSoFar;
-                            break;
-                        default:
-                            break;
+                        validSoFar = ValidateIndividualIdentifier(field) && validSoFar;
                     }
+                    else if (field.Type == SimpleFormFieldType.Address.ToString())
+                    {
+                        validSoFar = await ValidateAddress(field, nomenclatureGrpcClient, registerId) && validSoFar;
+                    }
+                    else if (field.Type == SimpleFormFieldType.Company.ToString())
+                    {
+                        validSoFar = await ValidateCompany(field, skipRequiredTest) && validSoFar;
+                    }
+
                     continue;
                 }
 
-                switch (field.Type)
+                if (Enum.TryParse(field.Type, out SimpleFormFieldType fieldType))
                 {
-                    case "Number":
-                        validSoFar = ValidateNumber(field) && validSoFar;
-                        break;
-                    case "Text":
-                    case "TextArea":
-                    case "Email":
-                    case "Phone":
-                    case "Url":
-                        validSoFar = ValidateText(field) && validSoFar;
-                        break;
-                    case "File":
-                        validSoFar = await ValidateFile(field) && validSoFar;
-                        break;
-                    case "Date":
-                    case "DateTime":
-                        validSoFar = await ValidateDate(field) && validSoFar;
-                        break;
-                    case "Boolean":
-                        validSoFar = await ValidateBoolean(field) && validSoFar;
-                        break;
-                    case "Select":
-                    case "Autocomplete":
-                    case "MultiSelect":
-                        validSoFar = await ValidateSelect(field, nomenclatureGrpcClient, registerId) && validSoFar;
-                        break;
-                    case "City":
-                        validSoFar = await ValidateCity(field, nomenclatureGrpcClient) && validSoFar;
-                        break;
-                    case "PersonIdentifier":
-                        validSoFar = await ValidatePid(field, nomenclatureGrpcClient, registerId) && validSoFar;
-                        break;
+                    switch (fieldType)
+                    {
+                        case SimpleFormFieldType.Number:
+                            validSoFar = ValidateNumber(field) && validSoFar;
+                            break;
+                        case SimpleFormFieldType.Text:
+                        case SimpleFormFieldType.TextArea:
+                        case SimpleFormFieldType.Email:
+                        case SimpleFormFieldType.Phone:
+                        case SimpleFormFieldType.Url:
+                            validSoFar = ValidateText(field) && validSoFar;
+                            break;
+                        case SimpleFormFieldType.File:
+                            validSoFar = ValidateFileField(field) && validSoFar;
+                            break;
+                        case SimpleFormFieldType.Date:
+                        case SimpleFormFieldType.DateTime:
+                            validSoFar = await ValidateDate(field, userTimeZoneOffsetInMinutes, processRegistrationDateUtc) && validSoFar;
+                            break;
+                        case SimpleFormFieldType.Boolean:
+                            validSoFar = await ValidateBoolean(field) && validSoFar;
+                            break;
+                        case SimpleFormFieldType.Select:
+                        case SimpleFormFieldType.Autocomplete:
+                        case SimpleFormFieldType.MultiSelect:
+                        case SimpleFormFieldType.AutocompleteWithCategory:
+                            validSoFar = await ValidateSelect(field, nomenclatureGrpcClient, registerId) && validSoFar;
+                            break;
+                        case SimpleFormFieldType.City:
+                            validSoFar = await ValidateCity(field, nomenclatureGrpcClient) && validSoFar;
+                            break;
+                        case SimpleFormFieldType.PersonIdentifier:
+                            validSoFar = await ValidatePid(field, nomenclatureGrpcClient, registerId) && validSoFar;
+                            break;
+                        case SimpleFormFieldType.CompanyIdentifier:
+                            validSoFar = await ValidateCid(field, nomenclatureGrpcClient, registerId) && validSoFar;
+                            break;
+                        case SimpleFormFieldType.Time:
+                            validSoFar = await ValidateTime(field) && validSoFar;
+                            break;
+                    }
                 }
-
-                if (field.Repetitions != null)
+                else
                 {
-                    validSoFar = await ValidateViewModelFields(field.Repetitions, nomenclatureGrpcClient, registerId) && validSoFar;
+                    _logger.LogError($"Непознат тип на просто поле {field.Type} в {nameof(ValidateViewModelFields)}");
                 }
             }
 
             return validSoFar;
+        }
+
+        private async Task<bool> ValidateCompany(FormField field, bool skipRequiredTest = false)
+        {
+            if (!field.IsRequired || skipRequiredTest)
+            {
+                return true;
+            }
+
+            var legalFormEIKField =
+            field.Fields!.SingleOrDefault(f =>
+                f.Name.Contains("legalFormEIKImmutable", StringComparison.InvariantCultureIgnoreCase));
+            
+            var legalFormBulstatField =
+                field.Fields!.SingleOrDefault(f =>
+                    f.Name.Contains("legalFormBulstatImmutable", StringComparison.InvariantCultureIgnoreCase));
+
+            //TODO : да се проверява за празно само полето спрямо избрания идентификатор
+
+            if (string.IsNullOrWhiteSpace(legalFormEIKField.Value) &&
+                string.IsNullOrWhiteSpace(legalFormBulstatField.Value))
+            {
+                field.ValidationError =
+                legalFormEIKField.ValidationError = 
+                    legalFormBulstatField.ValidationError = 
+                        MessageConstant.FieldIsRequiredNoParam;
+                return false;
+            }
+
+            return true;
         }
 
         private bool ValidateIndividualIdentifier(FormField field)
@@ -163,7 +238,7 @@ namespace URegister.Core.Services
 
             if (birthCountrySubfield == null)
             {
-                field.ValidationError = "Невалиден шаблон за идентификация";
+                field.ValidationError = MessageConstant.InvalidIDTemplate;
                 return false;
             }
 
@@ -175,13 +250,13 @@ namespace URegister.Core.Services
 
                 if (birthPlaceBg == null)
                 {
-                    field.ValidationError = "Невалиден шаблон за идентификация";
+                    field.ValidationError = MessageConstant.InvalidIDTemplate;
                     return false;
                 }
 
                 if (string.IsNullOrWhiteSpace(birthPlaceBg.Value))
                 {
-                    birthPlaceBg.ValidationError = "Въведете място на раждане";
+                    birthPlaceBg.ValidationError = MessageConstant.EnterPlaceOfBirth;
                     return false;
                 }
             }
@@ -193,13 +268,13 @@ namespace URegister.Core.Services
 
                 if (birthPlaceAbroad == null)
                 {
-                    field.ValidationError = "Невалиден шаблон за идентификация";
+                    field.ValidationError = MessageConstant.InvalidIDTemplate;
                     return false;
                 }
 
                 if (string.IsNullOrWhiteSpace(birthPlaceAbroad.Value))
                 {
-                    birthPlaceAbroad.ValidationError = "Въведете място на раждане";
+                    birthPlaceAbroad.ValidationError = MessageConstant.EnterPlaceOfBirth;
                     return false;
                 }
             }
@@ -214,13 +289,13 @@ namespace URegister.Core.Services
 
             if (valueComponents.Length != 2)
             {
-                field.ValidationError = "Невалиден формат на стойността";
+                field.ValidationError = MessageConstant.InvalidValueFormat;
                 return false;
             }
 
             if (!int.TryParse(valueComponents[0], out int parsedPidType))
             {
-                field.ValidationError = "Невалиден тип идентификатор";
+                field.ValidationError = MessageConstant.InvalidIdentifierType;
                 return false;
             }
 
@@ -237,19 +312,68 @@ namespace URegister.Core.Services
             if (areNomenclatureCodesAllowedResponse.ResultStatus.Code != ResultCodes.Ok)
             {
                 _logger.LogError($"GetNomenclaturePublicAsync неуспешен в {nameof(ValidatePid)}");
-                field.ValidationError = "Неуспешна валидация, проблем с връзката, опитайте пак";
+                field.ValidationError = MessageConstant.ValidationFailConnectionIssue;
                 return false;
             }
 
             if (!areNomenclatureCodesAllowedResponse.AreAllowed)
             {
-                field.ValidationError = "Непознат тип идентификатор";
+                field.ValidationError = MessageConstant.UnknownIdentifierType;
                 return false;
             }
 
             if (!PidValidateService.ValidatePersonalId(valueComponents[1], parsedPidType))
             {
-                field.ValidationError = "Невалиден идентификатор";
+                field.ValidationError = MessageConstant.InvalidIdentifier;
+                return false;
+            }
+
+            return true;
+        }
+
+        private async Task<bool> ValidateCid(FormField field,
+            NomenclatureGrpc.NomenclatureGrpcClient nomenclatureGrpcClient, int registerId)
+        {
+            var valueComponents = field.Value.Split(':', StringSplitOptions.TrimEntries);
+
+            if (valueComponents.Length != 2)
+            {
+                field.ValidationError = MessageConstant.InvalidValueFormat;
+                return false;
+            }
+
+            if (!int.TryParse(valueComponents[0], out int parsedCidType))
+            {
+                field.ValidationError = MessageConstant.InvalidIdentifierType;
+                return false;
+            }
+
+            AreNomenclatureCodesAllowedRequest areNomenclatureCodesAllowedRequest = new AreNomenclatureCodesAllowedRequest
+            {
+                RegisterId = registerId,
+                NomenclatureType = NomenclatureTypes.CidType,
+                NomenclatureCodes = { valueComponents[0] }
+            };
+
+            AreNomenclatureCodesAllowedResponse areNomenclatureCodesAllowedResponse =
+                await nomenclatureGrpcClient.AreNomenclatureCodesAllowedAsync(areNomenclatureCodesAllowedRequest);
+
+            if (areNomenclatureCodesAllowedResponse.ResultStatus.Code != ResultCodes.Ok)
+            {
+                _logger.LogError($"GetNomenclaturePublicAsync неуспешен в {nameof(ValidateCid)}");
+                field.ValidationError = MessageConstant.ValidationFailConnectionIssue;
+                return false;
+            }
+
+            if (!areNomenclatureCodesAllowedResponse.AreAllowed)
+            {
+                field.ValidationError = MessageConstant.UnknownIdentifierType;
+                return false;
+            }
+
+            if (!PidValidateService.ValidateCompanyId(valueComponents[1], parsedCidType))
+            {
+                field.ValidationError = MessageConstant.InvalidIdentifier;
                 return false;
             }
 
@@ -259,36 +383,85 @@ namespace URegister.Core.Services
         private async Task<bool> ValidateAddress(FormField field,
             NomenclatureGrpc.NomenclatureGrpcClient nomenclatureGrpcClient, int registerId)
         {
-            var settlementImmutable = field.Fields.SingleOrDefault(f => f.Name.Contains("settlementImmutable", StringComparison.InvariantCultureIgnoreCase));
-
-            var streetField = field.Fields.SingleOrDefault(f => f.Name.Contains("streetImmutable", StringComparison.InvariantCultureIgnoreCase));
-
-            if (streetField != null && !string.IsNullOrWhiteSpace(streetField.Value))
+            if (field.IsRequired)
             {
-                AreNomenclatureCodesAllowedRequest areNomenclatureCodesAllowedRequest = new AreNomenclatureCodesAllowedRequest
-                {
-                    RegisterId = registerId,
-                    NomenclatureType = NomenclatureTypes.EkStreet,
-                    NomenclatureCodes = { streetField.Value },
-                    Holder = settlementImmutable!.Value
-                };
+                var countrySubfield =
+                    field.Fields!.SingleOrDefault(f =>
+                        f.Name.Contains("countryImmutable", StringComparison.InvariantCultureIgnoreCase));
 
-                AreNomenclatureCodesAllowedResponse areNomenclatureCodesAllowedResponse =
-                    await nomenclatureGrpcClient.AreNomenclatureCodesAllowedAsync(areNomenclatureCodesAllowedRequest);
-
-                if (areNomenclatureCodesAllowedResponse.ResultStatus.Code != ResultCodes.Ok)
+                if (countrySubfield == null)
                 {
-                    _logger.LogError($"GetNomenclaturePublicAsync неуспешен в {nameof(ValidatePid)}");
-                    streetField.ValidationError = "Неуспешна валидация, проблем с връзката, опитайте пак";
+                    field.ValidationError = MessageConstant.InvalidFieldConfig;
                     return false;
                 }
 
-                if (!areNomenclatureCodesAllowedResponse.AreAllowed)
+                if (countrySubfield.Value == "BG")
                 {
-                    streetField.ValidationError = "Непозната улица за населеното място";
-                    return false;
+                    var bgSettlementField = field.Fields!.SingleOrDefault(f =>
+                        f.Name.Contains("settlementImmutable", StringComparison.InvariantCultureIgnoreCase));
+
+                    if (bgSettlementField == null)
+                    {
+                        field.ValidationError = MessageConstant.InvalidFieldConfig;
+                        return false;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(bgSettlementField.Value))
+                    {
+                        bgSettlementField.ValidationError = MessageConstant.FieldIsRequired;
+                        return false;
+                    }
+                }
+                else
+                {
+                    var foreignAddress = field.Fields!.SingleOrDefault(f =>
+                        f.Name.Contains("addressAbroadImmutable", StringComparison.InvariantCultureIgnoreCase));
+
+                    if (foreignAddress == null)
+                    {
+                        field.ValidationError = MessageConstant.InvalidFieldConfig;
+                        return false;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(foreignAddress.Value))
+                    {
+                        foreignAddress.ValidationError = MessageConstant.FieldIsRequired;
+                        return false;
+                    }
                 }
             }
+
+
+            var settlementImmutable = field.Fields.SingleOrDefault(f => f.Name.Contains("settlementImmutable", StringComparison.InvariantCultureIgnoreCase));
+
+            //var streetField = field.Fields.SingleOrDefault(f => f.Name.Contains("streetImmutable", StringComparison.InvariantCultureIgnoreCase));
+
+            //if (streetField != null && !string.IsNullOrWhiteSpace(streetField.Value))
+            //{
+            //    AreNomenclatureCodesAllowedRequest areNomenclatureCodesAllowedRequest = new AreNomenclatureCodesAllowedRequest
+            //    {
+            //        RegisterId = registerId,
+            //        NomenclatureType = NomenclatureTypes.EkStreet,
+            //        NomenclatureCodes = { streetField.Value },
+            //        Holder = settlementImmutable!.Value
+            //    };
+
+            //    AreNomenclatureCodesAllowedResponse areNomenclatureCodesAllowedResponse =
+            //        await nomenclatureGrpcClient.AreNomenclatureCodesAllowedAsync(areNomenclatureCodesAllowedRequest);
+
+            //    if (areNomenclatureCodesAllowedResponse.ResultStatus.Code != ResultCodes.Ok)
+            //    {
+            //        _logger.LogError($"GetNomenclaturePublicAsync неуспешен в {nameof(ValidatePid)}");
+            //        streetField.ValidationError = MessageConstant.ValidationFailConnectionIssue;
+            //        return false;
+            //    }
+
+            //    if (!areNomenclatureCodesAllowedResponse.AreAllowed)
+            //    {
+            //        streetField.ValidationError = MessageConstant.UnknownStreetForSettlement;
+            //        return false;
+            //    }
+            //}
 
             var regionField = field.Fields.SingleOrDefault(f => f.Name.Contains("regionImmutable", StringComparison.InvariantCultureIgnoreCase));
 
@@ -308,77 +481,92 @@ namespace URegister.Core.Services
                 if (areNomenclatureCodesAllowedResponse.ResultStatus.Code != ResultCodes.Ok)
                 {
                     _logger.LogError($"GetNomenclaturePublicAsync неуспешен в {nameof(ValidatePid)}");
-                    regionField.ValidationError = "Неуспешна валидация, проблем с връзката, опитайте пак";
+                    regionField.ValidationError = MessageConstant.ValidationFailConnectionIssue;
                     return false;
                 }
 
                 if (!areNomenclatureCodesAllowedResponse.AreAllowed)
                 {
-                    regionField.ValidationError = "Непознат район за населеното място";
+                    regionField.ValidationError = MessageConstant.UnknownDistrictForSettlement;
                     return false;
                 }
             }
 
-            var districtField = field.Fields.SingleOrDefault(f => f.Name.Contains("districtImmutable", StringComparison.InvariantCultureIgnoreCase));
+            //var districtField = field.Fields.SingleOrDefault(f => f.Name.Contains("districtImmutable", StringComparison.InvariantCultureIgnoreCase));
 
-            if (districtField != null && !string.IsNullOrWhiteSpace(districtField.Value))
-            {
-                AreNomenclatureCodesAllowedRequest areNomenclatureCodesAllowedRequest = new AreNomenclatureCodesAllowedRequest
-                {
-                    RegisterId = registerId,
-                    NomenclatureType = NomenclatureTypes.EkKvartal,
-                    NomenclatureCodes = { districtField.Value },
-                    Holder = settlementImmutable!.Value
-                };
+            //if (districtField != null && !string.IsNullOrWhiteSpace(districtField.Value))
+            //{
+            //    AreNomenclatureCodesAllowedRequest areNomenclatureCodesAllowedRequest = new AreNomenclatureCodesAllowedRequest
+            //    {
+            //        RegisterId = registerId,
+            //        NomenclatureType = NomenclatureTypes.EkKvartal,
+            //        NomenclatureCodes = { districtField.Value },
+            //        Holder = settlementImmutable!.Value
+            //    };
 
-                AreNomenclatureCodesAllowedResponse areNomenclatureCodesAllowedResponse =
-                    await nomenclatureGrpcClient.AreNomenclatureCodesAllowedAsync(areNomenclatureCodesAllowedRequest);
+            //    AreNomenclatureCodesAllowedResponse areNomenclatureCodesAllowedResponse =
+            //        await nomenclatureGrpcClient.AreNomenclatureCodesAllowedAsync(areNomenclatureCodesAllowedRequest);
 
-                if (areNomenclatureCodesAllowedResponse.ResultStatus.Code != ResultCodes.Ok)
-                {
-                    _logger.LogError($"GetNomenclaturePublicAsync неуспешен в {nameof(ValidatePid)}");
-                    districtField.ValidationError = "Неуспешна валидация, проблем с връзката, опитайте пак";
-                    return false;
-                }
+            //    if (areNomenclatureCodesAllowedResponse.ResultStatus.Code != ResultCodes.Ok)
+            //    {
+            //        _logger.LogError($"GetNomenclaturePublicAsync неуспешен в {nameof(ValidatePid)}");
+            //        districtField.ValidationError = MessageConstant.ValidationFailConnectionIssue;
+            //        return false;
+            //    }
 
-                if (!areNomenclatureCodesAllowedResponse.AreAllowed)
-                {
-                    districtField.ValidationError = "Непознат квартал за населеното място";
-                    return false;
-                }
-            }
+            //    if (!areNomenclatureCodesAllowedResponse.AreAllowed)
+            //    {
+            //        districtField.ValidationError = MessageConstant.UnknownNeighborhoodForSettlement;
+            //        return false;
+            //    }
+            //}
 
             return true;
         }
 
-        private async Task<bool> ValidateFile(FormField field)
+        /// <summary>
+        /// Валидира качен файл
+        /// </summary>
+        /// <param name="field">Полето за валидация</param>
+        /// <param name="file">Файл за валидация</param>
+        /// <returns></returns>
+        public async Task<bool> ValidateFile(FormField field, IFormFile file)
         {
-            if (field.File == null && field.IsRequired)
+            if (file == null && field.IsRequired)
             {
                 field.ValidationError = MessageConstant.FieldIsRequiredNoParam;
                 return false;
             }
 
-            if (field.File == null)
+            if (file == null)
             {
                 return true;
             }
 
-            if (field.AllowedFileExtensions != null && !field.AllowedFileExtensions.Contains(Path.GetExtension(field.File.FileName)))
+            if (field.AllowedFileExtensions != null &&
+                field.AllowedFileExtensions.Any() &&
+                !field.AllowedFileExtensions.Contains(Path.GetExtension(file.FileName)))
             {
-                field.ValidationError = $"Форматът на файла е неприемлив. Изберете {String.Join("; ", field.AllowedFileExtensions)}";
+                field.ValidationError = string.Format(MessageConstant.Values.FileTypeRejected, string.Join("; ", field.AllowedFileExtensions));
                 return false;
             }
 
-            if (!(await IsFileAcceptableFormat(field.File)))
+            if (file.Length == 0)
             {
-                field.ValidationError = $"Разширението на файла не отговаря на съдържанието му.";
+                field.ValidationError = MessageConstant.Values.FileIsEmpty;
                 return false;
             }
 
-            if (field.File.Length > (field.AllowedFileSizeInMB * 1024 * 1024))
+            if (!(await IsFileAcceptableFormat(file)))
             {
-                field.ValidationError = $"Файлът е по-голям от {field.AllowedFileSizeInMB} MB! Файлът не е записан";
+                field.ValidationError = MessageConstant.Values.FileTypeMismatch;
+                return false;
+            }
+
+            if (file.Length > (field.AllowedFileSizeInMB * 1024 * 1024))
+            {
+                field.ValidationError =
+                    string.Format(MessageConstant.Values.FileExceedsLimit, field.AllowedFileSizeInMB);
                 return false;
             }
 
@@ -397,20 +585,36 @@ namespace URegister.Core.Services
 
             if (field.IsRequired && !result)
             {
-                field.ValidationError = "Изборът е задължителен";
+                field.ValidationError = MessageConstant.SelectionIsRequired;
                 return false;
             }
 
             return true;
         }
 
-        private async Task<bool> ValidateDate(FormField field)
+        private async Task<bool> ValidateDate(FormField field, int userTimeZoneOffsetInMinutes, DateTime? processCreationDateUtc)
         {
+            DateTime parsedDate;
+
             bool success = DateTime.TryParseExact(field.Value,
-                field.Type == "Date" ? DateOnlyFormat : DateTimeFormat,
+                field.Type == SimpleFormFieldType.Date.ToString() ? FormattingConstant.NormalDateFormat : FormattingConstant.DateTimeFormat,
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.None,
-                out DateTime parsedDate);
+                out parsedDate);
+
+            //При импорт от е-форми
+            if (!success)
+            {
+                success = DateTime.TryParseExact(field.Value,
+                    FormattingConstant.EFormDateFormat,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out parsedDate);
+
+                field.Value = field.Type == SimpleFormFieldType.Date.ToString()
+                    ? parsedDate.ToString(FormattingConstant.NormalDateFormat)
+                    : parsedDate.ToString(FormattingConstant.DateTimeFormat);
+            }
 
             if (!success)
             {
@@ -418,35 +622,55 @@ namespace URegister.Core.Services
                 return false;
             }
 
-            if (field.Type == "Date")
+            if (field.Type == SimpleFormFieldType.Date.ToString())
             {
-                if (!field.AllowFutureDates && parsedDate > DateTime.Now.Date)
+                if (!field.AllowFutureDates && parsedDate > (processCreationDateUtc?.Date ?? DateTime.Now.Date))
                 {
-                    field.ValidationError = "Изберете отминала дата";
+                    field.ValidationError = MessageConstant.SelectPastDate;
                     return false;
                 }
-                if (!field.AllowPastDates && parsedDate < DateTime.Now.Date)
+                if (!field.AllowPastDates && parsedDate < (processCreationDateUtc?.Date ?? DateTime.Now.Date))
                 {
-                    field.ValidationError = "Изберете не отминала дата";
+                    field.ValidationError = MessageConstant.SelectFutureDate;
                     return false;
                 }
             }
-            else
+            else //DateTime
             {
-                if (!field.AllowFutureDates && parsedDate > DateTime.Now)
+                DateTime parsedDateInUtc = parsedDate.AddMinutes(userTimeZoneOffsetInMinutes);
+
+                if (!field.AllowFutureDates && parsedDateInUtc > (processCreationDateUtc ?? DateTime.UtcNow))
                 {
-                    field.ValidationError = "Изберете отминала дата";
+                    field.ValidationError = MessageConstant.SelectPastDate;
                     return false;
                 }
-                if (!field.AllowPastDates && parsedDate < DateTime.Now)
+                if (!field.AllowPastDates && parsedDateInUtc < (processCreationDateUtc ?? DateTime.UtcNow))
                 {
-                    field.ValidationError = "Изберете не отминала дата";
+                    field.ValidationError = MessageConstant.SelectFutureDate;
                     return false;
                 }
             }
 
             return true;
         }
+
+        private async Task<bool> ValidateTime(FormField field)
+        {
+            bool success = DateTime.TryParseExact(field.Value,
+                FormattingConstant.NormalTimeFormat,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out DateTime parsedTime);
+
+            if (!success)
+            {
+                field.ValidationError = MessageConstant.RegexFail;
+                return false;
+            }
+           
+            return true;
+        }
+
         private bool ValidateText(FormField field)
         {
             try
@@ -466,6 +690,17 @@ namespace URegister.Core.Services
 
             return true;
         }
+        
+        private bool ValidateFileField(FormField field)
+        {
+            if (!Guid.TryParse(field.Value, out var result))
+            {
+                field.ValidationError = "Ключът на файла е в невалиден формат";
+                return false;
+            }
+
+            return true;
+        }
 
         private bool ValidateNumber(FormField field)
         {
@@ -480,13 +715,13 @@ namespace URegister.Core.Services
             if (field.MinValue.HasValue &&
                 number < field.MinValue)
             {
-                field.ValidationError = $"Стойността е по-малка от минимума {field.MinValue}";
+                field.ValidationError = $"{MessageConstant.ValueBelowMinimum} {field.MinValue}";
                 return false;
             }
             if (field.MaxValue.HasValue &&
                 number > field.MaxValue)
             {
-                field.ValidationError = $"Стойността е по-голяма от максимума {field.MaxValue}";
+                field.ValidationError = $"{MessageConstant.ValueExceedsMaximum} {field.MaxValue}";
                 return false;
             }
 
@@ -510,13 +745,13 @@ namespace URegister.Core.Services
             if (nomenclatureIsCodeAllowedResponse.ResultStatus.Code != ResultCodes.Ok)
             {
                 _logger.LogError($"IsNomenclatureCodeAllowedAsync неуспешен в {nameof(ValidateSelect)}");
-                field.ValidationError = "Неуспешна валидация, проблем с връзката, опитайте пак";
+                field.ValidationError = MessageConstant.ValidationFailConnectionIssue;
                 return false;
             }
 
             if (!nomenclatureIsCodeAllowedResponse.AreAllowed)
             {
-                field.ValidationError = "Невалидна стойност за номенклатура";
+                field.ValidationError = MessageConstant.InvalidNomenclatureValue;
                 return false;
             }
 
@@ -538,7 +773,7 @@ namespace URegister.Core.Services
             if (nomenclatureResult.ResultStatus.Code != ResultCodes.Ok)
             {
                 _logger.LogError($"GetNomenclaturePublicAsync неуспешен в {nameof(ValidateCity)}");
-                field.ValidationError = "Неуспешна валидация, проблем с връзката, опитайте пак";
+                field.ValidationError = MessageConstant.ValidationFailConnectionIssue;
                 return false;
             }
 
@@ -546,7 +781,7 @@ namespace URegister.Core.Services
 
             if (nomenclatureType == null)
             {
-                field.ValidationError = "Невалиден тип на EKATTE";
+                field.ValidationError = MessageConstant.InvalidEKATTEType;
                 return false;
             }
 
@@ -554,7 +789,7 @@ namespace URegister.Core.Services
             {
                 if (nomenclatureType.CodeableConcepts.All(cc => cc.Code != selectedValue))
                 {
-                    field.ValidationError = "Невалидна стойност";
+                    field.ValidationError = MessageConstant.InvalidValue;
                     return false;
                 }
             }
@@ -576,6 +811,11 @@ namespace URegister.Core.Services
             return true;
         }
 
+        /// <summary>
+        /// Проверка дали съдържанието на файл отговаря на разширението
+        /// </summary>
+        /// <param name="file"></param>
+        /// <returns></returns>
         public async Task<bool> IsFileAcceptableFormat(IFormFile file)
         {
             var fileExtension = Path.GetExtension(file.FileName);
@@ -592,6 +832,10 @@ namespace URegister.Core.Services
             
             foreach (string potentialHeader in fileExtensionsHexSignatures[fileExtension])
             {
+                if (string.IsNullOrEmpty(potentialHeader))
+                {
+                    return true;
+                }
                 var sign = potentialHeader.Split(' '); //"FF D8 FF DB" го правим в list с име sign и в случая с 4 елемента. FF D8 FF DB - това e hex формат
                 var signatureBytes = new byte[sign.Length];  // arr е временен byte масив в десетичен вид, който приема hex стойностите от sign
                 for (int i = 0; i < signatureBytes.Length; i++)
@@ -606,6 +850,40 @@ namespace URegister.Core.Services
             }
 
             return false;                      
+        }
+
+        /// <summary>
+        /// Връща колекция от всички грешки при валидация на полета
+        /// </summary>
+        /// <param name="model">Валидираният модел</param>
+        /// <returns></returns>
+        public async Task<Dictionary<string, string>> GetValidatedFormFieldsErrors(FormViewModel model)
+        {
+            Dictionary<string, string> formFieldErrors = new Dictionary<string, string>();
+            await FillFormFieldErrors(model.FormFields, formFieldErrors);
+
+            return formFieldErrors;
+        }
+
+        private async Task FillFormFieldErrors(IEnumerable<FormField> validatedFormFields, Dictionary<string, string> formFieldErrors)
+        {
+            foreach (var formField in validatedFormFields)
+            {
+                if (!String.IsNullOrEmpty(formField.ValidationError))
+                {
+                    formFieldErrors.Add(formField.Name, formField.ValidationError);
+                }
+
+                if (formField.Repetitions.Any())
+                {
+                    await FillFormFieldErrors(formField.Repetitions, formFieldErrors);
+                }
+
+                if (formField.Fields.Any())
+                {
+                    await FillFormFieldErrors(formField.Fields, formFieldErrors);
+                }
+            }
         }
     }
 }

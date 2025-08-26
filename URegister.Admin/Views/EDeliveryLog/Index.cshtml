@@ -1,0 +1,17 @@
+﻿@{
+    ViewData["Title"] = "Лог на електронни връчвания";
+}
+@Html.AntiForgeryToken()
+<div class="ui grid">
+    <div class="column">      
+        <table id="eDeliveryLogRecords"
+               class="ui celled striped very compact table" style="width:100%; padding:0px;"
+               data-url="@Url.Action("GetEDeliveryLogRecordsList", "EDeliveryLog")">
+        </table>
+    </div>
+</div>
+
+@section Scripts
+{
+    <script src="~/js/edelivery_log/eDeliveryLogList.js" asp-append-version="true"></script>
+}

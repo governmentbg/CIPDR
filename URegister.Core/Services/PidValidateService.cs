@@ -1,6 +1,7 @@
 ﻿using System.Text.RegularExpressions;
+using URegister.Infrastructure.Constants;
 
-namespace MHRegistries.Core.Services
+namespace URegister.Core.Services
 {
     /// <summary>
     /// Валидира различни входни параметри
@@ -18,32 +19,43 @@ namespace MHRegistries.Core.Services
             if (string.IsNullOrWhiteSpace(personalId))
                 return false;
 
-            switch (pidCode)
+            switch ((PidTypes)pidCode)
             {
-                case 1: //ЕГН
+                case PidTypes.EGN: //ЕГН
                     return CheckEGN(personalId);
-                case 2: //ЛНЧ
+                case PidTypes.LNCH: //ЛНЧ
                     return CheckLNCH(personalId);
-                //case RegisterNomenclatures.IdentifierTypeLongConstants.EIK:
-                //    return CheckEIK(personalId);
-                case 3: //Социален номер - за чужди граждани
-                    return true;//TODO
-                case 4: //Номер на паспорт
-                    return true;//TODO
-                case 5: //Друг идентификатор
-                    return true;//TODO
-                case 6: //Новородено
-                    return true;//TODO
-
                 default:
                     // Няма как да валидирам, следователно пропускам напред
                     return true;
             }
         }
 
+        /// <summary>
+        /// Валидира персонален идентификатор
+        /// </summary>
+        /// <param name="companyId">Идентификатор на компания</param>
+        /// <param name="cidCode">Тип на идентификатора</param>
+        /// <returns>Резултат от проверката</returns>
+        public static bool ValidateCompanyId(string companyId, int cidCode)
+        {
+            if (string.IsNullOrWhiteSpace(companyId))
+                return false;
+
+            switch ((CidTypes)cidCode)
+            {
+                case CidTypes.EIK:
+                    return CheckEIK(companyId);
+                case CidTypes.BULSTAT:
+                    return CheckEIK(companyId);//TODO : провери валидацията
+                default:
+                    return true;
+            }
+        }
+
         private static bool CheckEIK(string EIK)
         {
-            if ((EIK.Length != 9) && (EIK.Length != 13)) return false;
+            if (EIK.Length != 9 && EIK.Length != 13) return false;
 
             if (CheckSum9EIK(EIK)?.ToString() == EIK.Substring(8, 1))
             {

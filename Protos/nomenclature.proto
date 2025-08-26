@@ -31,10 +31,15 @@ service NomenclatureGrpc {
   rpc GetNomenclatureTypeListPublic (NomenclaturePublicRequest) returns (NomenclatureTypeListPublicResponse);
   rpc GetEkattePublic(EkattePublicRequest) returns (EkattePublicResponse);
   rpc UpdateCodeableConceptRegister(UpdateCodeableConceptRegisterRequest) returns (common.ResultStatus);
+  rpc UpdateCodeableConceptStatus(UpdateCodeableConceptStatusRequest) returns (common.ResultStatus);
   rpc CheckNomenclature(CheckNomenclatureRequest) returns (CheckNomenclatureResponse);
   rpc GetNomenclatureOnHolderPublic(NomenclatureHolderRequest) returns (NomenclaturePublicResponse);
   rpc AreNomenclatureCodesAllowed(AreNomenclatureCodesAllowedRequest) returns (AreNomenclatureCodesAllowedResponse);
   rpc GetValueByCode(GetValueRequest) returns (GetValueResponse);
+  rpc DeleteNomenclatureType(GetNomenclatureTypeRequest) returns (common.ResultStatus);
+  rpc GetNomenclatureWithHolderValues(NomenclatureWithHolderValuesRequest) returns (NomenclatureWithHolderResponse);
+  rpc GetCodeableConceptListExport(CodeableConceptListExportRequest) returns (CodeableConceptListResponse);
+  rpc GetSettlementFullInfo(SettlementFullInfoRequest) returns (SettlementFullInfoResponse);
 }
 
 message CreateNewCodeableConceptRequest{
@@ -124,27 +129,29 @@ message GetCodeableConceptRequest {
 }
 
 message CodeableConceptRequest {
-	string code = 1;
-	string value = 2;
-	google.protobuf.StringValue value_en = 3;
-	google.protobuf.Timestamp date_from = 4;
-	google.protobuf.Timestamp date_to = 5;
-	google.protobuf.StringValue parent_code = 6;
-	string type = 7;
-	string created_by = 8;
-	repeated AdditionalColumn additional_columns = 9;
+	int64 id = 1;
+	string code = 2;
+	string value = 3;
+	google.protobuf.StringValue value_en = 4;
+	google.protobuf.Timestamp date_from = 5;
+	google.protobuf.Timestamp date_to = 6;
+	google.protobuf.StringValue parent_code = 7;
+	string type = 8;
+	repeated AdditionalColumn additional_columns = 10;
 	google.protobuf.StringValue holder_code = 11;
+	int32 status = 12;
 }
 
 message CodeableConceptResponse {
-	string code = 1;
-	string value = 2;
-	google.protobuf.StringValue value_en = 3;
-	google.protobuf.Timestamp date_from = 4;
-	google.protobuf.Timestamp date_to = 5;
-	google.protobuf.StringValue parent_code = 6;
-	string type = 7;
-	repeated AdditionalColumn additional_columns = 9;
+	int64 id = 1;
+	string code = 2;
+	string value = 3;
+	google.protobuf.StringValue value_en = 4;
+	google.protobuf.Timestamp date_from = 5;
+	google.protobuf.Timestamp date_to = 6;
+	google.protobuf.StringValue parent_code = 7;
+	string type = 8;
+	repeated AdditionalColumn additional_columns = 10;
 	common.ResultStatus result_status = 11;
 	google.protobuf.Timestamp date_from_init = 12;
 	google.protobuf.StringValue holder_code = 13;
@@ -159,6 +166,8 @@ message CodeableConceptItem {
 	google.protobuf.Timestamp date_to = 6;
 	google.protobuf.StringValue parent_code = 7;
 	google.protobuf.StringValue holder_code = 8;
+	google.protobuf.StringValue status = 9;
+	int32 status_id = 10;
 }
 
 message CodeableConceptRegisterItem {
@@ -171,6 +180,8 @@ message CodeableConceptRegisterItem {
 	google.protobuf.StringValue parent_code = 7;
 	google.protobuf.StringValue holder_code = 8;
 	bool is_valid = 9;
+    google.protobuf.StringValue status = 10;
+	int32 status_id = 11;
 }
 
 
@@ -207,6 +218,7 @@ message NomenclaturePublicRequest {
    int32 register_id = 1;
    repeated string nomenclature_types = 2;
    optional string filter_value = 3;
+   bool skip_date_check = 4;
 }
 
 message NomenclatureHolderRequest {
@@ -276,6 +288,12 @@ message UpdateCodeableConceptRegisterRequest{
 	bool is_valid = 5;
 	string updated_by = 7;
 }
+message UpdateCodeableConceptStatusRequest{
+	int32 id = 1;
+	google.protobuf.StringValue code = 2;
+	string type = 3;
+	int32 status_id = 4;
+}
 
 message CheckNomenclatureItem{
 	string type = 1;
@@ -316,9 +334,38 @@ message AreNomenclatureCodesAllowedResponse {
 message GetValueRequest {   
    string nomenclature_type = 1;
    string nomenclature_code = 2;   
+   bool skip_date_check = 3;
 }
 
 message GetValueResponse {   
    string nomenclature_value = 1;
    common.ResultStatus result_status = 2;
+}
+
+message NomenclatureWithHolderValuesRequest {
+   int32 register_id = 1;
+   optional string filter_value = 2;
+   string nomenclature_code = 3;
+}
+
+message NomenclatureWithHolderItem{
+	string category = 1;
+	repeated EkatteSettlementPublic entities = 2;
+}
+
+message NomenclatureWithHolderResponse {
+   repeated NomenclatureWithHolderItem categories  = 1;
+   common.ResultStatus result_status = 2;
+}
+message CodeableConceptListExportRequest {
+	string type = 1;
+}
+
+message SettlementFullInfoRequest {
+	string ekatteCode = 1;
+}
+
+message SettlementFullInfoResponse {
+	common.ResultStatus result_status = 1;
+	string SettlementFullInfo = 2;
 }

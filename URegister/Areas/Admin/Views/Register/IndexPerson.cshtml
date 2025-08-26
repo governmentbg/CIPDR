@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Оторозирани лица";
 }
+@Html.AntiForgeryToken()
 @Html.HiddenFor(x => x.AdministrationId)
 <div class="ui grid">
     <div class="column">
@@ -10,14 +11,14 @@
             <table 
                 id="persons" 
                 class="ui celled striped very compact table" style="width:100%; padding:0px;"
-                data-url="@Url.Action("GetPersonList", "Register")">
+                data-url="@Url.Action("GetPersonList", "Register", new {area = "Admin"})"
+                data-add-url="@Url.Action("AddPerson", "Register", new {area = "Admin", administrationId = Model.AdministrationId})">
              </table>
         </div>
     </div>
 </div>
-@await Html.PartialAsync("_BackButton", @Url.Action("IndexAdministration"))
-@await Html.PartialAsync("_ConfirmDelete")
+@await Html.PartialAsync("_BackButton", @Url.Action("IndexAdministration", "Register"))
 @section Scripts
 {
-    <script src="~/js/register/personList.js" asp-append-version="true"></script>
+        <script src="~/js/admin/register/personList.js" asp-append-version="true"></script>
 }

@@ -1,0 +1,21 @@
+﻿@using URegister.Core.Models.Process
+@using URegister.Infrastructure.Constants
+@model ProcessDeliveryFilterVM
+@{
+    ViewData["Title"] = $"Указания към {Model.ProcessLabel}";
+}
+@Html.AntiForgeryToken()
+@Html.HiddenFor(x => x.ProcessId)
+<div class="ui grid">
+    <div class="column">
+        <table id="processDeliveries"
+               class="ui celled striped very compact table" style="width:100%; padding:0px;"
+               data-url="@Url.Action("GetProcessDeliveryList", "Process")">
+        </table>
+    </div>
+</div>
+@await Html.PartialAsync("_BackButton", @Url.Action("Index"))
+@section Scripts
+{
+    <script src="~/js/admin/process/processDeliveryList.js" asp-append-version="true"></script>
+}

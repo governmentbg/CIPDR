@@ -1,132 +1,138 @@
 ﻿$(function () {
-    $('.menu .item').tab();
-    loadUserRoles();
-    loadUserGroups()
-    
+    $('.menu .item').tab({
+        onVisible: function (tabPath) {
+            if (tabPath === 'userRoles') {
+                loadUserRoles();
+            }
+            else if (tabPath === 'userAdministrations') {
+                loadUserAdministrations();
+            }
+        }
+    });
+
     $('#rolesModal').modal({
         closable: false
     });
-    $('#groupsModal').modal({
-        closable: false
-    });
+
     $('#cancelRolesButton').on('click', function () {
         $('#rolesModal').modal('hide');
     });
 
-    $('#cancelGroupButton').on('click', function () {
-        $('#groupsModal').modal('hide');
+    $('#administrationModal').modal({
+        closable: false
+    });
+
+    $('#cancelAdministrationsButton').on('click', function () {
+        $('#administrationModal').modal('hide');
     });
 
     $('#submitAddRoleButton').on('click', function () {
-        let selectedRoles = [];
-        $('#rolesMultiselect').dropdown('get values').forEach(function (roleId) {
-            let roleText = $('#rolesMultiselect option[value="' + roleId + '"]').text();
-            selectedRoles.push({ id: roleId, name: roleText });
-        });
 
+        let roleValue = $('#rolesDropdown').dropdown('get value');
+        let regValue = $('#registriesDropdown').dropdown('get value');
         let userId = $("#userRoles").data('userid');
-        $.ajax({
-            url: '/User/UpdateUserRoles',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({ userId: userId, roles: selectedRoles }),
-            success: function (response) {
+
+        post_async('/User/UpdateUserRoles', {
+            userId: userId,
+            roleIds: roleValue,
+            registerCode: regValue,
+            __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+        })
+            .then((result) => {
                 loadUserRoles();
-                showToast("success", response.message);
+                showToast("success", result.message);
                 $('#rolesModal').modal('hide');
-            },
-            error: function (xhr, status, error) {
-                showToast("error", xhr.responseText);
-            }
-        });
-
-        $('#rolesModal').modal('hide');
-        loadUserRoles();
+            })
+            .catch((result) => {
+                loadUserRoles();
+                showToast("error", result.responseJSON?.message);
+            });
     });
 
-    $('#submitAddGroupButton').on('click', function () {
-        let selectedGroups = [];
-        $('#groupsMultiselect').dropdown('get values').forEach(function (groupId) {
-        
-            selectedGroups.push(groupId);
-        });
+    $('#submitAddAdministrationsButton').on('click', function () {
+        let administrationValue = $('#administrationsDropdown').dropdown('get value');
+        let userId = $('#Id').val();
 
-        let userId = $("#userGroups").data('userid');
-        $.ajax({
-            url: '/User/UpdateUserGroups',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({ userId: userId, groups: selectedGroups }),
-            success: function (response) {
-                loadUserGroups();
-                showToast("success", response.message);
-                $('#groupsModal').modal('hide');
-            },
-            error: function (xhr, status, error) {
-                showToast("error", xhr.responseText);
-            }
-        });
-
-        $('#groupsModal').modal('hide');
-        loadUserGroups();
+        post_async('/User/AddUserAdministrations', {
+            userId: userId,
+            administrationIds: administrationValue,
+            __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+        })
+            .then((result) => {
+                loadUserAdministrations();
+                showToast("success", result.message);
+                $('#administrationModal').modal('hide');
+            })
+            .catch((result) => {
+                loadUserAdministrations();
+                showToast("error", result.responseJSON?.message);
+            });
     });
-
 });
 
 function openRolesModal() {
     $('#rolesModal').modal('show');
-    let userID = $("#userRoles").data('userid');
     $.ajax({
-        url: '/User/GetUserAvailableRoles',
+        url: '/User/GetAllRoles',
         type: 'GET',
         dataType: 'json',
-        data: { userId: userID },
-        success: function (roles) {
-            populateMultiselect(roles);
+        data: {
+            administrationId: $('#AdministrationId').val(),
+            userId: $('#Id').val(),
+            __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+        },
+        success: function (result) {
+            populateRolesDropdown(result);
         },
         error: function (xhr, status, error) {
+            showToast("error", xhr.responseText)
             console.error('Error fetching roles:', xhr.responseText || error);
         }
     });
 }
 
-function openGroupsModal() {
-    $('#groupsModal').modal('show');
-    let userID = $("#userGroups").data('userid');
+function openAdministrationsModal() {
+    $('#administrationModal').modal('show');
     $.ajax({
-        url: '/User/GetUserAvailableGroups',
+        url: '/User/GetAdministrationsForAssign',
         type: 'GET',
         dataType: 'json',
-        data: { userId: userID },
-        success: function (groups) {
-            populateGroupsMultiselect(groups);
+        data: {
+            userId: $('#Id').val(),
+            __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+        },
+        success: function (result) {
+            populateAdministrationsDropdown(result);
         },
         error: function (xhr, status, error) {
-            console.error('Error fetching roles:', xhr.responseText || error);
+            console.error('Error fetching administrations:', xhr.responseText || error);
         }
     });
 }
 
-function populateMultiselect(roles) {
-    let multiselect = $('#rolesMultiselect');
-    multiselect.empty();
+function populateRolesDropdown(result) {
+    let dropdown = $('#rolesDropdown');
+    let registriesDropDown = $('#registriesDropdown');
 
-    roles.forEach(function (role) {
-        multiselect.append(`<option value="${role.id}">${role.name}</option>`);
+    dropdown.empty();
+    registriesDropDown.empty();
+    dropdown.dropdown('destroy').dropdown({
+        placeholder: 'Избери роля'
     });
-    multiselect.dropdown('clear');
-    multiselect.dropdown('refresh');
-}
-
-function populateGroupsMultiselect(groups) {
-    let multiselect = $('#groupsMultiselect');
-    multiselect.empty();
-
-    groups.forEach(function (group) {
-        multiselect.append(`<option value="${group.id}">${group.name}</option>`);
+    registriesDropDown.dropdown('destroy').dropdown({
+        placeholder: 'Избери регистър'
     });
-    multiselect.dropdown('clear');
-    multiselect.dropdown('refresh');
+
+    result.roles.forEach(function (role) {
+        dropdown.append(`<option value="${role.roleId}">${role.label}</option>`);
+    });
+    result.registries.forEach(function (reg) {
+        registriesDropDown.append(`<option value="${reg.code}">${reg.name} (${reg.code})</option>`);
+    });
+    dropdown.dropdown('clear');
+    registriesDropDown.dropdown('clear');
+    dropdown.dropdown('refresh');
+    registriesDropDown.dropdown('refresh');
 }
 
 function loadUserRoles() {
@@ -145,6 +151,7 @@ function loadUserRoles() {
                 "datatype": "json",
                 data: function (d) {
                     d.userId = userID;
+                    d.__RequestVerificationToken = $('input[name="__RequestVerificationToken"]').val()
                 },
                 error: function (xhr, status, error) {
                     messageHelper.ShowErrorMessage('Проблем при четене ' + xhr.responseText);
@@ -152,58 +159,38 @@ function loadUserRoles() {
             },
             columns: [
                 {
-                    name: 'id',
-                    data: 'id',
-                    title: '#',
+                    name: 'label',
+                    data: 'label',
+                    title: 'Име на роля',
+                    sortable: true,
+                    searchable: false
+                },
+                {
+                    name: 'registerCode',
+                    data: 'registerCode',
+                    title: 'Код на регистър',
+                    sortable: true,
+                    searchable: false
+                },
+                {
+                    name: 'registerName',
+                    data: 'registerName',
+                    title: 'Име на регистър',
+                    sortable: true,
+                    searchable: false
+                },
+                {
+                    title: 'Действия',
                     sortable: false,
-                    searchable: false
-                },
-                {
-                    name: 'name',
-                    data: 'name',
-                    title: 'Name',
-                    sortable: true,
-                    searchable: false
-                },
-                {
-                    name: 'description',
-                    data: 'description',
-                    title: 'Описание',
-                    sortable: true,
-                    searchable: false
-                },
-                {
-                    name: 'composite',
-                    data: 'composite',
-                    title: 'Композитна',
-                    sortable: true,
-                    searchable: false
-                },
-                {
-                    name: 'clientRole',
-                    data: 'clientRole',
-                    title: 'Client Role',
-                    sortable: true,
-                    searchable: false
-                },
-                {
-                    name: 'containerId',
-                    data: 'containerId',
-                    title: 'Container Id',
-                    sortable: true,
-                    searchable: false
-                },
-                {
-                    name: '',
-                    data: '',
-                    title: 'Отписване',
-                    sortable: true,
                     searchable: false,
-                    class:"center aligned",
+                    className: "dt-center",
                     render: function (data, type, row, meta) {
-                        return `<a data-id=${row.id} data-name="${row.name}" onclick="return confirmUnassign(event);" data-tooltip="Отпиши" class="ui tertiary button unassignRole">
-                                  <i class="times circle red outline tasks icon"></i>
-                              </a>`;
+                        return `<a data-roleId=${row.roleId} data-code="${row.registerCode}" data-role-name="&quot;${row.label}&quot;" onclick="confirmUnassignRole(event)" 
+                                                  type="button" 
+                                                  class="ui tertiary icon button" 
+                                                  data-tooltip="Прекратяване">
+                                                  <i class="red trash alternate icon"></i>
+                                              </a>`;
                     }
                 }
             ]
@@ -215,117 +202,150 @@ function loadUserRoles() {
     }
 }
 
-function loadUserGroups() {
-    const tableId = '#userGroups';
+function loadUserAdministrations() {
+    const tableId = '#userAdministrations';
     let userID = $(tableId).data('userid');
     if ($.fn.dataTable.isDataTable(tableId)) {
         refreshTable(tableId);
     }
     else {
         let url = $(tableId).data('url');
-        let dtGroups = $(tableId).DataTable({
-            filter: false,
+        let dtAdministrations = $(tableId).DataTable({
             ajax: {
                 "url": url,
                 "type": "POST",
                 "datatype": "json",
                 data: function (d) {
                     d.userId = userID;
+                    d.__RequestVerificationToken = $('input[name="__RequestVerificationToken"]').val()
+                },
+                dataSrc: function (json) {
+                    return json.data;
                 },
                 error: function (xhr, status, error) {
-                    messageHelper.ShowErrorMessage('Проблем при четене ' + error.responseText);
+                    messageHelper.ShowErrorMessage('Проблем при четене ' + xhr.responseText);
                 }
             },
             columns: [
                 {
-                    name: 'id',
-                    data: 'id',
-                    title: '#',
-                    sortable: false,
-                    searchable: false
-                },
-                {
                     name: 'name',
                     data: 'name',
-                    title: 'Name',
+                    title: 'Име',
                     sortable: true,
-                    searchable: false
+                    searchable: true
                 },
                 {
-                    name: '',
-                    data: '',
-                    title: 'Отписване',
+                    name: 'uic',
+                    data: 'uic',
+                    title: 'Булстат',
                     sortable: true,
+                    searchable: true
+                },
+                {
+                    title: 'Действия',
+                    sortable: false,
                     searchable: false,
-                    class: "center aligned",
+                    className: "dt-center",
                     render: function (data, type, row, meta) {
-                        return `<a data-id=${row.id} onclick="return confirmUnassignGroup(event);" data-tooltip="Отпиши" class="ui tertiary button">
-                                  <i class="times circle red outline tasks icon"></i>
-                              </a>`;
+                        return `<a data-administrationId=${row.id} data-administration-name="${row.name}" onclick="confirmRemoveFromAdministration(event)" 
+                                                  type="button" 
+                                                  class="ui tertiary icon button" 
+                                                  data-tooltip="Прекратяване">
+                                                  <i class="red trash alternate icon"></i>
+                                              </a>`;
                     }
                 }
             ]
         });
 
-        dtGroups.ready(function () {
-            SetAddButtonWithTitle("openGroupsModal", "Добави група", "openGroupsModal();", '#userGroups_wrapper');
+        dtAdministrations.ready(function () {
+            SetAddButtonWithTitle("openAdministrationsModal", "Добави администрация", "openAdministrationsModal();", '#userAdministrations_wrapper');
         });
     }
 }
 
-function confirmUnassign(event) {
-    event.preventDefault();
-    if (!confirm("Are you sure?")) {       
-        return false;
-    } else {
-        let userID = $("#userRoles").data('userid');
-        let roleID = $(event.currentTarget).data('id');
-        let roleName = $(event.currentTarget).data('name');
-        let selectedRoles = [];
-        selectedRoles.push({ id: roleID, name: roleName });
-        $.ajax({
-            url: '/User/Unassign',
-            type: 'DELETE',
-            contentType: 'application/json',
-            data: JSON.stringify({ userId: userID, roles: selectedRoles }),
-            success: function (response) {
-                loadUserRoles()
-                showToast("success", response.message);
-                return true;
-            },
-            error: function (xhr, status, error) {
-                showToast("error", error);
-                return false;
+function populateAdministrationsDropdown(result) {
+    let dropdown = $('#administrationsDropdown');
+
+    dropdown.empty();
+    dropdown.dropdown('destroy').dropdown({
+        placeholder: 'Избери администрация'
+    });
+
+    result.forEach(function (administration) {
+        if (administration.uic == '000000000') {//Всички администрации
+            return;
+        }
+        dropdown.append(`<option value="${administration.id}">${administration.name}(${administration.uic})</option>`);
+    });
+
+    dropdown.dropdown('clear');
+    dropdown.dropdown('refresh');
+}
+
+function confirmUnassignRole(event) {
+    let roleName = $(event.currentTarget).data('role-name');
+    $('#confirmActionText').text(`Сигурни ли сте, че искате да премахнете ролята ${roleName}?`);
+    let userID = $("#userRoles").data('userid');
+    let roleID = $(event.currentTarget).data('roleid');
+    let code = $(event.currentTarget).data('code');
+
+    $('.confirm-action')
+        .modal({
+            centered: true,
+            closable: false,
+            onApprove: function () {
+                let url = "/User/UnassignRole";
+                post_async(url, {
+                    userId: userID,
+                    roleId: roleID,
+                    registerCode: code,
+                    __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                },
+                )
+                    .then((result) => {
+                        if (result.message) {
+                            loadUserRoles()
+                            showToast("success", result.message);
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Грешка: ' + error);
+                    });
             }
-        });
-    }
-}
+        })
+        .modal('show');
+};
 
-function confirmUnassignGroup(event) {
-    event.preventDefault();
-    if (!confirm("Are you sure?")) {
-        return false;
-    } else {
-        let userID = $("#userGroups").data('userid');
-        let groupId = $(event.currentTarget).data('id');
-        $.ajax({
-            url: '/User/UnassignGroups',
-            type: 'DELETE',
-            contentType: 'application/json',
-            data: JSON.stringify({ userId: userID, groupId: groupId }),
-            success: function (response) {
-                loadUserGroups()
-                showToast("success", response.message);
-                return true;
-            },
-            error: function (xhr, status, error) {
-                showToast("error", error);
-                return false;
+function confirmRemoveFromAdministration(event) {
+    let administrationName = $(event.currentTarget).data('administration-name');
+    $('#confirmActionText').text(`Сигурни ли сте, че искате да премахнете администрация ${administrationName}?`);
+    let userID = $('#Id').val();
+    let administrationID = $(event.currentTarget).data('administrationid');
+
+    $('.confirm-action')
+        .modal({
+            centered: true,
+            closable: false,
+            onApprove: function () {
+                let url = "/User/RemoveAdministration";
+                post_async(url, {
+                    userId: userID,
+                    administrationId: administrationID,
+                    administrationName: administrationName,
+                    __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                },
+                )
+                    .then((result) => {
+                        if (result.message) {
+                            loadUserAdministrations()
+                            showToast("success", result.message);
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Грешка: ' + error);
+                    });
             }
-        });
-    }
-}
-
-function beforeSubmit() {
-    $('#GroupIds').val($('#GroupList').val().join(','));
-}
+        })
+        .modal('show');
+};

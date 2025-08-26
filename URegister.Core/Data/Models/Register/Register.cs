@@ -1,5 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Data.Common;
 
 namespace URegister.Core.Data.Models.Register
@@ -79,11 +81,8 @@ namespace URegister.Core.Data.Models.Register
         /// </summary>
         [Required]
         [Comment("Дата на създаване")]
+        [Column(TypeName = AttributeConstants.Timestamptz)]
         public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
 
-        /// <summary>
-        /// Администрации
-        /// </summary>
-        public List<Administration> Administrations { get; set; } = new List<Administration>();
     }
 }

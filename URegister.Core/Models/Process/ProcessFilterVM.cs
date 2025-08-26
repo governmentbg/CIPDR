@@ -1,36 +1,54 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel.DataAnnotations;
 using URegister.Infrastructure.Constants;
-using URegister.Infrastructure.Model.RegisterForms;
+using URegister.Core.Models.Common;
 
 namespace URegister.Core.Models.Process
 {
+    /// <summary>
+    /// Модел на филтър за процеси
+    /// </summary>
     public class ProcessFilterVM
     {
         /// <summary>
+        /// От дата на входиране
+        /// </summary>
+        [Display(Name = "От дата на входиране")]
+        public DateTime? IncomingDateFrom { get; set; }
+
+        /// <summary>
+        /// До дата на входиране
+        /// </summary>
+        [Display(Name = "До дата на входиране")]
+        public DateTime? IncomingDateTo { get; set; }
+
+        /// <summary>
         /// Входящ номер
         /// </summary>
-        [MaxLength(20)]
-        [Display(Name ="Входящ номер")]
-        public string? IncomingNumber { get; set; } 
+        [MaxLength(20, ErrorMessage = MessageConstant.StringMaxLengthValidation)]
+        [Display(Name = "Входящ номер")]
+        public string? IncomingNumber
+        {
+            get => _incomingNumber;
+            set => _incomingNumber = value?.Trim();
+        }
+        private string? _incomingNumber;
 
         /// <summary>
         /// Номер на вписване 
         /// </summary>
-        [Display(Name = "Номер на вписване ")]
-        public string? RegisterNumber { get; set; }
+        [Display(Name = "Рег. на вписване ")]
+        public string? RegisterNumber
+        {
+            get => _registerNumber;
+            set => _registerNumber = value?.Trim();
+        }
+        private string? _registerNumber;
 
         /// <summary>
-        /// Дата на входиране
+        /// История по ид
         /// </summary>
-        [Display(Name = "Дата на входиране")]
-        public DateTime? IncomingDate { get; set; }
+        public Guid? FromProcessId { get; set; }
+        
 
         /// <summary>
         /// Идентификатор на услуга
@@ -45,16 +63,25 @@ namespace URegister.Core.Models.Process
         public int StepId { get; set; }
 
         /// <summary>
-        /// Идентификатор на лице
+        /// Идентификатор на статус
         /// </summary>
-        [MaxLength(20)]
-        [Display(Name = "Идентификатор на лице")]
-        public string? Pid { get; set; } 
+        [Display(Name = "Статус")]
+        public int StatusId { get; set; }
 
         /// <summary>
-        /// Тип на идентификатора
+        /// Идентификатор на партида
         /// </summary>
-        [MaxLength(2)]
-        public string? PidType { get; set; }
-    }
+        [Display(Name = "Идентификатор на партида")]
+        public PersonIdentifierVM PersonIdentifier { get; set; } = new();
+
+        /// <summary>
+        /// Идентификатор на заявител
+        /// </summary>
+        [Display(Name = "Идентификатор на заявител")]
+        public PersonIdentifierVM PersonIdentifierApplicant { get; set; } = new();
+
+        public Guid? AssignedToUserId { get; set; }
+
+        public bool ForDeAssignUser { get; set; }
+}
 }

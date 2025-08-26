@@ -9,7 +9,7 @@ namespace URegister.RegistersCatalog.Data.Models
     /// </summary>
     [Comment("Регистри")]
     [Index(nameof(Code), IsUnique = true)]
-    public class Register : SoftDeletable
+    public class Register : EntityBaseWithLastModifiedInfo
     {
         /// <summary>
         /// Идентификатор
@@ -60,10 +60,10 @@ namespace URegister.RegistersCatalog.Data.Models
         /// <summary>
         /// Ниво на осигуреност на средствата за електронна идентификация
         /// </summary>
-        [Required]
+        //[Required]
         [MaxLength(5)]
         [Comment("Ниво на осигуреност на средствата за електронна идентификация")]
-        public string IdentitySecurityLevel { get; set; } = null!;
+        public string? IdentitySecurityLevel { get; set; } 
 
 
         /// <summary>
@@ -87,6 +87,37 @@ namespace URegister.RegistersCatalog.Data.Models
         /// </summary>
         [Comment("Дата на стартиране")]
         public DateTime? StartedOn { get; set; }
+
+        /// <summary>
+        /// Базов адрес
+        /// </summary>
+        [Comment("Базов адрес")]
+        public string? BaseAddress { get; set; }
+
+        /// <summary>
+        /// Идентификатор на статус
+        /// </summary>
+        [Comment("Идентификатор на статус")]
+        public int StatusId { get; set; }
+
+        /// <summary>
+        /// Стартиран ли е контейнер за регистъра
+        /// </summary>
+        [Comment("Стартиран ли е контейнер за регистъра")]
+        public bool Deployed { get; set; }
+
+        /// <summary>
+        /// Категория opendata
+        /// </summary>
+        [Comment("Категория opendata")]
+        public int OpenDataCategoryId { get; set; }
+
+        /// <summary>
+        /// Тагове opendata
+        /// </summary>
+        [Comment("Тагове opendata")]
+        [MaxLength(500)]
+        public string? OpenDataTags { get; set; }
 
         /// <summary>
         /// Администрации

@@ -1,49 +1,44 @@
 ﻿const noResultsFoundMessage = 'Няма намерени резултати!';
 $(function () {
     initializeElements($(document));
-    //Tooltip-a при чекбокс да не излиза от очертанията на елемента
-    $('.checkbox-tooltip').popup({
-        boundary: '.ui checkbox'
-    })
 
-    $('.person-tooltip').popup({
-        boundary: '.person-fieldset'
-    })
+    //Horizontal scroll for datatables
+    $(document).on('init.dt', function (e, settings) {
+        var $table = $(settings.nTable);
 
-    $('.company-tooltip').popup({
-        boundary: '.company-fieldset'
-    })
-
-    $('input:not([type="hidden"]), textarea').each(function () {
-        $(this).attr('oninvalid', 'setCustomValidity(getErrorMessage(this))');
-        $(this).attr('oninput', 'setCustomValidity("")');
-
-        if ($(this).closest('.datetime-calendar').length || $(this).closest('.dateonly-calendar').length) {
-            $(this).attr('onchange', 'this.setCustomValidity("")');
+        // Check for specific classes in the table (ignoring dynamic classes like 'dataTable')
+        if ($table.hasClass('ui') && $table.hasClass('celled') && $table.hasClass('table')) {
+            // Apply overflow-x: auto to the nearest parent with .ui.padded.grid.row
+            $table.closest('.ui.padded.grid.row').css('overflow-x', 'auto');
         }
     });
 
-    //При readonly сложен контрол тип fieldset прави inputs readonly
-    if ($('fieldset.readonly-fieldset').length > 0) {
-        // Make all inputs and textareas inside the readonly fieldset readonly and add classes
-        $('fieldset.readonly-fieldset').find('input, textarea').each(function () {
-            $(this).prop('readonly', true).addClass('ui disabled input');
-        });
-
-        // Add the `disabled` class to any `.ui.calendar` divs within `.readonly-fieldset` fieldsets
-        $('fieldset.readonly-fieldset').find('div.ui.calendar').addClass('disabled');
-
-        // Add the `disabled` class to any `.ui fluid search selection dropdown` divs within `.readonly-fieldset` fieldsets
-        $('fieldset.readonly-fieldset').find('div.ui.fluid.search.selection.dropdown').addClass('disabled');
-    }   
+    $(document).on('click', '.single-click-submit', function (e) {
+        singleClickSubmitDisable(this);
+        e.preventDefault();
+        showLoader('body');
+        //if (!$(this).parents('form:first').valid()) {
+        //    singleClickSubmitEnable();
+        //}
+        return false;
+    });
+    InitForm();
 });
 
-function generatePIDValue(pidContainer) {
-    let pidType = pidContainer.find('.ui.dropdown').dropdown('get value');
-    let pidNumber = pidContainer.find(':input[type=text]').val().trim();    
-    pidContainer.find("input[type='hidden']:not(.label input)").val(pidType + ':' + pidNumber);
-}
+function singleClickSubmitDisable(sender) {
+    var disabled = $(sender).is(':disabled') || $(sender).attr('disabled') || $(sender).attr('data-clicked');
 
+    if (!disabled) {
+        $(sender).attr('disabled', 'disabled');
+        $(sender).attr('data-clicked', 'clicked');
+        $('#UserTimeZoneOffsetInMinutes').val(new Date().getTimezoneOffset());
+        $(sender).parents('form:first').trigger('submit');
+    }
+}
+function singleClickSubmitEnable() {
+    $('.single-click-submit').removeAttr("disabled");
+    $('.single-click-submit').removeAttr("data-clicked");
+}
 function frontEndValidation(checkbox) {
     if (!checkbox.checked) {
         $('#submit').attr("novalidate", true);
@@ -105,55 +100,7 @@ var calendarTextConfig = {
     am: 'AM',
     pm: 'PM'
 };
-
-
-//#region За FileUpload
-$('.upload-file-input').change(function () {
-    let textForLabel;
-    var selectedFiles = $(this).prop("files");
-    if (selectedFiles.length === 0) {
-        textForLabel = "Изберете файл";
-        $(this).parent().find('.remove-file').parent().hide();
-    }
-    else {
-        var filenames = [];
-
-        if (selectedFiles.length > 0) {
-            for (var i = 0; i < selectedFiles.length; i++) {
-                filenames.push(selectedFiles[i].name);
-            }
-            textForLabel = filenames.join("; ");
-        }
-
-        let label = $(this).parent().find('.selected-file');
-        label.text(textForLabel);
-        label.attr('title', textForLabel.replace(/; /g, "\n"));
-        $(this).parent().find('.remove-file').parent().show();
-    }
-});
-
-//#endregion
-
-$('.remove-file').click(function () {
-
-    $(this).closest('.action').find('.upload-file-input').val('');    
-    $('.selected-file').text('');
-    $('.selected-file').removeAttr('title');
-});
-
-function initializeElements(parentForm) {
-    //#region За checkbox
-
-    $(".checkbox-template").change(function () {
-        if ($(this).is(':checked')) {
-            $(this).parent().find('input:hidden').val('true');
-        } else {
-            $(this).parent().find('input:hidden').val('false');
-        }
-    });
-
-    //#endregion
-
+function initializeElements(parentForm) {    
     $('.ekatte')
         .each(function () {
             $(this).search(
@@ -169,16 +116,9 @@ function initializeElements(parentForm) {
                         hiddenElement.trigger('change');
                     }
                 });
-        });
+        });    
 
-    $('.ekatte').find('input.prompt')
-        .on('input keyup', function () {
-            let hiddenElement = $(this).parent().find('input[type="hidden"]');
-            hiddenElement.val(0);
-            hiddenElement.trigger('change');
-        });
-
-    //Date and DateTime initialize
+    //Date, DateTime and Time initialize
     $('.dateonly-calendar').not(function () {
         return $(this).has('.ui.disabled').length > 0;
     }).calendar({
@@ -200,6 +140,16 @@ function initializeElements(parentForm) {
             cellTime: 'H:mm'
         },
         text: calendarTextConfig
+    });
+
+    $('.timeonly-calendar').not(function () {
+        return $(this).has('.ui.disabled').length > 0;
+    }).calendar({
+        type: 'time',
+        formatter: {
+            time: 'HH:mm',
+            cellTime: 'HH:mm'
+        }
     });
 
     //Dropdown initialize
@@ -230,13 +180,27 @@ function initializeElements(parentForm) {
             hiddenElement.trigger('change');
         });
 
-    $('.pid').find('.ui.dropdown').change(function () {
-        generatePIDValue($(this).closest('.pid'));
-    });
 
-    $('.pid').find(':input[type=text]').on('input', function () {
-        generatePIDValue($(this).closest('.pid'));
-    });   
+    
+
+    preventFormSubmissionOnEnter();
+
+    $('input:not([type="hidden"]), textarea').each(function () {
+        $(this).attr('oninvalid', 'setCustomValidity(getErrorMessage(this))');
+        $(this).attr('oninput', 'setCustomValidity("")');
+
+        if ($(this).closest('.datetime-calendar').length || $(this).closest('.dateonly-calendar').length) {
+            $(this).attr('onchange', 'this.setCustomValidity("")');
+        }
+    });
+}
+
+function preventFormSubmissionOnEnter() {    
+    $('input').on('keydown', function (event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+        }
+    });    
 }
 
 function showLoader(selector) {
@@ -245,7 +209,8 @@ function showLoader(selector) {
             displayLoader: true,
             variation: 'inverted',
             loaderVariation: 'slow green double large loader',
-            loaderText: 'Моля изчакайте...'
+            loaderText: 'Моля изчакайте...',
+            closable: false
         })
         .dimmer('show');
 }
@@ -284,6 +249,38 @@ function actionWithConfirmation(actionUrl, id, confirmDeleteText = "Сигурн
                         }
                     })
                     .catch((error) => {
+                        if (error.status === 401) {
+                            window.location.reload();
+                        }
+                        console.error('Грешка при URL ' + actionUrl + " : " + error.statusText);
+                    });
+            }
+        })
+        .modal('show');
+};
+
+function fileActionWithConfirmation(actionUrl, data, confirmDeleteText = "Сигурни ли сте, че искате да изтриете елемента?", callback = null) {
+    $('#confirmActionText').text(confirmDeleteText);
+    $('.confirm-action')
+        .modal({
+            centered: true,
+            closable: false,
+            onApprove: function () {
+                let url = actionUrl;
+                post_async(url, data)
+                    .then((result) => {                       
+                        if (result.success) {
+                            if (callback !== null) {
+                                callback();
+                            }
+                            showToast('success', 'Файлът е премахнат успешно.');                           
+                        }
+                        else {
+                            showToast('error', 'Проблем при премахване на файла.');
+                            console.error(result.error);
+                        }
+                    })
+                    .catch((error) => {
                         console.error('Грешка при URL ' + actionUrl + " : " + error.statusText);
                     });
             }
@@ -300,7 +297,54 @@ function editButton(url) {
 function InitForm() {
     $('.ui.dropdown').dropdown();
     $('.ui.accordion').accordion();
+    SetAttachedFiles();
     initDynamicForms(function () {
         InitForm();
     })
 }
+
+function SetAttachedFiles() {
+    $('.attached-file-input').off('change');
+    $('.attached-file-input').change(async function () {
+        var selectedFiles = $(this).prop("files");
+        const parent = $(this).parents('.fields:first');
+        if (selectedFiles.length > 0) {
+            parent.find('.attached-file-button').show();
+            parent.find('.attached-file').text(selectedFiles[0].name);
+            const response = await uploadAttachedFile('/Admin/Process/UploadAttachedFile', selectedFiles[0]);
+            parent.find('.attached-file-id').val(response.metaFileId)
+        } else {
+            parent.find('.attached-file-button').hide();
+            parent.find('.attached-file').text('');
+        }
+    });
+}
+
+async function downloadAttachedFile(btn) {
+    const parent = $(btn).parents('.fields:first');
+    const file_id = parent.find('.attached-file-id').val();
+    var response = await post_fetch_json_async(`/Admin/Process/GetAttachedFileUrl?id=${file_id}`, {});
+    await downloadPresignedFile(response.fileUrl, response.fileName)
+}
+
+async function downloadAttachedFileById(file_id) {
+    var response = await post_fetch_json_async(`/Admin/Process/GetAttachedFileUrl?id=${file_id}`, {});
+    await downloadPresignedFile(response.fileUrl, response.fileName)
+}
+
+async function uploadAttachedFile(url, file) {
+    showLoader('body');
+    var data = new FormData()
+    data.append('file', file)
+    const response = await fetch(url,
+        {
+            method: "POST",
+            body: data,
+            headers: {
+                "X-CSRF-TOKEN": getRequestVerificationToken()
+            }
+        });
+    hideLoader('body');
+    return await ResolveResponseJson(response);
+}
+

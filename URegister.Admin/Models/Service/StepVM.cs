@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
+using URegister.Infrastructure.Constants;
 
 namespace URegister.Admin.Models.Service
 {
@@ -15,26 +15,34 @@ namespace URegister.Admin.Models.Service
         /// <summary>
         /// Име на стъпка
         /// </summary>
-        [Required]
-        [MaxLength(100)]
+        [Required(ErrorMessage = MessageConstant.FieldIsRequired)]
+        [MaxLength(100, ErrorMessage = MessageConstant.StringMaxLengthValidation)]
         [Display(Name = "Име на стъпка")]
         public string Name { get; set; } = null!;
 
         /// <summary>
+        /// Потребителска роля
+        /// </summary>
+        [Comment("Потребителска роля")]
+        [Required(ErrorMessage = MessageConstant.FieldIsRequired)]
+        [Display(Name = "Потребителска роля")]
+        public Guid? RoleId { get; set; }
+
+        /// <summary>
         /// Тип на обработчик на стъпка
         /// </summary>
-        [Required]
-        [MaxLength(200)]
+        //[Required(ErrorMessage = MessageConstant.FieldIsRequired)]
+        [MaxLength(200, ErrorMessage = MessageConstant.StringMaxLengthValidation)]
         [Display(Name = "Тип на обработчик на стъпка")]
-        public string Type { get; set; } = null!;
+        public string? Type { get; set; }
 
         /// <summary>
         /// Метод на обработчик на стъпка
         /// </summary>
-        [Required]
-        [MaxLength(100)]
+        //[Required(ErrorMessage = MessageConstant.FieldIsRequired)]
+        [MaxLength(100, ErrorMessage = MessageConstant.StringMaxLengthValidation)]
         [Display(Name = "Метод на обработчик на стъпка")]
-        public string Method { get; set; } = null!;
+        public string? Method { get; set; } 
 
         /// <summary>
         /// Стъпката е достъпна при публична услуга

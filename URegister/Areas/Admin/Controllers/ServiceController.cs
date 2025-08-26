@@ -1,28 +1,43 @@
 ﻿using DataTables.AspNet.Core;
+using Google.Protobuf.WellKnownTypes;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using System.ComponentModel.DataAnnotations;
 using URegister.Core.Contracts;
 using URegister.Core.Models.Service;
+using URegister.Core.Services;
+using URegister.Infrastructure.Constants;
+using URegister.RegistersCatalog;
+using static URegister.Users.AppUserManager;
 
 namespace URegister.Areas.Admin.Controllers
 {
     [Area("Admin")]
+    [Authorize(Roles = UserRoles.Admin)]
+    [Display(Name = "Услуги")]
     public class ServiceController(
         IServiceService service,
-        IFormConfigurationPersistenceService formConfigurationPersistenceService
-        ) : BaseController
+        IRegisterService registerService,
+        IFormConfigurationPersistenceService formConfigurationPersistenceService,
+        INomenclatureClientService nomenclatureClient,
+        RegistersCatalogGrpc.RegistersCatalogGrpcClient registerGrpcClient,
+        AppUserManagerClient appUserManagerClient,
+        ILogger<ServiceController> logger) : BaseController
     {
+        [Display(Name = "Зареждане на списък с услуги")]
         public IActionResult Index()
         {
             return View();
         }
-        
+
         /// <summary>
         /// Списък на  услуги
         /// </summary>
         /// <param name="request"></param>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Извличане на списък с услуги")]
         public async Task<IActionResult> GetServiceList(IDataTablesRequest request)
         {
             return await service.GetServiceList(request);
@@ -32,8 +47,18 @@ namespace URegister.Areas.Admin.Controllers
         private async Task SetViewBag(int serviceTypeId)
         {
             ViewBag.ServiceTypeId_ddl = await service.GetServiceTypeDDL();
-            ViewBag.StepId_ddl = await service.GetServiceStepDDL(serviceTypeId);
+            ViewBag.StepId_ddl = await service.GetStepDDL();
             ViewBag.FormParentId_ddl = await formConfigurationPersistenceService.GetFormsDDL();
+            var roles = await appUserManagerClient.GetRolesAsync(new Empty());
+            ViewBag.Roles_ddl = roles.Roles
+                                      .Where(r => !r.Name.Equals(UserRoles.GlobalAdmin))
+                                      .Select(r => new SelectListItem
+                                      {
+                                          Value = r.RoleId.ToString(),
+                                          Text = r.Label
+                                      })
+                                      .ToList();
+            await nomenclatureClient.SetViewBagProcess(ViewData);
         }
 
         /// <summary>
@@ -41,6 +66,7 @@ namespace URegister.Areas.Admin.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet]
+        [Display(Name = "Зареждане на форма за добавяне на нова услуга")]
         public async Task<IActionResult> Add()
         {
             await SetViewBag(0);
@@ -53,9 +79,10 @@ namespace URegister.Areas.Admin.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet]
+        [Display(Name = "Зареждане на форма за редакция на услуга")]
         public async Task<IActionResult> Edit(int id)
         {
-            var model = await service.GetService(id);
+            var model = await service.GetService(id, true);
             await SetViewBag(model.ServiceTypeId);
             return View(nameof(Edit), model);
         }
@@ -66,24 +93,49 @@ namespace URegister.Areas.Admin.Controllers
         /// <param name="model">Модел на услуга</param>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Запис или редакция на услуга")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(ServiceVM model)
         {
+            if (!ModelState.IsValid) {
+                RemoveErrorForNotUsed();
+            }
             if (ModelState.IsValid)
             {
                 try
                 {
-                    await service.AppendUpdate(model);
-                    SetSuccessMessage(model.IsInsert ? "Успешно добавена стъпка" : "Успешна редакция на стъпка");
+                    OperationResult result = await service.AppendUpdate(model);
+
+                    if (!result.IsSuccess)
+                    {
+                        SetErrorMessage(result.ErrorMessage);
+                        await SetViewBag(model.ServiceTypeId);
+                        return View(nameof(Edit), model);
+                    }
+                    var registerId = await registerService.GetCurrentRegisterId();
+                    await registerGrpcClient.SaveServiceAsync(new ServiceItem
+                    {
+                        RegisterId = registerId,
+                        ServiceId = model.Id,
+                        EformCode=model.EFormCode,
+                        IsActive = true,
+                    });
+
+                    SetSuccessMessage(model.IsInsert ? "Успешно добавена тип услуга" : "Успешна редакция на тип услуга");
                     return RedirectToAction(nameof(Edit), new { id = model.Id });
                 }
                 catch (Exception ex)
                 {
+                    logger.LogError(ex, $"Проблем при запис в {nameof(Edit)}!");
                     SetErrorMessage("Проблем при запис!");
                 }
             }
+            else 
+            {
+                SetErrorMessage("Невалидни данни!");
+            }
             await SetViewBag(model.ServiceTypeId);
-            return View(model);
+            return View(nameof(Edit), model);
         }
 
 
@@ -93,6 +145,7 @@ namespace URegister.Areas.Admin.Controllers
         /// <param name="model">Модел на услуга</param>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Извличане на стъпки за услуга")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> GetServiceSteps(ServiceVM model)
         {
@@ -114,6 +167,7 @@ namespace URegister.Areas.Admin.Controllers
         /// </summary>
         /// <param name="serviceId"></param>
         /// <returns></returns>
+        [Display(Name = "Генериране на диаграма за стъпките на услуга")]
         public async Task<IActionResult> Flowchart(int serviceId)
         {
             string flowchart = "flowchart TD;";
@@ -125,17 +179,13 @@ namespace URegister.Areas.Admin.Controllers
             {
                 for (int i = 0; i < steps.Count; i++)
                 {
-                    if (i == 0)
+                    if (i == 0 || i == steps.Count - 1)
                     {
                         listSteps.Add(steps[i].Id + "(" + steps[i].Title + ")");
                     }
-                    else if (i != steps.Count - 1)
+                    else
                     {
-                        listSteps.Add(steps[i].Id + "[" + steps[i].Title + "];" + steps[i].Id);
-                    }
-                    if (i == steps.Count - 1)
-                    {
-                        listSteps.Add(steps[i].Id + "(" + steps[i].Title + ");");
+                        listSteps.Add(steps[i].Id + "[" + steps[i].Title + "]");
                     }
                 }
                 flowchart += string.Join(" --> ", listSteps);
@@ -151,7 +201,8 @@ namespace URegister.Areas.Admin.Controllers
         /// <param name="index">индекс в списък</param>
         /// <param name="prefix">html prefix</param>
         /// <returns></returns>
-        public async Task<IActionResult> AddStep(int index, string prefix,  int serviceTypeId)
+        [Display(Name = "Добавяне на стъпка към услуга")]
+        public async Task<IActionResult> AddStep(int index, string prefix, int serviceTypeId)
         {
             var model = new ServiceStepVM
             {
@@ -161,6 +212,53 @@ namespace URegister.Areas.Admin.Controllers
             await SetViewBag(serviceTypeId);
             ViewData.TemplateInfo.HtmlFieldPrefix = string.IsNullOrEmpty(prefix) ? $"Steps[{index}]" : $"{prefix}.Steps[{index}]";
             return PartialView("_Step", model);
+        }
+
+        /// <summary>
+        /// Изтриване на услуга
+        /// </summary>
+        /// <param name="id">Идентификатор на услуга за изтриване</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Display(Name = "Изтриване на услуга")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(int id)
+        {
+            OperationResult deleteResult = await service.Delete(id);
+
+            if (deleteResult.IsSuccess)
+            {
+                var registerId = await registerService.GetCurrentRegisterId();
+                var model = await service.GetService(id);
+                await registerGrpcClient.SaveServiceAsync(new ServiceItem
+                {
+                    RegisterId = registerId,
+                    ServiceId = id,
+                    EformCode = model.EFormCode,
+                    IsActive = false,
+                });
+                SetSuccessMessage("Услугата е изтрита успешно");
+            }
+            else
+            {
+                SetErrorMessage(deleteResult.ErrorMessage);
+            }
+
+            return Json(null);
+        }
+
+        private void RemoveErrorForNotUsed()
+        {
+            var errors = ModelState.Where(x => x.Value.Errors.Count > 0)
+                                     .Select(x => new { x.Key, x.Value.Errors })
+                                     .ToList();
+            foreach (var error in errors)
+            {
+                if (error.Key.EndsWith("].Name"))
+                {
+                    ModelState.Remove(error.Key);
+                }
+            }
         }
     }
 }

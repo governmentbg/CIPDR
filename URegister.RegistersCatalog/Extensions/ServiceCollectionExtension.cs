@@ -1,4 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using URegister.Infrastructure.Constants;
+using URegister.Infrastructure.Contracts;
+using URegister.Infrastructure.Models;
+using URegister.Infrastructure.Services;
 using URegister.RegistersCatalog.Contracts;
 using URegister.RegistersCatalog.Data;
 using URegister.RegistersCatalog.Services;
@@ -18,6 +22,13 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IServiceCollection AddApplicationServices(this IServiceCollection services)
         {
             services.AddScoped<IRegisterInfoService, RegisterInfoService>();
+            services.AddScoped<IHttpRequester, HttpRequester>();
+            services.AddScoped<IAuditLogServiceClient, AuditLogServiceClient>();
+            services.AddScoped<IAuditInfo>(x => new AuditInfo() { 
+                TypeAuditTask = TypeAuditTask.GrpcClient ,
+                ProjectName = "RegisterCatalog"
+            });
+            services.AddHttpClient();
             return services;
         }
 

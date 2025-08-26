@@ -1,4 +1,9 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.AspNetCore.Mvc.TagHelpers
+@using URegister.Infrastructure.Constants
+@{
+    var isProduction = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == EnvironmentNames.Production;
+}
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <!-- Standard Meta -->
@@ -7,21 +12,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>@ViewData["Title"]</title>
 
-    <link href="~/lib/sweetalert2/sweetalert2.min.css" rel="stylesheet" />
-
     <link rel="stylesheet" href="~/lib/datatables/se/datatables.semanticui.min.css" />
     <link rel="stylesheet" href="~/lib/datatables/buttons-se/buttons.semanticui.css" />
 
-    <link rel="stylesheet" href="~/lib/fomantic-ui/semantic.min.css" />
+    <link rel="stylesheet" href="~/library/fomantic-ui/semantic.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/URegister.Admin.styles.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
     <partial name="_Menu" />
 
     <div class="ui main fluid container">
-        <h1 class="ui centered header">@ViewData["Title"]</h1>
+        <h1 class="ui centered header">
+            @ViewData["Title"]
+            @if (!isProduction)
+            {
+                <div class="sub header" style="color:red;">ТЕСТОВА СРЕДА</div>
+            }
+        </h1>
         @RenderBody()
     </div>
 
@@ -30,18 +38,17 @@
     </footer> *@
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/fomantic-ui/semantic.min.js"></script>
+    <script src="~/library/fomantic-ui/semantic.min.js"></script>
     <script src="~/js/common.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
 
-    <script src="~/lib/sweetalert2/sweetalert2.all.min.js"></script>
     <script src="~/lib/moment/moment-with-locales.js"></script>
 
-    <script src="~/lib/datatables/dataTables.min.js"></script>
+    <script src="~/lib/datatables/datatables.min.js"></script>
     <script src="~/lib/pdfmake/pdfmake.min.js"></script>
     <script src="~/lib/pdfmake/vfs_fonts.min.js"></script>
     <script src="~/lib/jszip/jszip.min.js"></script>
-    <script src="~/lib/datatables/se/dataTables.semanticui.min.js"></script>
+    <script src="~/lib/datatables/se/datatables.semanticui.min.js"></script>
     <script src="~/lib/datatables/buttons/js/datatables.buttons.js"></script>
     <script src="~/lib/datatables/buttons-se/buttons.semanticui.js"></script>
     <script src="~/lib/datatables/buttons/js/buttons.colvis.js"></script>

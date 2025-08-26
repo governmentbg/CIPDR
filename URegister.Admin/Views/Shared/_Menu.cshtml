@@ -9,6 +9,7 @@
             <i class="sliders horizontal icon"></i> Управление <i class="dropdown icon"></i>
             <div class="menu">
                 <a class="item" href="/User/Index"><i class="user edit icon"></i> Потребители</a>
+                <a class="item" href="/User/Roles"><i class="user tag icon"></i> Роли</a>
                 <a class="item" href="/Register/Index"><i class="list alternate outline icon"></i> Регистри</a>
             </div>
         </div>
@@ -18,10 +19,14 @@
                 <a class="item" href="@Url.Action("FieldTypeList", "Designer")"><i class="object group outline icon"></i> Полета</a>
                 <a class="item" href="@Url.Action("Index", "Service")"><i class="handshake outline icon"></i> Типове услуги</a>
                 <a class="item" href="@Url.Action("IndexStep", "Service")"><i class="bezier curve icon"></i> Стъпки</a>
-                <a class="item" href="#"><i class="exchange alternate icon"></i> Интеграции</a>
+                 <a class="item" href="@Url.Action("Index", "FieldTemplate")"><i class="receipt icon"></i> Бланки</a> 
+                @* <a class="item" href="#"><i class="exchange alternate icon"></i> Интеграции</a> *@
+                <a class="item" href="@Url.Action("Index", "Calendar")"><i class="calendar alternate outline icon"></i> Работни дни</a>
             </div>
         </div>
-        <a asp-action="IndexType" asp-controller="Nomenclature" class="brown item"><i class="list ol icon"></i> Номенклатури</a>
+        <a asp-action="IndexType" asp-controller="Nomenclature" class="brown item"><i class="list ol icon"></i> Номенклатури</a>       
+        <a class="item" href="@Url.Action("Index", "AuditLog")"><i class="newspaper icon"></i> Системен журнал</a>
+        <a class="item" href="@Url.Action("Index", "EDeliveryLog")"><i class="mail bulk icon"></i> Лог на електронни връчвания</a>
         <partial name="_LoginPartial" />
     </div>
 </div>
