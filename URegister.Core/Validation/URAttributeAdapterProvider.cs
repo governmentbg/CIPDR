@@ -17,6 +17,14 @@ public class URAttributeAdapterProvider : IValidationAttributeAdapterProvider
         {
             return new URStateDateAttributeAdapter(urStateDateAttribute, stringLocalizer);
         }
+        if (attribute is UrEikAttribute urEikAttribute)
+        {
+            return new UrEikAttributeAdapter(urEikAttribute, stringLocalizer);
+        }
+        if (attribute is UrEgnAttribute urEgnAttribute)
+        {
+            return new UrEgnAttributeAdapter(urEgnAttribute, stringLocalizer);
+        }
         return baseProvider.GetAttributeAdapter(attribute, stringLocalizer);
     }
 }

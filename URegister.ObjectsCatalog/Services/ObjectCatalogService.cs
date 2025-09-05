@@ -1,11 +1,11 @@
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using URegister.Common;
 using URegister.Infrastructure.Extensions;
 using URegister.Infrastructure.Helper;
 using URegister.Infrastructure.Model.RegisterForms;
 using URegister.ObjectsCatalog.Contracts;
+using static FastExpressionCompiler.ExpressionCompiler;
 
 namespace URegister.ObjectsCatalog.Services;
 
@@ -39,7 +39,8 @@ public class ObjectCatalogService(
                 Type = t.type,
                 Label = t.label,
                 TemplateName = t.template,
-                IsComplex = t.isComplex
+                IsComplex = t.isComplex,
+                FieldTypeId = t.fieldTypeId
             }));
         }
         catch (Exception ex)
@@ -206,7 +207,7 @@ public class ObjectCatalogService(
     /// <param name="request"></param>
     /// <param name="context"></param>
     /// <returns></returns>
-    public async override Task<ResultStatus> AppendUpdateStep(StepMessage request, ServerCallContext context)
+    public override async Task<ResultStatus> AppendUpdateStep(StepMessage request, ServerCallContext context)
     {
         try
         {
@@ -225,7 +226,7 @@ public class ObjectCatalogService(
     /// <param name="request"></param>
     /// <param name="context"></param>
     /// <returns></returns>
-    public async override Task<GetStepReply> GetStep(GetStepMessage request, ServerCallContext context)
+    public override async Task<GetStepReply> GetStep(GetStepMessage request, ServerCallContext context)
     {
         var reply = new GetStepReply()
         {
@@ -249,7 +250,7 @@ public class ObjectCatalogService(
     /// <param name="request"></param>
     /// <param name="context"></param>
     /// <returns></returns>
-    public async override Task<GetServiceTypeReply> GetServiceType(GetServiceTypeRequest request, ServerCallContext context)
+    public override async Task<GetServiceTypeReply> GetServiceType(GetServiceTypeRequest request, ServerCallContext context)
     {
         var reply = new GetServiceTypeReply()
         {
@@ -267,7 +268,7 @@ public class ObjectCatalogService(
         return reply;
     }
 
-    public async override Task<ResultStatus> AppendUpdate(ServiceTypeMessage request, ServerCallContext context)
+    public override async Task<ResultStatus> AppendUpdate(ServiceTypeMessage request, ServerCallContext context)
     {
         try
         {
@@ -287,5 +288,176 @@ public class ObjectCatalogService(
         {
             Code = ResultCodes.Ok
         };
+    }
+
+    public override async Task<ResultStatus> DeleteServiceType(GetServiceTypeRequest request, ServerCallContext context)
+    {
+        try
+        {
+            ResultStatus result = await objectService.DeleteServiceType(request.ServiceId);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "ObjectCatalogService/AppendUpdate");
+            return CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+    }
+
+    public override async Task<ResultStatus> DeleteFieldType(GetFieldTypeRequest request, ServerCallContext context)
+    {
+        try
+        {
+            ResultStatus result = await objectService.DeleteFieldType(request.FieldTypeId);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "ObjectCatalogService/AppendUpdate");
+            return CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+    }
+
+    public override async Task<ServiceTypeNameExistsReply> CheckServiceTypeNameExists(ServiceTypeNameExistsRequest request, ServerCallContext context)
+    {
+        try
+        {
+            return await objectService.CheckServiceNameExists(request.Name);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "ObjectCatalogService/CheckServiceTypeNameExists");
+            return new ServiceTypeNameExistsReply()
+            {
+                Status = new ResultStatus { Code = ResultCodes.InternalServerError, Message = ex.Message }
+            };
+        }
+    }
+
+    public override async Task<ResultStatus> DeleteStep(GetStepMessage request, ServerCallContext context)
+    {
+        try
+        {
+            ResultStatus result = await objectService.DeleteStep(request.StepId);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "ObjectCatalogService/AppendUpdate");
+            return CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+    }
+
+    public override async Task<FieldTemplateListResponse> GetFieldTemplateList(FieldTemplateListRequest request, ServerCallContext context)
+    {
+        var result = new FieldTemplateListResponse()
+        {
+            Status = GetOkResultStatus()
+        };
+
+        try
+        {
+            (var data, int countAll) = await objectService.GetFieldTemplateList(request.DataTableRequest);
+            result.FieldTemplates.AddRange(data);
+            result.CountAll = countAll;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "ObjectCatalogService/GetFieldTemplateList");
+            result.Status = CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+        return result;
+    }
+    public override async Task<FieldTemplateContentListResponse> GetFieldTemplateContentList(Empty request, ServerCallContext context)
+    {
+        var result = new FieldTemplateContentListResponse()
+        {
+            Status = GetOkResultStatus()
+        };
+
+        try
+        {
+            result.FieldTemplates.AddRange(await objectService.GetFieldTemplateContentList());
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "ObjectCatalogService/ContentList");
+            result.Status = CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+        return result;
+    }
+    public override async Task<FieldTemplateResponse> GetFieldTemplate(FieldTemplateRequest request, ServerCallContext context)
+    {
+        var result = new FieldTemplateResponse();
+        try
+        {
+            result = await objectService.GetFieldTemplate(request.Id);
+            result.Status = GetOkResultStatus();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "ObjectCatalogService/GetFieldTemplate");
+            result.Status = CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+        return result;
+    }
+    public override async Task<FieldTemplateContentResponse> GetFieldTemplateContent(FieldTemplateRequest request, ServerCallContext context)
+    {
+        var result = new FieldTemplateContentResponse();
+        try
+        {
+            result = await objectService.GetFieldTemplateContent(request.Id);
+            result.Status = GetOkResultStatus();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "ObjectCatalogService/GetFieldTemplateContent");
+            result.Status = CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+        return result;
+    }
+
+    public override async Task<ResultStatus> AppendUpdateFieldTemplate(FieldTemplateMessage request, ServerCallContext context)
+    {
+        var result = GetOkResultStatus(); 
+        try
+        {
+            await objectService.AppendUpdateFieldTemplate(request);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "ObjectCatalogService/AppendUpdateFieldTemplate");
+            result = CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+        return result;
+    }
+    public override async Task<ResultStatus> UpdateFieldTemplateContent(FieldTemplateContentMessage request, ServerCallContext context)
+    {
+        var result = GetOkResultStatus();
+        try
+        {
+            await objectService.UpdateFieldTemplateContent(request);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "ObjectCatalogService/UpdateFieldTemplateContent");
+            result = CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+        return result;
+    }
+
+    public override async Task<ResultStatus> DeleteFieldTemplate(FieldTemplateRequest request, ServerCallContext context)
+    {
+        var result = GetOkResultStatus();
+        try
+        {
+            await objectService.DeleteFieldTemplate(request.Id);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "ObjectCatalogService/DeleteFieldTemplate");
+            result = CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+        return result;
     }
 }

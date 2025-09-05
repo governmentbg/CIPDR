@@ -31,12 +31,12 @@ namespace URegister.Core.Services
                     Text = x.Value
                 })
                 .ToList();
-                AddChoice(ddl, "Изберете");
+                AddChoice(ddl);
                 viewData[$"{nType.Type}_ddl"] = ddl;
             }
-
         }
-        public void AddChoice(List<SelectListItem> ddl, string addChoiceText)
+
+        public void AddChoice(List<SelectListItem> ddl, string addChoiceText = "Изберете")
         {
             ddl.Insert(0,
                 new SelectListItem
@@ -60,10 +60,66 @@ namespace URegister.Core.Services
                 InternalNomenclatureTypes.RegisterEntryType,
                 InternalNomenclatureTypes.RegisterIdentitySecurityLevel,
                 InternalNomenclatureTypes.PersonType,
+                InternalNomenclatureTypes.RegisterStatus,
             };
             await SetViewBag(viewData, types, 0);
         }
 
+        /// <summary>
+        /// Добавя номенклатури за регистър във ViewData
+        /// </summary>
+        /// <param name="viewData">view data</param>
+        /// <returns></returns>
+        public async Task SetViewBagCalendar(ViewDataDictionary viewData)
+        {
+            var types = new string[]{
+                InternalNomenclatureTypes.CalendarDayKind
+            };
+            await SetViewBag(viewData, types, 0);
+        }
+
+
+        /// <summary>
+        /// Добавя номенклатури за процес във ViewData
+        /// </summary>
+        /// <param name="viewData">view data</param>
+        /// <returns></returns>
+        public async Task SetViewBagProcess(ViewDataDictionary viewData)
+        {
+            var types = new string[]{
+                NomenclatureTypes.Status,
+                InternalNomenclatureTypes.ChannelType,
+                InternalNomenclatureTypes.DeadlineType,
+                InternalNomenclatureTypes.CooordinationStatusType
+            };
+            await SetViewBag(viewData, types, 0);
+        }
+        /// <summary>
+        /// Добавя номенклатури за процес във ViewData
+        /// </summary>
+        /// <param name="viewData">view data</param>
+        /// <returns></returns>
+        public async Task SetViewBagDeadline(ViewDataDictionary viewData)
+        {
+            var types = new string[]{
+                InternalNomenclatureTypes.DeadlineType,
+                InternalNomenclatureTypes.DeadlineDayType,
+            };
+            await SetViewBag(viewData, types, 0);
+        }
+
+        /// <summary>
+        /// Добавя номенклатури за бланка във ViewData
+        /// </summary>
+        /// <param name="viewData">view data</param>
+        /// <returns></returns>
+        public async Task SetViewBagBlankTemplate(ViewDataDictionary viewData)
+        {
+            var types = new string[]{
+                InternalNomenclatureTypes.BlankSourceType,
+            };
+            await SetViewBag(viewData, types, 0);
+        }
 
         /// <summary>
         /// Мапване на номенклатурен тип към GRPC
@@ -108,6 +164,8 @@ namespace URegister.Core.Services
         {
             return new CodeableConceptVM
             {
+                EditId = response.Id,
+                IsInsert = response.IsInsert,
                 Type = response.Type,
                 Code = response.Code,
                 Value = response.Value,
@@ -115,7 +173,6 @@ namespace URegister.Core.Services
                 DateFrom = response.DateFrom?.ToDateTime() ?? DateTime.Now.Date,
                 DateFromInit = response.DateFromInit?.ToDateTime() ?? DateTime.Now.Date,
                 DateTo = response.DateTo?.ToDateTime(),
-                IsInsert = response.IsInsert,
                 HolderCode = response.HolderCode,
                 AdditionalColumns = response.AdditionalColumns
                    .Select(x => new AdditionalColumnVM
@@ -133,10 +190,11 @@ namespace URegister.Core.Services
         /// </summary>
         /// <param name="model"></param>
         /// <returns></returns>
-        public CodeableConceptRequest CodeableConceptToGrpcModel(CodeableConceptVM model)
+        public CodeableConceptRequest CodeableConceptToGrpcModel(CodeableConceptVM model, int status)
         {
             var request = new CodeableConceptRequest
             {
+                Id = model.EditId,
                 Type = model.Type,
                 Code = model.Code,
                 Value = model.Value,
@@ -144,6 +202,7 @@ namespace URegister.Core.Services
                 DateFrom = model.DateFrom.SetToUtcIfUnspecified().ToTimestamp(),
                 DateTo = model.DateTo?.SetToUtcIfUnspecified().ToTimestamp(),
                 HolderCode = model.HolderCode,
+                Status = status
             };
             request.AdditionalColumns.AddRange(
                 model.AdditionalColumns.Select(x => new AdditionalColumn
@@ -247,6 +306,23 @@ namespace URegister.Core.Services
             return await nomenclatureGrpcClient.UpdateCodeableConceptRegisterAsync(request);
         }
 
+        /// <summary>
+        /// Запис статус номенклатурни стойности
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        public async Task<ResultStatus> UpdateCodeableConceptStatus(CodeableConceptStatusVM model)
+        {
+            var request = new UpdateCodeableConceptStatusRequest
+            {
+                Id = model.Id,
+                Code = model.Code,
+                Type = model.Type,
+                StatusId = model.StatusId
+            };
+            return await nomenclatureGrpcClient.UpdateCodeableConceptStatusAsync(request);
+        }
+
         public async  Task<List<NomenclatureTypePublicResponse>> GetNomenclaturePublic(int registerId, string[] types)
         {
             var nomenclatureRequest = new NomenclaturePublicRequest
@@ -273,5 +349,6 @@ namespace URegister.Core.Services
                                                      .Select(x => x.Value)
                                                      .FirstOrDefault() ?? string.Empty;
         }
+
     }
 }

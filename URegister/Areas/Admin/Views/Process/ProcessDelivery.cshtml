@@ -1,0 +1,34 @@
+﻿@using URegister.Core.Models.Process
+@model ProcessDeliveryVM
+@{
+    ViewBag.Title = "Данни за връчване";
+}
+<form action="@Url.Action("ProcessDelivery")" method="post" enctype="multipart/form-data">
+    @Html.HiddenFor(x => x.ProcessId)
+    @Html.HiddenFor(x => x.Id)
+    @Html.HiddenFor(x => x.SourceTypeId)
+    @Html.HiddenFor(x => x.SourceId)
+    <div class="ui grid">
+        <div class="ui sixteen wide column content">
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class='twelve wide field'>
+                            @Html.EditorFor(x => x.ChannelId, "DropDown")
+                        </div>
+                        <div class='twelve wide field'>
+                            @Html.EditorFor(x => x.DeliveryDate, "DateTime")
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(x => x.DeliveryDate, "Textarea")
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="ui fluid container basic clearing segment"></div>
+    @await Html.PartialAsync("_BackSubmitButton", @Url.Action("ProcessDeliveryIndex", new { processId = Model.ProcessId }))
+</form>

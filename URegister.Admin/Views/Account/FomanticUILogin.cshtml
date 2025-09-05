@@ -1,0 +1,88 @@
+﻿@using URegister.Admin.Models;
+@model LoginViewModel
+@{
+    Layout = String.Empty;
+    ViewBag.Title = "Вход в системата";
+}
+
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ИСЦИПР</title>
+    <link rel="stylesheet" href="~/library/fomantic-ui/semantic.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/library/fomantic-ui/semantic.min.js"></script>
+</head>
+<body>
+    <div class="ui grid" style="margin: 0; height: 100%;">
+        <div class="two wide column"></div>
+        <div class="six wide column" style="display: flex;">
+            <div class="ui grid">
+                <div class="sixteen wide column"></div>
+                <div class="twelve wide column">
+                    <img src="/images/login-logo.svg" class="ui left floated image">
+                    <p style="margin-bottom: 0; margin-top: 1.8em;">Информационна система</p>
+                    <p style="margin-bottom: 0;">за централизирано изграждане</p>
+                    <p>и поддържане на регистри</p>
+                </div>
+                <div class="four wide column"></div>
+                <div class="twelve wide column"><h1 class="ui header">Информационна система за централизирано изграждане и поддържане на регистри (ИСЦИПР)</h1></div>
+                <div class="four wide column"></div>
+                <div class="twelve wide column">
+                    <div class="ui message">
+                        @if ((Model.ExternalLogins?.Count ?? 0) > 0)
+                        {
+                            <form id="external-account" asp-action="ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="form-horizontal">
+                                <div>
+                                    @foreach (var provider in Model.ExternalLogins)
+                                    {
+                                        <button type="submit" class="positive ui right labeled icon button" name="provider" value="@provider.Name" title="Вход с @provider.DisplayName"><i class="angle right icon"></i>Вход с КЕП</button>
+                                    }
+                                </div>
+                                @if (ViewBag.errorMessage != null)
+                                {
+                                    <br />
+                                    <div style="text-align:center;">
+                                        <h4 class="text-danger">@ViewBag.errorMessage</h4>
+                                    </div>
+                                }
+                            </form>
+                        }
+                    </div>
+                </div>
+                <div class="four wide column"></div>
+                <div class="twelve wide column"><i class="info circle icon"></i> Методът за електронна автентикация е квалифициран електронен подпис, издаден от <a href="https://www.crc.bg/bg/rubriki/560/elektronni-udostoveritelni-uslugi">сертифициран доставчик на квалифицирани удостоверителни услуги</a> след предоставен достъп от Министерството на електронното управление.</div>
+                <div class="four wide column"></div>
+                <div class="twelve wide column"></div>
+                <div class="four wide column"></div>
+                <div class="sixteen wide column" style="padding-top: 0; padding-bottom: 0;">
+                    <div class="ui divider"></div>
+                </div>
+                <div class="sixteen wide column">
+                    <div class="ui two column stackable grid">
+                        <div class="ui column">
+                            <img src="/images/Gerb-ednotsv.svg" class="ui left floated image" style="height: 100px;">
+                            <p style="margin-bottom: 0; margin-top: 1.8em;">Република България</p>
+                            <p style="margin-bottom: 0;">Министерство</p>
+                            <p>на електронното управление</p>
+                        </div>
+                        <div class=" middle aligned column">
+                            <div class="ui list">
+                                <a class="item" href="#"><i class="right triangle icon"></i> Политика за поверителност</a>
+                                <a class="item" href="#"><i class="right triangle icon"></i> Обратна връзка</a>
+                                <a class="item" href="#"><i class="right triangle icon"></i> План за развитие</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="eight wide column" style="background-image: url('/images/register-login-pic.png'); background-size: cover; background-position: center;">
+        </div>
+    </div>
+</body>
+</html>

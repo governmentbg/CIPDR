@@ -1,5 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 using URegister.Infrastructure.Data;
+using URegister.Infrastructure.Data.Common;
 using URegister.ObjectsCatalog.Data.Models;
 
 namespace URegister.ObjectsCatalog.Data
@@ -20,6 +22,22 @@ namespace URegister.ObjectsCatalog.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            //добавяне на филтър за soft deleted данни
+            var entityTypesHasSoftDeletion = modelBuilder.Model.GetEntityTypes()
+                .Where(e => e.ClrType.IsAssignableTo(typeof(ISoftDeletable)));
+
+            foreach (var entityType in entityTypesHasSoftDeletion)
+            {
+                var isDeletedProperty = entityType.FindProperty(nameof(ISoftDeletable.IsActive));
+                var parameter = Expression.Parameter(entityType.ClrType, "p");
+
+                if (isDeletedProperty?.PropertyInfo != null && parameter != null)
+                {
+                    var filter = Expression.Lambda(Expression.Property(parameter, isDeletedProperty.PropertyInfo), parameter);
+                    entityType.SetQueryFilter(filter);
+                }
+            }
+
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(ObjectCatalogDbContext).Assembly);
@@ -49,5 +67,10 @@ namespace URegister.ObjectsCatalog.Data
         /// Стъпки към видове услуги
         /// </summary>
         public DbSet<ServiceTypeStep> ServiceTypeSteps { get; set; }
+
+        /// <summary>
+        /// Бланки за полета
+        /// </summary>
+        public DbSet<FieldTemplate> FieldTemplates { get; set; }
     }
 }

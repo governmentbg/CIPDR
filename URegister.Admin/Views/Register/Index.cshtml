@@ -1,9 +1,10 @@
 ﻿@using URegister.Core.Models.Register
+@using URegister.Infrastructure.Constants
 @model RegisterFilterVM
 @{
     ViewData["Title"] = "Регистри";
 }
-
+@Html.AntiForgeryToken()
 <div class="ui grid">
     <div class="column">
         <div class="ui fluid container basic clearing">
@@ -16,6 +17,31 @@
                     <div class="column ui segment green">
                         <div class="ui form">
                             <div class="fields">
+                                <div class="three wide field">
+                                    @Html.EditorFor(model => model.DateFrom, "DateTime")
+                                </div>
+                                <div class="three wide field">
+                                    @Html.EditorFor(model => model.DateTo, "DateTime")
+                                </div>
+                                <div class="five wide field">
+                                    @Html.EditorFor(model => model.AdministrationId, "DropDownGuid")
+                                </div>
+                                <div class="five wide field">
+                                    @Html.EditorFor(model => model.Type, "DropDown", new { Ddl = ViewData[$"{InternalNomenclatureTypes.RegisterType}_ddl"] })
+                                </div>
+                            </div>
+                            <div class="fields">
+                                <div class="seven wide field">
+                                    @Html.EditorFor(model => model.IdentitySecurityLevel, "DropDown", new { Ddl = ViewData[$"{InternalNomenclatureTypes.RegisterIdentitySecurityLevel}_ddl"] })
+                                </div>
+                                <div class="seven wide field">
+                                    @Html.EditorFor(model => model.TypeEntry, "DropDown", new { Ddl = ViewData[$"{InternalNomenclatureTypes.RegisterEntryType}_ddl"] })
+                                </div>
+                                <div class="seven wide field">
+                                    @Html.EditorFor(model => model.StatusId, "DropDownInt", new { Ddl = ViewData[$"{InternalNomenclatureTypes.RegisterStatus}_ddl"] })
+                                </div>
+                            </div>
+                            <div class="fields">
                                 <div class="two wide field">
                                     @Html.EditorFor(model => model.Code)
                                 </div>
@@ -26,12 +52,12 @@
                                     @Html.EditorFor(model => model.Description)
                                 </div>
                                 <div class="ui two wide right aligned field custom buttons">
-                                        <div class="ui fluid container basic clearing">
+                                    <div class="ui fluid container basic clearing">
                                         <a href="javascript:LoadRegisters()" class="ui primary button right floated" style="margin-top:1.5rem">
-                                                <i class="icon search"></i>
-                                                Търси
-                                            </a>
-                                        </div>
+                                            <i class="icon search"></i>
+                                            Търси
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -49,7 +75,6 @@
         </div>
     </div>
 </div>
-@await Html.PartialAsync("_ConfirmDelete")
 @section Scripts
 {
     <script src="~/js/register/registerList.js" asp-append-version="true"></script>

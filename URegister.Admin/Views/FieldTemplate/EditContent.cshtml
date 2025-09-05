@@ -1,0 +1,33 @@
+﻿@using URegister.Core.Models.Service
+@model FieldTemplateContentVM
+@{
+    ViewBag.Title = "Съдържание на бланкa";
+}
+<form id="submit" action="@Url.Action("EditContent")" method="post" enctype="multipart/form-data">
+    @Html.HiddenFor(x => x.Id)
+    @Html.HiddenFor(x => x.FieldTypeId)
+    @Html.HiddenFor(x => x.FieldType)
+    @Html.HiddenFor(x => x.BlankIfNoValue)
+    @Html.HiddenFor(x => x.Name)
+    @Html.HiddenFor(x => x.ContentText)
+    <div class="ui grid">
+        <div class="ui sixteen wide column content">
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            <textarea class="blank-editor" asp-for="@Model.Content"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="ui fluid container basic clearing segment"></div>
+    @await Html.PartialAsync("_BackSubmitButton", @Url.Action("IndexRegister"))
+</form>
+@section Scripts
+{
+    <script src="~/tinymce/tinymce.min.js"></script>
+    <script src="~/js/field_template/tinymce_init.js" asp-append-version="true"></script>
+}

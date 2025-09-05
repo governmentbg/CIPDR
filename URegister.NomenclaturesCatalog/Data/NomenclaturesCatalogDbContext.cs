@@ -1,9 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 using URegister.Infrastructure.Data;
+using URegister.Infrastructure.Data.Common;
 using URegister.NomenclaturesCatalog.Data.Models;
 using URegister.NomenclaturesCatalog.Infrastructure.Data.Models.Nomenclatures;
 
-namespace URegister.RegistersCatalog.Data
+namespace URegister.NomenclaturesCatalog.Data
 {
     /// <summary>
     /// Контекст на базата данни за съхранение на каталога с регистри
@@ -26,6 +28,22 @@ namespace URegister.RegistersCatalog.Data
         /// <param name="modelBuilder"></param>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            //добавяне на филтър за soft deleted данни
+            var entityTypesHasSoftDeletion = modelBuilder.Model.GetEntityTypes()
+                .Where(e => e.ClrType.IsAssignableTo(typeof(ISoftDeletable)));
+
+            foreach (var entityType in entityTypesHasSoftDeletion)
+            {
+                var isDeletedProperty = entityType.FindProperty(nameof(ISoftDeletable.IsActive));
+                var parameter = Expression.Parameter(entityType.ClrType, "p");
+
+                if (isDeletedProperty?.PropertyInfo != null && parameter != null)
+                {
+                    var filter = Expression.Lambda(Expression.Property(parameter, isDeletedProperty.PropertyInfo), parameter);
+                    entityType.SetQueryFilter(filter);
+                }
+            }
+
             base.OnModelCreating(modelBuilder);
         }
 
@@ -37,7 +55,7 @@ namespace URegister.RegistersCatalog.Data
         /// <summary>
         /// Допълнителни данни
         /// </summary>
-        public DbSet<AdditionalColumn> AdditionalColumns { get; set; }
+        public DbSet<Models.AdditionalColumn> AdditionalColumns { get; set; }
 
         /// <summary>
         /// Типове номенклатури

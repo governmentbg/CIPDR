@@ -1,5 +1,6 @@
 ﻿using DataTables.AspNet.Core;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using System;
 using System.Collections.Generic;
@@ -12,7 +13,7 @@ using URegister.NomenclaturesCatalog;
 
 namespace URegister.Core.Contracts
 {
-    public interface INomenclatureClientService : IBaseService
+    public interface INomenclatureClientService 
     {
         /// <summary>
         /// Мапване на номенклатурен тип към GRPC
@@ -48,7 +49,7 @@ namespace URegister.Core.Contracts
         /// </summary>
         /// <param name="model"></param>
         /// <returns></returns>
-        CodeableConceptRequest CodeableConceptToGrpcModel(CodeableConceptVM model);
+        CodeableConceptRequest CodeableConceptToGrpcModel(CodeableConceptVM model, int status);
 
         /// <summary>
         /// Списък на номенклатурнани стойности за регистър
@@ -75,5 +76,11 @@ namespace URegister.Core.Contracts
         Task<ResultStatus> UpdateCodeableConceptRegister(CodeableConceptRegisterUpdateVM model);
         string GetNomenclatureValue(List<NomenclatureTypePublicResponse> nomenclatureTypes, string nomType, string code);
         Task<List<NomenclatureTypePublicResponse>> GetNomenclaturePublic(int registerId, string[] types);
+        Task SetViewBagProcess(ViewDataDictionary viewData);
+        Task<ResultStatus> UpdateCodeableConceptStatus(CodeableConceptStatusVM model);
+        void AddChoice(List<SelectListItem> ddl, string addChoiceText = "Изберете");
+        Task SetViewBagBlankTemplate(ViewDataDictionary viewData);
+        Task SetViewBagCalendar(ViewDataDictionary viewData);
+        Task SetViewBagDeadline(ViewDataDictionary viewData);
     }
 }

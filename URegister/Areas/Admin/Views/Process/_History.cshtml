@@ -1,0 +1,24 @@
+﻿@using URegister.Core.Contracts
+@using URegister.Core.Models.Process
+@using URegister.Infrastructure.Constants
+@inject IRegisterService registerService;
+@model ProcessFilterVM
+@{
+    var register = await registerService.GetCurrentRegister();
+}
+
+@Html.AntiForgeryToken()
+@Html.HiddenFor(x => x.FromProcessId)
+<div class="ui grid">
+    <div class="column">
+        <table id="processes_history"
+               class="ui celled striped very compact table" style="width:100%; padding:0px;"
+               data-url="@Url.Action("GetProcessHistoryList", "Process")"
+               data-applicant="@((register.TypeEntry == RegisterTypeEntry.Applicant).ToString().ToLower())">
+        </table>
+    </div>
+</div>
+@section Scripts
+{
+    <script src="~/js/admin/process/processHistoryList.js" asp-append-version="true"></script>
+}

@@ -28,7 +28,7 @@ namespace URegister.Core.Models.Nomenclature
         /// Име
         /// </summary>
         [Display(Name = "Име")]
-        [StringLength(255)]
+        [StringLength(255, ErrorMessage = MessageConstant.StringMaxLengthValidation)]
         [Required(ErrorMessage = MessageConstant.FieldIsRequired)]
         public string Name { get; set; } = null!;
 

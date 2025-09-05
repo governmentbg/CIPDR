@@ -9,7 +9,7 @@ namespace URegister.RegistersCatalog.Data.Models
     /// Лица от администрацията
     /// </summary>
     [Comment("Лица от администрацията")]
-    public class AdministrationPerson : SoftDeletable
+    public class AdministrationPerson : EntityBaseWithLastModifiedInfo
     {
         /// <summary>
         /// Идентификатор

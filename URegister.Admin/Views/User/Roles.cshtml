@@ -1,0 +1,67 @@
+﻿
+@{
+    ViewData["Title"] = "Списък потребителски роли";
+}
+@Html.AntiForgeryToken()
+
+<div class="ui grid">
+    <div class="column">
+        <div class="column">
+            <table id="rolesTable"
+                   class="ui celled striped very compact table" style="width:100%; padding:0px;"
+                   data-url="@Url.Action("GetAllRolesForDataTable", "User")"
+                   data-add-url="@Url.Action("AddRole", "User")"
+                   data-update-url="@Url.Action("UpdateRole", "User")">
+            </table>
+        </div>
+    </div>
+</div>
+<div class="ui tiny modal" id="rolesModal">
+    <div class="header updateCreateHeader">Създаване на роля</div>
+    <form id="addUpdateRoleForm" class="ui form">
+        <div class="content">
+            <div class="ui fluid input">
+                <input type="text" name="roleName" placeholder="Въведи име на роля..." id="roleName" required>
+                <input type="hidden" name="roleId" id="roleId">
+
+            </div>
+        </div>
+        <div class="actions">
+            <div class="ui two buttons">
+                <button type="button" class="ui button cancel">
+                    <i class="icon close"></i>
+                    Отказ
+                </button>
+                <button type="submit" class="ui primary button confirm">
+                    <i class="icon plus"></i>
+                    Добави
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="ui tiny modal" id="confirmDeleteRolesModal">
+    <div class="header">
+        Потвърждение за изтриване на роля "<span id="deleteRoleName"></span>"
+    </div>
+    <div class="content">
+        <p>Сигурни ли сте, че искате да изтриете тази роля?</p>
+        <input type="hidden" id="deleteRoleId" />
+    </div>
+    <div class="actions">
+        <button type="button" class="ui button cancel">
+            <i class="icon close"></i>
+            Отказ
+        </button>
+        <button type="button" class="ui red button confirm-delete" data-delete-url="@Url.Action("DeleteRole", "User")">
+            <i class="icon trash"></i>
+            Изтрий
+        </button>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/user/roles.js" asp-append-version="true"></script>
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

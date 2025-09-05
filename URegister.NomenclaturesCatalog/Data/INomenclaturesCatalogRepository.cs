@@ -1,6 +1,6 @@
 ﻿using URegister.Infrastructure.Data.Common;
 
-namespace URegister.RegistersCatalog.Data
+namespace URegister.NomenclaturesCatalog.Data
 {
     /// <summary>
     /// Репозитори за работа с каталога на регистрите

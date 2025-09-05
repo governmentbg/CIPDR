@@ -3,89 +3,67 @@ $(function () {
 });
 
 function LoadProcesses() {
-    debugger
     const tableId = '#processes';
     if ($.fn.dataTable.isDataTable(tableId)) {
         refreshTable(tableId);
     }
     else {
+        openAccordionFilter()
         let url = $(tableId).data('url');
         let dt = $(tableId).DataTable({
-            'order': [[0, 'asc']],
+            'order': [[1, 'desc']],
             ajax: {
                 "url": url,
                 "type": "POST",
                 "datatype": "json",
                 data: function (d) {
-                    d.filter = {}
+                    d.filter = {
+                        incomingDateFrom: $('#IncomingDateFrom').val(),
+                        incomingDateTo: $('#IncomingDateTo').val(),
+                        incomingNumber: $('#IncomingNumber').val(),
+                        registerNumber: $('#RegisterNumber').val(),
+                        fromRegisterNumber: $('#FromRegisterNumber').val(),
+                        serviceId: $('#ServiceId').val(),
+                        stepId: $('#StepId').val(),
+                        statusId: $('#StatusId').val(),
+                        forDeAssignUser: $('#ForDeAssignUser').val(),
+                        personIdentifier: {
+                            pidType: $('#PersonIdentifier_PidType').val(),
+                            pid: $('#PersonIdentifier_Pid').val(),
+                        },
+                        personIdentifierApplicant: {
+                            pidType: $('#PersonIdentifierApplicant_PidType').val(),
+                            pid: $('#PersonIdentifierApplicant_Pid').val(),
+                        },
+                    }
                 },
                 error: function (error) {
                     messageHelper.ShowErrorMessage('Проблем при четене ' + error.responseText);
                 }
             },
             filter: false,
-            columns: [
-                {
-                    name: 'incomingNumber',
-                    data: 'incomingNumber',
-                    title: 'Входящ номер',
-                    sortable: true,
-                    searchable: true,
-                    type: 'string'
-                },
-                {
-                    name: 'registerNumber',
-                    data: 'registerNumber',
-                    title: 'Рег. номер',
-                    sortable: true,
-                    searchable: true,
-                    type: 'string'
-                },
-                {
-                    name: 'incomingDate',
-                    data: 'incomingDate',
-                    title: 'Входирано на',
-                    sortable: false,
-                    searchable: false,
-                    "render": function (data) {
-                        return JsonBGdate(data);
-                    }
-                },
-                {
-                    name: 'serviceName',
-                    data: 'serviceName',
-                    title: 'Услуга',
-                    sortable: true,
-                    searchable: true
-                },
-                {
-                    name: 'stepName',
-                    data: 'stepName',
-                    title: 'Стъпка',
-                    sortable: true,
-                    searchable: true
-                },
-                {
-                    name: 'actions',
-                    data: "id",
-                    title: "Действия",
-                    sortable: false,
-                    searchable: false,
-                    className: "text-left noExport",
-                    width: 120,
-                    "render": function (data, type, row) {
-                        if (row.stepId == 3)
-                            return "";
-                        return `<a href="/Admin/Process/AddStep?processId=${data}" data-tooltip="Стъпка" class="ui tertiary icon button">
-                                <i class="angle double right icon"></i>
-                           </a>`;
-                    }
-                }
-            ]
+            columns: ProcessesColumns($(tableId).data('applicant'))
         });
 
         dt.ready(function () {
-            SetAddButton($(tableId).data('add-url'));
+            SetAddButtonsProcess($(tableId).data('add-url'));
         });
     }
+}
+
+function SetAddButtonsProcess(href) {
+    var markup = href ? `<a href="${href}" class="ui primary button right floated">
+                        <i class="icon plus"></i>
+                        Добави
+                    </a>` : '';
+    var markupold = $('#canAddOldRecords').val() && $('#canAddOldRecords').val() != 'False' ? `<a href="/Admin/Process/AddOld" class="ui primary button right floated" style="margin-left: 0.2rem;">
+                        <i class="icon plus"></i>
+                        Добави стари
+                    </a>` : '';
+
+    var buttonsContainer = `<div class="ui buttons right floated"> ${markup} ${markupold} </div>`
+
+    $('.custom.buttons.dtBtnContainer').html(buttonsContainer);
+    $('.no-add-button').hide()
+
 }

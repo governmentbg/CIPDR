@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using URegister.Infrastructure.Constants;
+using URegister.Infrastructure.Data.Common;
 
 namespace URegister.Core.Data.Models.Common
 {
@@ -8,7 +9,7 @@ namespace URegister.Core.Data.Models.Common
     /// Услуга в регистъра
     /// </summary>
     [Comment("Услуга в регистъра")]
-    public class Service
+    public class Service: EntityBaseWithLastModifiedInfo
     {
         /// <summary>
         /// Системен идентификатор
@@ -25,11 +26,24 @@ namespace URegister.Core.Data.Models.Common
         [Comment("Име на услугата")]
         public string Title { get; set; } = null!;
 
-        // <summary>
+        /// <summary>
         /// Идентификатор на тип услуга
         /// </summary>
         [Comment("Идентификатор на тип услуга")]
         public int ServiceTypeId { get; set; }
+
+        /// <summary>
+        /// Идентификатор на тип форма
+        /// </summary>        
+        [Comment("Идентификатор на тип форма")]
+        [Required]
+        public int FormParentId { get; set; }
+
+        /// <summary>
+        /// Референтен номер на услуга (РНУ)
+        /// </summary>
+        [Comment("Референтен номер на услуга (РНУ)")]
+        public string? EFormCode { get; set; }
 
         /// <summary>
         /// Стъпки към услуга

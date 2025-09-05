@@ -1,0 +1,23 @@
+﻿@using URegister.Core.Models.Process
+@using URegister.Infrastructure.Constants
+@model InstructionFilterVM
+@{
+    ViewData["Title"] = $"Указания към {Model.ProcessLabel}";
+    var addUrl = Model.CanAdd ? @Url.Action("AddInstruction", "Process", new { processId = Model.ProcessId }) : string.Empty;
+}
+@Html.AntiForgeryToken()
+@Html.HiddenFor(x => x.ProcessId)
+<div class="ui grid">
+    <div class="column">
+        <table id="instructions"
+               class="ui celled striped very compact table" style="width:100%; padding:0px;"
+               data-url="@Url.Action("GetInstructionList", "Process")"
+               data-add-url="@addUrl">
+        </table>
+    </div>
+</div>
+@await Html.PartialAsync("_BackButton", @Url.Action("Index"))
+@section Scripts
+{
+    <script src="~/js/admin/process/instructionList.js" asp-append-version="true"></script>
+}

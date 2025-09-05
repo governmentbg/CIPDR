@@ -16,14 +16,23 @@ namespace URegister.Core.Models.Service
         /// </summary>
         public string? Title { get; set; }
 
-        // <summary>
+        /// <summary>
         /// Тип услуга
         /// </summary>
         public string? ServiceType { get; set; }
 
-        // <summary>
+        /// <summary>
+        /// Форма
+        /// </summary>
+        public string? FormName { get; set; }
+        /// <summary>
         /// Идентификатор тип услуга
         /// </summary>
         public int ServiceTypeId { get; set; }
+
+        /// <summary>
+        /// Идентификатор на тип форма
+        /// </summary>        
+        public int FormParentId { get; set; }
     }
 }

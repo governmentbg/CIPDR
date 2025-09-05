@@ -1,0 +1,60 @@
+﻿@using URegister.Core.Models.User
+
+@model UserViewModel
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+<div class="ui grid">
+    <form class="ui sixteen wide column" action="@Url.Action("Add", "Admin")" method="post" enctype="multipart/form-data">
+        <div asp-validation-summary="ModelOnly" class="ui red message"></div>
+        <div class="content">
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            <h3>Регистрация на потребител в "@Model.AdministrationName"</h3>
+                        </div>
+                    </div>
+                    @Html.AntiForgeryToken()
+                    @Html.HiddenFor(model => model.AdministrationId)
+                    @Html.HiddenFor(model => model.AdministrationName)
+                    <div class="fields">
+                        <div class="four wide field">
+                            @Html.EditorFor(model => model.FirstName, "String")
+                        </div>
+                        <div class="four wide field">
+                            @Html.EditorFor(model => model.MiddleName, "String")
+                        </div>
+                        <div class="four wide field">
+                            @Html.EditorFor(model => model.LastName, "String")
+                        </div>
+                        <div class="four wide field">
+                            @Html.EditorFor(model => model.Pid, "String")
+                        </div>
+                    </div>
+                    <div class="fields">
+                       
+                        <div class="four wide field">
+                            @Html.EditorFor(model => model.Position, "String")
+                        </div>
+                        <div class="four wide field">
+                            @Html.EditorFor(model => model.Email, "String")
+                        </div>
+                        <div class="four wide field">
+                            @Html.EditorFor(model => model.PhoneNumber, "String")
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <a href="@Url.Action("Index", new { administrationId = Model.AdministrationId })" class="ui button">
+                <i class="arrow left icon"></i>
+                Назад
+            </a>
+            <button class="ui primary button" type="submit">
+                <i class="save outline icon"></i>
+                Запис
+            </button>
+        </div>
+    </form>
+</div>
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

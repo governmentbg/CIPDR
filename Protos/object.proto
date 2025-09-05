@@ -18,6 +18,17 @@ service ObjectsCatalogGrpc {
   rpc GetStepList(common.DatatableRequest) returns (StepListReply);
   rpc GetStep(GetStepMessage) returns (GetStepReply);
   rpc AppendUpdateStep(StepMessage) returns (common.ResultStatus);
+  rpc DeleteServiceType(GetServiceTypeRequest) returns (common.ResultStatus);
+  rpc DeleteFieldType(GetFieldTypeRequest) returns (common.ResultStatus);
+  rpc CheckServiceTypeNameExists(ServiceTypeNameExistsRequest) returns (ServiceTypeNameExistsReply);
+  rpc DeleteStep(GetStepMessage) returns (common.ResultStatus);
+  rpc GetFieldTemplateList(FieldTemplateListRequest) returns (FieldTemplateListResponse);
+  rpc GetFieldTemplate(FieldTemplateRequest) returns (FieldTemplateResponse);
+  rpc GetFieldTemplateContent(FieldTemplateRequest) returns (FieldTemplateContentResponse);
+  rpc GetFieldTemplateContentList(google.protobuf.Empty) returns (FieldTemplateContentListResponse);
+  rpc AppendUpdateFieldTemplate(FieldTemplateMessage) returns (common.ResultStatus);
+  rpc UpdateFieldTemplateContent(FieldTemplateContentMessage) returns (common.ResultStatus);
+  rpc DeleteFieldTemplate(FieldTemplateRequest) returns (common.ResultStatus);
 }
 
 // Тип на поле от каталога
@@ -26,6 +37,7 @@ message CatalogFieldType {
   string label = 2;
   bool isComplex = 3;
   string templateName = 4;
+  int32 field_type_id = 5;
 }
 
 // Списък от полета дефинирани в каталога
@@ -91,11 +103,13 @@ message GetStepMessage{
 message StepMessage{
 	int32 id = 1;
 	string name = 2;
-	string type = 3;
-	string method = 4;
-	google.protobuf.StringValue configuration = 5;
-	bool is_for_public_use = 6;
-	bool is_for_official_use = 7;
+	google.protobuf.StringValue role_id = 3;
+	google.protobuf.StringValue type = 4;
+	google.protobuf.StringValue method = 5;
+	google.protobuf.StringValue configuration = 6;
+	bool is_for_public_use = 7;
+	bool is_for_official_use = 8;
+	google.protobuf.StringValue role_name = 9;
 }
 
 message GetStepReply{
@@ -106,4 +120,68 @@ message StepListReply{
     common.ResultStatus status = 1;
     repeated StepMessage steps = 2;
 	int32 count_all = 3;
+}
+
+message GetFieldTypeRequest{
+	int32 field_type_id = 1;
+}
+
+message ServiceTypeNameExistsRequest
+{
+	string name = 1;
+}
+
+message ServiceTypeNameExistsReply{
+	common.ResultStatus status = 1;
+	bool is_exists = 2;
+}
+
+message FieldTemplateMessage {
+	int32 id = 1;
+	int32 field_type_id = 2;
+	string name = 4;
+	google.protobuf.StringValue field_type = 5;
+	google.protobuf.StringValue field_type_name = 6;
+	bool blank_if_no_value = 7;
+
+}
+
+message FieldTemplateContentMessage {
+	int32 id = 1;
+	int32 field_type_id = 2;
+	string name = 4;
+	google.protobuf.StringValue field_type = 5;
+	google.protobuf.StringValue field_type_name = 6;
+	google.protobuf.StringValue content = 7;
+	google.protobuf.StringValue content_text = 8;
+	bool blank_if_no_value = 9;
+
+}
+
+message FieldTemplateRequest{
+    int32 id = 1;
+}
+
+message FieldTemplateListRequest {
+	common.DatatableRequest data_table_request = 1;
+}
+
+message FieldTemplateListResponse {
+    common.ResultStatus status = 1;
+    repeated FieldTemplateMessage field_templates = 2;
+	int32 count_all = 3;
+}
+message FieldTemplateContentListResponse {
+    common.ResultStatus status = 1;
+    repeated FieldTemplateContentMessage field_templates = 2;
+}
+
+message FieldTemplateResponse {
+    common.ResultStatus status = 1;
+    FieldTemplateMessage field_template = 2;
+}
+
+message FieldTemplateContentResponse {
+    common.ResultStatus status = 1;
+    FieldTemplateContentMessage field_template = 2;
 }

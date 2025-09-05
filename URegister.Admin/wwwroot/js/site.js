@@ -11,46 +11,19 @@ $(function () {
 
     initializeElements($(document));
 
-    InitForm();
+    //Horizontal scroll for datatables
+    $(document).on('init.dt', function (e, settings) {
+        var $table = $(settings.nTable);
 
-    //Tooltip-a при чекбокс да не излиза от очертанията на елемента
-    $('.checkbox-tooltip').popup({
-        boundary: '.ui checkbox'
-    })
-
-    $('.person-tooltip').popup({
-        boundary: '.person-fieldset'
-    })
-
-    $('input:not([type="hidden"]), textarea').each(function () {
-        $(this).attr('oninvalid', 'setCustomValidity(getErrorMessage(this))');
-        $(this).attr('oninput', 'setCustomValidity("")');
-
-        if ($(this).closest('.datetime-calendar').length || $(this).closest('.dateonly-calendar').length) {
-            $(this).attr('onchange', 'this.setCustomValidity("")');
+        // Check for specific classes in the table (ignoring dynamic classes like 'dataTable')
+        if ($table.hasClass('ui') && $table.hasClass('celled') && $table.hasClass('table')) {
+            // Apply overflow-x: auto to the nearest parent with .ui.padded.grid.row
+            $table.closest('.ui.padded.grid.row').css('overflow-x', 'auto');
         }
     });
 
-    //При readonly сложен контрол тип fieldset прави inputs readonly
-    if ($('fieldset.readonly-fieldset').length > 0) {
-        // Make all inputs and textareas inside the readonly fieldset readonly and add classes
-        $('fieldset.readonly-fieldset').find('input, textarea').each(function () {
-            $(this).prop('readonly', true).addClass('ui disabled input');
-        });
-
-        // Add the `disabled` class to any `.ui.calendar` divs within `.readonly-fieldset` fieldsets
-        $('fieldset.readonly-fieldset').find('div.ui.calendar').addClass('disabled');
-
-        // Add the `disabled` class to any `.ui fluid search selection dropdown` divs within `.readonly-fieldset` fieldsets
-        $('fieldset.readonly-fieldset').find('div.ui.fluid.search.selection.dropdown').addClass('disabled');
-    }
+    InitForm();        
 });
-
-function generatePIDValue(pidContainer) {
-    let pidType = pidContainer.find('.ui.dropdown').dropdown('get value');
-    let pidNumber = pidContainer.find(':input[type=text]').val().trim();    
-    pidContainer.find("input[type='hidden']:not(.label input)").val(pidType + ':' + pidNumber);
-}
 
 function getErrorMessage(sender) {
     let value = $(sender).val();
@@ -99,19 +72,7 @@ var calendarTextConfig = {
     pm: 'PM'
 };
 
-function initializeElements(parentForm) {
-    //#region За checkbox
-
-    $(".checkbox-template").change(function () {
-        if ($(this).is(':checked')) {
-            $(this).parent().find('input:hidden').val('true');
-        } else {
-            $(this).parent().find('input:hidden').val('false');
-        }
-    });
-
-    //#endregion
-
+function initializeElements(parentForm) {    
     $('.ekatte')
         .each(function () {
             $(this).search(
@@ -160,7 +121,7 @@ function initializeElements(parentForm) {
             hiddenElement.trigger('change');
         });
 
-    //Date and DateTime initialize
+    //Date, DateTime and Time initialize
     $('.dateonly-calendar').not(function () {
         return $(this).has('.ui.disabled').length > 0;
     }).calendar({
@@ -184,21 +145,73 @@ function initializeElements(parentForm) {
         text: calendarTextConfig
     });
 
-    //Dropdown initialize
+    $('.timeonly-calendar').not(function () {
+        return $(this).has('.ui.disabled').length > 0;
+    }).calendar({
+            type: 'time',
+            formatter: {
+                time: 'HH:mm',
+                cellTime: 'HH:mm'
+            }
+        });
+
+    //#region Dropdown initialize
+
     $('.ui.dropdown').dropdown();
     $('.ui.accordion').accordion();
 
-    $('.pid').find('.ui.dropdown').change(function () {
-        generatePIDValue($(this).closest('.pid'));
-    });
+    //#endregion
+    
+    preventFormSubmissionOnEnter();
 
-    $('.pid').find(':input[type=text]').on('input', function () {
-        generatePIDValue($(this).closest('.pid'));
-    });   
+    $('input:not([type="hidden"]), textarea').each(function () {
+        $(this).attr('oninvalid', 'setCustomValidity(getErrorMessage(this))');
+        $(this).attr('oninput', 'setCustomValidity("")');
+
+        if ($(this).closest('.datetime-calendar').length || $(this).closest('.dateonly-calendar').length) {
+            $(this).attr('onchange', 'this.setCustomValidity("")');
+        }
+    });        
 }
+
+function preventFormSubmissionOnEnter() {
+    $('input').on('keydown', function (event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+        }
+    });
+}
+
+function SetRegisterFiles() {
+    $('.upload-file-input').off('change');
+    $('.upload-file-input').change(async function () {
+        var selectedFiles = $(this).prop("files");
+        const parent = $(this).parents('.fields:first');
+        if (selectedFiles.length > 0) {
+            parent.find('.selected-file-button').show();
+            parent.find('.selected-file').text(selectedFiles[0].name);
+            const response = await uploadRegisterFile('/Register/UploadFile', selectedFiles[0]);
+            parent.find('.upload-file-id').val(response.metaFileId)
+        } else {
+            parent.find('.selected-file-button').hide();
+            parent.find('.selected-file').text('');
+        }
+    });
+}
+
+async function downloadRegisterFile(btn) {
+    const parent = $(btn).parents('.fields:first');
+    const file_id = parent.find('.upload-file-id').val();
+    await downloadFile(`/Register/DownloadFile?id=${file_id}`, {})
+}
+async function downloadRegisterFileById(file_id) {
+    await downloadFile(`/Register/DownloadFile?id=${file_id}`, {})
+}
+
 function InitForm() {
     $('.ui.dropdown').dropdown();
     $('.ui.accordion').accordion();
+    SetRegisterFiles();
     initDynamicForms(function () {
         InitForm();
     })
@@ -251,3 +264,69 @@ function jsonBGdatetime(value) {
     }
     return moment(value).format("DD.MM.YYYY г. HH:mm:ss");
 }
+
+function actionWithConfirmation(actionUrl, id, confirmDeleteText = "Сигурни ли сте, че искате да изтриете елемента?", callback = null) {
+    $('#confirmActionText').text(confirmDeleteText);
+    $('.confirm-action')
+        .modal({
+            centered: true,
+            closable: false,
+            onApprove: function () {
+                let url = actionUrl;
+                post_async(url, {
+                    id: id,
+                    __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                },
+                )
+                    .then((result) => {
+                        if (callback !== null) {
+                            callback();
+                        }
+                        else if (result === null) {
+                            window.location.reload();
+                        }
+                        else if (result.redirectUrl) {
+                            if (result.redirectUrl !== '#') {
+                                window.location.href = result.redirectUrl;
+                            }
+                        }
+                        else {
+                            window.location.reload();
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Грешка при URL ' + actionUrl + " : " + error.statusText);
+                    });
+            }
+        })
+        .modal('show');
+};
+
+function fileActionWithConfirmation(actionUrl, data, confirmDeleteText = "Сигурни ли сте, че искате да изтриете елемента?", callback = null) {
+    $('#confirmActionText').text(confirmDeleteText);
+    $('.confirm-action')
+        .modal({
+            centered: true,
+            closable: false,
+            onApprove: function () {
+                let url = actionUrl;
+                post_async(url, data)
+                    .then((result) => {
+                        if (result.success) {
+                            if (callback !== null) {
+                                callback();
+                            }
+                            showToast('success', 'Файлът е премахнат успешно.');
+                        }
+                        else {
+                            showToast('error', 'Проблем при премахване на файла.');
+                            console.error(result.error);
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Грешка при URL ' + actionUrl + " : " + error.statusText);
+                    });
+            }
+        })
+        .modal('show');
+};

@@ -1,0 +1,41 @@
+﻿@using URegister.Core.Models.Register
+@using URegister.Infrastructure.Constants
+@model RegisterStatusVM
+
+@{
+    ViewBag.Title ="Статус на регистър";
+    var htmlFieldPrefix = ViewData.TemplateInfo.HtmlFieldPrefix;
+ }
+<div class="ui grid">
+    <form class="ui sixteen wide column" action="@Url.Action("EditStatus")" method="post" enctype="multipart/form-data">
+        <div class="content">
+            @Html.HiddenFor(model => model.Id)
+            @Html.HiddenFor(model => model.RegisterId)
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class='six wide field'>
+                            @Html.EditorFor(model => model.StatusId, "DropDownInt", new { Ddl = ViewData[$"{InternalNomenclatureTypes.RegisterStatus}_ddl"] })
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class="sixteen wide field">
+                            @Html.EditorFor(model => model.Remark, "TextArea")
+                        </div>
+                    </div>
+                    <div class="column ui segment green register-info">
+                        @{
+                            ViewData.TemplateInfo.HtmlFieldPrefix = $"RegisterFiles";
+                            await Html.RenderPartialAsync("_RegisterFiles", Model.RegisterFiles);
+                            ViewData.TemplateInfo.HtmlFieldPrefix = htmlFieldPrefix;
+                        }
+                    </div>
+                </div>
+            </div>
+            @await Html.PartialAsync("_BackSubmitButton", @Url.Action("Index"))
+        </div>
+    </form>
+</div>
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

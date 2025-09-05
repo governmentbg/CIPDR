@@ -1,0 +1,30 @@
+﻿@using URegister.Core.Models.Service
+@model BlanksTemplateContentVM
+@{
+    ViewBag.Title = "Съдържание на бланкa";
+}
+<form id="submit" action="@Url.Action("EditContent")" method="post" enctype="multipart/form-data">
+    @Html.HiddenFor(x => x.Id)
+    @Html.HiddenFor(x => x.FormParentId)
+    @Html.HiddenFor(x => x.ServiceId)
+    @Html.HiddenFor(x => x.SourceType)
+    <div class="ui grid">
+        <div class="ui sixteen wide column content">
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            <textarea class="blank-editor" asp-for="@Model.Content"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="ui fluid container basic clearing segment"></div>
+    @await Html.PartialAsync("_BackSubmitButton", @Url.Action("Index"))
+</form>
+@section Scripts
+{
+    <script src="~/js/admin/blanks_template/tinymce_init.js" asp-append-version="true"></script>
+}

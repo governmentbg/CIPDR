@@ -1,7 +1,5 @@
 ﻿@model URegister.Infrastructure.Model.RegisterForms.AddFormViewModel
-@{
-    ViewData["Title"] = "Добавяне на форма";
-}
+
 <div class="ui green clearing segment">
     <form asp-action="EditForm" method="post" enctype="multipart/form-data" id="Add">
         @Html.HiddenFor(model => model.ParentId)

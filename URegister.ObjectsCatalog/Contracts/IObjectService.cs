@@ -12,7 +12,7 @@ namespace URegister.ObjectsCatalog.Contracts
         /// Вземане на списък на полетата
         /// </summary>
         /// <returns></returns>
-        Task<ICollection<(string type, string label, bool isComplex, string template)>> GetFieldTypesAsync();
+        Task<ICollection<(string type, string label, bool isComplex, string template, int fieldTypeId)>> GetFieldTypesAsync();
 
         /// <summary>
         /// Получаване на данни за поле
@@ -77,5 +77,41 @@ namespace URegister.ObjectsCatalog.Contracts
         /// <param name="request"></param>
         /// <returns></returns>
         Task AppendUpdate(ServiceTypeMessage request);
+
+
+        /// <summary>
+        /// Изтриване на тип услуга
+        /// </summary>
+        /// <param name="serviceTypeId">Идентификатор на тип услуга</param>
+        /// <returns></returns>
+        Task<ResultStatus> DeleteServiceType(int serviceTypeId);
+
+        /// <summary>
+        /// Изтриване на тип поле
+        /// </summary>
+        /// <param name="fieldTypeId">Идентификатор на тип поле</param>
+        /// <returns></returns>
+        Task<ResultStatus> DeleteFieldType(int fieldTypeId);
+
+        /// <summary>
+        /// Проверява за съществуващо име на услуга
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        Task<ServiceTypeNameExistsReply> CheckServiceNameExists(string name);
+
+        /// <summary>
+        /// Изтриване на стъпка
+        /// </summary>
+        /// <param name="stepId">Идентификатор на стъпка</param>
+        /// <returns></returns>
+        Task<ResultStatus> DeleteStep(int stepId);
+        Task<(List<FieldTemplateMessage>, int)> GetFieldTemplateList(DatatableRequest request);
+        Task<FieldTemplateResponse> GetFieldTemplate(int id);
+        Task<FieldTemplateContentResponse> GetFieldTemplateContent(int id);
+        Task AppendUpdateFieldTemplate(FieldTemplateMessage request);
+        Task UpdateFieldTemplateContent(FieldTemplateContentMessage request);
+        Task DeleteFieldTemplate(int id);
+        Task<List<FieldTemplateContentMessage>> GetFieldTemplateContentList();
     }
 }

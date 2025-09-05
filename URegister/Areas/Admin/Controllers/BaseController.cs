@@ -1,28 +1,42 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using URegister.Core.Contracts;
 using URegister.Infrastructure.Constants;
+using URegister.IntegrationsCatalog;
 
 namespace URegister.Areas.Admin.Controllers
 {
-    //[Authorize]
+    [Authorize]
+    [Area("Admin")]
     public class BaseController : Controller
     {
-        //private IUserContext _userContext;
+        private IUserContext _userContext;
 
-        //protected IUserContext userContext
-        //{
-        //    get
-        //    {
-        //        if (_userContext == null)
-        //        {
-        //            _userContext = (IUserContext)HttpContext
-        //                 .RequestServices
-        //                 .GetService(typeof(IUserContext));
-        //        }
+        protected IUserContext UserContext
+        {
+            get
+            {
+                if (_userContext == null)
+                {
+                    _userContext = (IUserContext)HttpContext
+                         .RequestServices
+                         .GetService(typeof(IUserContext));
+                }
 
-        //        return _userContext;
-        //    }
-        //}
+                return _userContext;
+            }
+        }
+
+        protected IntegrationServiceContextInfo GetRegexContextInfo(IEnumerable<string> roles)
+        {
+            return new IntegrationServiceContextInfo()
+            {
+                EmployeeAdministration =
+                    UserContext.AvailableAdministrations.FirstOrDefault(a => UserContext.AdministrationId.ToString() == a.Id)?.Name,
+                EmployeeNames = UserContext.FirstName + " " + UserContext.LastName,
+                EmployeePosition = string.Join(", ", roles)
+            };
+        }
 
         //private IValidateService _validateService;
 

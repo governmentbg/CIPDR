@@ -13,6 +13,21 @@
         public const string NormalDateFormat = "dd.MM.yyyy";
 
         /// <summary>
+        /// Formatting of date dd.MM.yyyy HH:mm;
+        /// </summary>
+        public const string DateTimeFormat = "dd.MM.yyyy HH:mm";
+
+        /// <summary>
+        /// Formatting of date yyyy-MM-ddTHH:mm:sszzz;
+        /// </summary>
+        public const string EFormDateFormat = "yyyy-MM-ddTHH:mm:sszzz";
+
+        /// <summary>
+        /// Formatting of date yyyy-MM-ddTHH:mm:ss.FFF'Z'
+        /// </summary>
+        public const string ISO8601DateFormat = "yyyy-MM-ddTHH:mm:ss.FFF'Z'";
+
+        /// <summary>
         /// Formatting time to HH:mm
         /// </summary>
         public const string NormalTimeFormat = "HH:mm";

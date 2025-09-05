@@ -10,6 +10,16 @@ namespace URegister.Core.Models.Nomenclature
     /// </summary>
     public class CodeableConceptVM
     {
+        private string _code = null!;
+        private string _value = null!;
+        private string? _valueEn;
+        private string? _holderCode;
+
+        /// <summary>
+        /// Ид за Редакция на невлезли в сила записи
+        /// </summary>
+        public long EditId { get; set; }
+
         /// <summary>
         /// Редакция/Добавяне 
         /// </summary>
@@ -18,13 +28,21 @@ namespace URegister.Core.Models.Nomenclature
         [StringLength(20, MinimumLength = 1, ErrorMessage = "Максималната дължина на полето {0} е {1}")]
         [Required(ErrorMessage = MessageConstant.FieldIsRequired)]
         [Display(Name = "Код")]
-        public string Code { get; set; } = null!;
+        public string Code
+        {
+            get => _code;
+            set => _code = value?.Trim();
+        }
 
         /// <summary>
         /// Горно ниво в друг номенклатурна стойност 
         /// </summary>
         [Display(Name = "Горно ниво")]
-        public string? HolderCode { get; set; }
+        public string? HolderCode
+        {
+            get => _holderCode;
+            set => _holderCode = value?.Trim();
+        }
 
         /// <summary>
         /// Стойност
@@ -32,11 +50,20 @@ namespace URegister.Core.Models.Nomenclature
         [StringLength(255, MinimumLength = 1, ErrorMessage = "Максималната дължина на полето {0} е {1}")]
         [Required(ErrorMessage = MessageConstant.FieldIsRequired)]
         [Display(Name = "Стойност")]
-        public string Value { get; set; } = null!;
+        public string Value
+        {
+            get => _value;
+            set => _value = value?.Trim();
+        }
 
         [StringLength(255, ErrorMessage = "Максималната дължина на полето {0} е {1}")]
-        [Display(Name = "Стойност ЕН")]
-        public string? ValueEn { get; set; }
+        [RegularExpression(RegexPatterns.LatinTextWithNumbersPattern, ErrorMessage = MessageConstant.NotLatin)]
+        [Display(Name = "Стойност EN")]
+        public string? ValueEn
+        {
+            get => _valueEn;
+            set => _valueEn = value?.Trim();
+        }
 
         /// <summary>
         /// Валидна от дата
@@ -61,8 +88,6 @@ namespace URegister.Core.Models.Nomenclature
         /// <summary>
         /// Тип на номенклатура
         /// </summary>
-        [Required(ErrorMessage = MessageConstant.FieldIsRequired)]
-        [StringLength(6, MinimumLength = 5, ErrorMessage = "Дължината на полето {0} трябва да е {1}")]
         [Display(Name = "Тип на номенклатура")]
         public string Type { get; set; } = null!;
 

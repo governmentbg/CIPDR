@@ -1,0 +1,70 @@
+﻿@using URegister.Core.Models.Common
+@model FileVM
+@{
+    ViewData["Title"] = "Шаблон за импорт на данни";
+    var uploadLabel = Model.MetaFileId != null ? "Промени шаблон" : "Kачи шаблон";
+}
+
+<div class="ui grid">
+    <div class="column">
+    <div class="content">
+        <div class="column ui segment green">
+            <div class="ui form">
+                <div class="fields">
+                    <div class='twelve wide field'>
+                        @if(Model.MetaFileId != null){
+                           @await Html.PartialAsync("_DownloadFile", Model)
+                        }
+                    </div>
+                    <div class='four wide field'>
+                            <button id="upload" onclick="showMaketModal()" class="ui primary button right floated" type="button" style="margin-left:0.2rem;">
+                            <i class="file upload icon"></i>
+                            @uploadLabel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+</div>
+<div id="uploadModal" class="ui modal">
+    <div class="header">@uploadLabel</div>
+    <form id="formUploadMaketFile" class="ui sixteen wide column" action="@Url.Action("UploadMaketFile")" method="post" enctype="multipart/form-data">
+        <div class="content">
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            <div class="ui file action input">
+                                <label style="min-width: 33%" for="files" class="ui blue icon button">
+                                    <i class="upload icon"></i>
+                                    Изберете файл
+                                </label>
+                                <input hidden type="file" class="upload-file-input" name="files" id="files" accept=".xlsx">
+                                <div class='ui icon button' style="max-width: calc(100% - 140px);">
+                                    <span class='selected-file' style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; padding-right: 2px;"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <span id="uploadProgress"></span>
+                </div>
+            </div>
+            @Html.AntiForgeryToken()
+            <div class="ui fluid container basic clearing segment"></div>
+            <div class="ui buttons right floated">
+                <button id="button_submit" disabled class="ui primary button" type="submit" style="margin-left:0.2rem;">
+                    <i class="file upload icon"></i>
+                    Запис
+                </button>
+            </div>
+        </div>
+    </form>
+
+</div>
+
+@section Scripts
+{
+     <script src="~/js/admin/import/maket.js" asp-append-version="true"></script>
+}

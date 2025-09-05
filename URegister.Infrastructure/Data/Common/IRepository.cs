@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore.Storage;
 using System.Linq.Expressions;
+using URegister.Infrastructure.Contracts;
 
 namespace URegister.Infrastructure.Data.Common
 {
@@ -36,12 +37,12 @@ namespace URegister.Infrastructure.Data.Common
         /// <summary>
         /// Gets specific record from database by primary key
         /// </summary>
-        /// <param name="id">record identificator</param>
+        /// <param name="id">record identifier</param>
         /// <returns>Single record</returns>
         Task<T?> GetByIdAsync<T>(object id) where T : class;
 
         /// <summary>
-        /// Gets specifi record from database by primary key
+        /// Gets specific record from database by primary key
         /// </summary>
         /// <param name="id">Composite key</param>
         /// <returns>Single record</returns>
@@ -62,7 +63,7 @@ namespace URegister.Infrastructure.Data.Common
         /// <summary>
         /// Deletes a record from database
         /// </summary>
-        /// <param name="id">Identificator of record to be deleted</param>
+        /// <param name="id">Identifier of record to be deleted</param>
         Task DeleteAsync<T>(object id) where T : class;
 
         /// <summary>
@@ -138,5 +139,6 @@ namespace URegister.Infrastructure.Data.Common
         /// </summary>
         /// <returns></returns>
         Task<IDbContextTransaction> BeginTransactionAsync();
+        Task SaveRequest();
     }
 }

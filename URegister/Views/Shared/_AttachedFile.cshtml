@@ -1,0 +1,28 @@
+﻿@using URegister.Core.Models.Common
+@model FileVM
+@{
+    var currentHtmlPrefix = ViewData.TemplateInfo.HtmlFieldPrefix;
+    var filesId = $"{currentHtmlPrefix}.files";
+    var display = string.IsNullOrEmpty(Model.FileName) ? "display:none" : string.Empty;
+}
+<div class="fields">
+    <div class='ten wide field item-template'>
+        <label>&nbsp; </label>
+        <div class="ui file action input">
+            <label for="@filesId" class="ui blue icon button">
+                <i class="upload icon"></i>
+                Изберете файл
+            </label>
+            <input hidden type="file" class="attached-file-input" name="@filesId" id="@filesId" accept="*.xlsx;*.pdf;*.docx">
+            <input hidden asp-for="@Model.MetaFileId" class="attached-file-id" />
+            <button type="button" class='ui icon button attached-file-button' style="max-width: calc(100% - 140px); @display" onclick="downloadAttachedFile(this)">
+                <i class="download icon"></i>
+                <span class='attached-file' style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; padding-right: 2px;">@Model.FileName</span>
+            </button>
+            <button type="button" class='ui icon button remove-item'>
+                <i class="delete icon"></i>
+            </button>
+        </div>
+        <span id="uploadProgress"></span>
+    </div>
+</div>

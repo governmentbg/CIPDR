@@ -40,6 +40,13 @@ function LoadServiceTypes() {
                     searchable: true
                 },
                 {
+                    name: 'formName',
+                    data: 'formName',
+                    title: 'Форма',
+                    sortable: true,
+                    searchable: true
+                },
+                {
                     name: 'actions',
                     data: "id",
                     title: "Действия",
@@ -48,7 +55,11 @@ function LoadServiceTypes() {
                     className: "text-left noExport",
                     width: 120,
                     "render": function(data, type, row) {
-                        return editButton(`/Admin/Service/Edit/${data}`);
+                        return editButton(`/Admin/Service/Edit/${data}`) +
+                            "<a href='javascript:actionWithConfirmation(\"/Admin/Service/Delete\", " +
+                            data + ", \"Сигурни ли сте, че искате да изтриете " +
+                            row.title +
+                            "?\", null)' type='button' class='ui tertiary icon button' data-tooltip='Изтрий'><i class='red trash alternate icon'></i></button>";
                     }
                 }
             ]

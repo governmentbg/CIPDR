@@ -6,7 +6,7 @@ namespace URegister.RegistersCatalog.Data.Models
     /// Записи на лица в регистър
     /// </summary>
     [Comment("Записи на лица в регистър")]
-    [PrimaryKey(nameof(RegisterId), nameof(MasterPersonRecordId))]
+    [PrimaryKey(nameof(RegisterId), nameof(MasterPersonRecordId), nameof(RoleId))]
     public class RegisterPersonRecord
     {
         /// <summary>
@@ -16,16 +16,23 @@ namespace URegister.RegistersCatalog.Data.Models
         public int RegisterId { get; set; }
 
         /// <summary>
-        /// Регистър
-        /// </summary>
-        [Comment("Регистър")]
-        public Register Register { get; set; } = null!;
-
-        /// <summary>
         /// Идентификатор на партида
         /// </summary>
         [Comment("Идентификатор на партида")]
         public Guid MasterPersonRecordId { get; set; }
+
+        /// <summary>
+        /// Роля партида/заявител
+        /// </summary>
+        [Comment("Роля партида/заявител")]
+        public int RoleId { get; set; }
+
+
+        /// <summary>
+        /// Регистър
+        /// </summary>
+        [Comment("Регистър")]
+        public Register Register { get; set; } = null!;
 
         /// <summary>
         /// Партида

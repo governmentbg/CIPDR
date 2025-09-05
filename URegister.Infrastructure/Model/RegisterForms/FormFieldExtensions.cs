@@ -7,9 +7,9 @@ namespace URegister.Infrastructure.Model.RegisterForms
         /// <summary>
         /// Прави копие на полето за повтарящ се елемент
         /// </summary>
-        /// <param name="original"></param>
-        /// <param name="pairKey"></param>
-        /// <param name="assignedValue"></param>
+        /// <param name="original">Полето за клониране</param>
+        /// <param name="name">Име на полето</param>
+        /// <param name="assignedValue">Стойност на полето</param>
         /// <returns></returns>
         public static FormField CreateRepeaterClone(this FormField original, string name, string? assignedValue = null)
         {
@@ -21,7 +21,6 @@ namespace URegister.Infrastructure.Model.RegisterForms
             return new FormField
             {
                 Identifier = new Guid(), //
-                FieldId = original.FieldId,
                 Type = original.Type,
                 Name = name, //
                 Label = original.Label,

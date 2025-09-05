@@ -19,30 +19,45 @@ namespace URegister.Core.Models.Process
         public Guid Id { get; set; } = Guid.NewGuid();
 
         /// <summary>
-        /// Входящ номер
+        /// Идентификатор на първоначален процесс
         /// </summary>
-        [Required]
-        [MaxLength(20)]
-        [Display(Name ="Входящ номер")]
-        public string IncomingNumber { get; set; } = null!;
+        public Guid? FromProcessId { get; set; }
+        ///// <summary>
+        ///// Входящ номер
+        ///// </summary>
+        //[Required]
+        //[MaxLength(20)]
+        //[Display(Name ="Входящ номер")]
+        public string? IncomingNumber { get; set; } = null;
+
+        ///// <summary>
+        ///// Номер на вписване 
+        ///// </summary>
+        //[Display(Name = "Номер на вписване ")]
+        //public string? RegisterNumber { get; set; }
+
+        ///// <summary>
+        ///// Дата на входиране
+        ///// </summary>
+        //[Display(Name = "Дата на входиране")]
+        public DateTime? IncomingDate { get; set; } = DateTime.UtcNow;
 
         /// <summary>
-        /// Номер на вписване 
+        /// Стар номер на вписване 
         /// </summary>
-        [Display(Name = "Номер на вписване ")]
-        public string? RegisterNumber { get; set; }
+        [Display(Name = "Стар номер на вписване")]
 
-        /// <summary>
-        /// Дата на входиране
-        /// </summary>
-        [Display(Name = "Дата на входиране")]
-        public DateTime IncomingDate { get; set; } = DateTime.UtcNow;
+        public string? OldIncomingNumber { get; set; }
+
+        [Display(Name = "Стара дата на входиране")]
+        public DateTime? OldIncomingDate { get; set; }
 
         /// <summary>
         /// Идентификатор на услуга
         /// </summary>
+        [Required(ErrorMessage = MessageConstant.FieldIsRequired)]
         [Display(Name = "Услуга")]
-        public int ServiceId { get; set; }
+        public int? ServiceId { get; set; }
 
     }
 }

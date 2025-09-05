@@ -15,7 +15,8 @@
                 id="codeableConceptRegister" 
                 class="ui celled striped very compact table" 
                 style="width:100%; padding:0px;" 
-                data-url="@Url.Action("GetCodeableConceptRegisterList", "Nomenclature")">
+                data-url="@Url.Action("GetCodeableConceptRegisterList", "Nomenclature")"
+                data-add-url="@Url.Action("Add", "Nomenclature", new { nomenclatureType = Model.Type })">
             </table>
         </div>
     </div>
@@ -23,5 +24,5 @@
 @await Html.PartialAsync("_BackButton", @Url.Action("IndexTypeRegister"))
 @section Scripts
 {
-    <script src="~/js/Admin/nomenclature/codeableConceptRegister.js" asp-append-version="true"></script>
+    <script src="~/js/admin/nomenclature/codeableConceptRegister.js" asp-append-version="true"></script>
 }

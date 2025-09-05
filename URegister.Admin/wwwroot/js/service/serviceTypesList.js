@@ -40,7 +40,11 @@ function LoadServiceTypes() {
                     className: "text-left noExport",
                     width: 120,
                     "render": function(data, type, row) {
-                        return editButton(`/Service/Edit/${data}`);
+                        return editButton(`/Service/Edit/${data}`) +
+                            "<a href='javascript:actionWithConfirmation(\"/Service/Delete\", " +
+                            data + ", \"Сигурни ли сте, че искате да изтриете " +
+                            row.name +
+                            "?\", null)' type='button' class='ui tertiary icon button' data-tooltip='Изтрий'><i class='red trash alternate icon'></i></button>";                            
                     }
                 }
             ]

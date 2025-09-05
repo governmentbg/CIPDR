@@ -7,7 +7,7 @@
 <div class="ui form @container_css">
     <div class="field @reqClass">
         <label asp-for="@Model"></label>
-        @Html.TextBox(String.Empty, Model.Decode(), ViewData["htmlAttributes"])
+        @Html.TextBox(String.Empty, Model.Decode(), new { placeholder = ViewData.ModelMetadata.Placeholder })
         <span asp-validation-for="@Model" class="validation-error" tabindex="-1"></span>
     </div>
 </div>

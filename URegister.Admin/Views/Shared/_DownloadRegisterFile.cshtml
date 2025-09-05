@@ -1,0 +1,13 @@
+﻿@using URegister.Core.Models.Register
+@model RegisterFileVM
+<div class="fields">
+    <div class='eight wide field'>
+        @Model.Description
+    </div>
+    <div class='eight wide field'>
+        <a href="javascript:downloadRegisterFileById('@Model.MetaFileId')" class="ui left floated button">
+            <i class="download icon"></i>
+            @Model.FileName
+        </a>
+    </div>
+</div>

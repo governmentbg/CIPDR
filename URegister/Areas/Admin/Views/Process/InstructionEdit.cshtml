@@ -1,0 +1,25 @@
+﻿@using URegister.Core.Models.Process
+@model InstructionVM
+@{
+    ViewBag.Title = "Дoбавяне на указание";
+}
+<form action="@Url.Action("InstructionEdit")" method="post" enctype="multipart/form-data">
+    @Html.HiddenFor(x => x.ProcessId)
+    @Html.HiddenFor(x => x.Id)
+    @Html.HiddenFor(x => x.ResultDeliveryMethod)
+    <div class="ui grid">
+        <div class="ui sixteen wide column content">
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(x => x.Content, "Textarea")
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="ui fluid container basic clearing segment"></div>
+    @await Html.PartialAsync("_BackSubmitButton", @Url.Action("InstructionIndex", new {processId = Model.ProcessId}))
+</form>

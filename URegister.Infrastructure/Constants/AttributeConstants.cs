@@ -7,5 +7,6 @@
         public const string Time = "time";
         public const string Decimal = "decimal(18, 2)";
         public const string Identifier = "Индентификатор";
+        public const string Jsonb = "jsonb";
     }
 }

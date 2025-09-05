@@ -3,6 +3,7 @@ syntax = "proto3";
 import "common.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/wrappers.proto";
+import "google/protobuf/timestamp.proto";
 
 option csharp_namespace = "URegister.RegistersCatalog";
 
@@ -11,14 +12,36 @@ package register;
 service RegistersCatalogGrpc {
   rpc GetRegisterList(google.protobuf.Empty) returns (RegisterListResponse);
   rpc GetRegisterFullList(RegisterListRequest) returns (RegisterFullListResponse);
-  rpc GetRegisterNotStartedList(google.protobuf.Empty) returns (RegisterListResponse);
   rpc AddRegister(RegisterItem) returns (common.ResultStatus);
-  rpc GetRegisterAndMarkAsStarted(GetRegisterRequest) returns (GetRegisterResponse);
+  rpc GetRegisterAndMarkAsStarted(GetRegisterByCodeRequest) returns (GetRegisterResponse);
+  rpc GetRegister(GetRegisterRequest) returns (GetRegisterResponse);
   rpc GetRegisterForAddAdministration(GetRegisterRequest) returns (GetRegisterResponse);
   rpc GetAdministrationList(AdministrationListRequest) returns (AdministrationListResponse);
   rpc GetPersonList(PersonListRequest) returns (PersonListResponse);
   rpc CreateRegister(google.protobuf.Empty) returns (GetRegisterResponse);
-  rpc AddMasterPersonRecordsIndex(MasterPersonRecordsIndexAddMessage) returns (MasterPersonRecordsIndexAddResponse);
+  rpc GetAllAdministrations(google.protobuf.Empty) returns (AppAdministrations);
+  rpc GetAdministration(GetAdministrationRequest) returns (GetAdministrationResponse);
+  rpc GetAdministrationRegistries(AppAdministration) returns (GetRegistriesResponse);
+  rpc AddMasterPersonRecordIndex(MasterPersonRecordIndexAddMessage) returns (MasterPersonRecordIndexAddResponse);
+  rpc GetMasterPersonRecordIndex(GetMasterPersonRecordIndexMessage) returns (MPRIListMessage);
+  rpc GetMasterPersonRecordIndexList(GetMPRIListMessage) returns (MPRIListMessage);
+  rpc RemoveAdministrationFromRegister(RemoveAdministrationFromRegisterRequest) returns (common.ResultStatus);
+  rpc GetAdminAdministration(google.protobuf.Empty) returns (GetAdministrationResponse);
+  rpc GetRegisterByRegisterCode(GetRegisterByCodeRequest) returns (GetRegisterResponse);
+  rpc GetAdministrationsByIds(AdministrationIds) returns (AppAdministrations);
+  rpc GetRegisterStatusList(RegisterStatusRequest) returns (RegisterStatusListResponse);
+  rpc AddRegisterStatus(RegisterStatusItem) returns (common.ResultStatus);
+  rpc GetRegisterStatus(GetRegisterStatusRequest) returns (RegisterStatusResponse);
+  rpc UploadFile(stream FileContent) returns (UploadFileResponse);
+  rpc DownloadFile(FileDownLoadMessage) returns (stream FileContent);
+  rpc SaveService(ServiceItem) returns (common.ResultStatus);
+  rpc GetAdministrationUicList(google.protobuf.Empty) returns (AdministrationUicList);
+  rpc GetServiceList(google.protobuf.Empty) returns (ServiceList);
+  rpc GetAdministrationNameByUic(google.protobuf.StringValue) returns (GetAdministrationResponse);
+  rpc GetCalendarDay(CalendarDayRequest) returns (CalendarDayResponse);
+  rpc SaveCalendarDay(CalendarDayItem) returns (common.ResultStatus);
+  rpc GetCalendarDayList(CalendarDayListRequest) returns (CalendarDayList);
+  rpc CalcWorkDays(CalendarDayCalcRequest) returns (CalendarDayCalcResponse);
 }
 
 // The response message containing the number.
@@ -31,9 +54,27 @@ message GetRegisterRequest {
    int32 register_id = 1;
 }
 
+message GetRegisterByCodeRequest {
+	string register_code = 1;
+}
+
+message GetAdministrationRequest {
+   string administration_id = 1;
+}
+
+message GetAdministrationResponse {
+   common.ResultStatus status = 1;
+   AppAdministration data = 2;
+}
+
 message GetRegisterResponse{
 	common.ResultStatus status = 1;
     RegisterItem data = 2;
+}
+
+message GetRegistriesResponse{
+	common.ResultStatus status = 1;
+    repeated RegisterItem data = 2;
 }
 
 message RegisterItem {
@@ -43,9 +84,13 @@ message RegisterItem {
 	google.protobuf.StringValue description = 4;
 	string legal_basis = 5;
 	string type = 6;
-	string identity_security_level = 7;
+	google.protobuf.StringValue identity_security_level = 7;
 	string entry_type = 8;
 	repeated AdministrationItem administrations = 9;
+	google.protobuf.StringValue base_address = 10;
+	int32 status_id = 11;
+	bool deployed = 12;
+	repeated RegisterFileItem register_files = 14;
 }
 
 message AdministrationItem {
@@ -67,6 +112,16 @@ message PersonItem {
 	google.protobuf.StringValue email = 8;
 }
 
+message RegisterFileItem {
+	int32 source_type  = 1;
+	google.protobuf.StringValue source_id  = 2;
+	string meta_file_id  = 3;
+	google.protobuf.StringValue file_name  = 4;
+	google.protobuf.StringValue description  = 5;
+	google.protobuf.StringValue nomenclature_type  = 6;
+	google.protobuf.StringValue codeable_concept_code  = 7;
+}
+
 message RegisterFullListResponse{
     common.ResultStatus status = 1;
     repeated RegisterListItem data = 2;
@@ -82,6 +137,11 @@ message RegisterListItem {
 	google.protobuf.StringValue type = 6;
 	google.protobuf.StringValue entry_type = 7;
     google.protobuf.StringValue identity_security_level = 8;
+	google.protobuf.StringValue base_address = 10;
+	google.protobuf.StringValue status = 11;
+	bool deployed = 12;
+	google.protobuf.StringValue soleAdministrationId = 13;
+	google.protobuf.StringValue soleAdministrationName = 14;
 }
 
 message RegisterListRequest{
@@ -89,6 +149,15 @@ message RegisterListRequest{
 	google.protobuf.StringValue code = 2;
 	google.protobuf.StringValue name = 3;
 	google.protobuf.StringValue description = 4;
+	google.protobuf.StringValue administrationId = 5;
+	google.protobuf.StringValue type = 6;
+	google.protobuf.StringValue identitySecurityLevel = 7;
+	google.protobuf.StringValue typeEntry = 8;
+	bool isActive = 9;
+	google.protobuf.Timestamp dateFrom = 10;
+	google.protobuf.Timestamp dateTo = 11;
+	int32 status_id = 12;
+	bool deployedOnly = 13;
 }
 
 message AdministrationListRequest{
@@ -101,6 +170,7 @@ message AdministrationListItem {
 	string uic = 2;
 	string name = 3;
 	string legal_basis = 4;
+	string administration_id = 5;
 }
 
 message AdministrationListResponse{
@@ -111,7 +181,8 @@ message AdministrationListResponse{
 
 message PersonListRequest{
 	common.DatatableRequest data_table_request = 1;
-	string administration_id = 2;
+	string register_administration_id = 2;
+	int32 register_id = 3;
 }
 
 message PersonListItem {
@@ -131,16 +202,171 @@ message PersonListResponse{
     int32 count_all = 3;
 }
 
-
-message MasterPersonRecordsIndexAddMessage{
+message MasterPersonRecordIndexAddMessage{
 	string pid_type = 1;
 	string pid = 2;
     string name = 3;
 	int32 register_id = 4;
+	int32 role_id = 5;
 }
 
+message GetMasterPersonRecordIndexMessage{
+	google.protobuf.StringValue pid_type = 1;
+	string pid = 2;
+}
 
-message MasterPersonRecordsIndexAddResponse{
+message MasterPersonRecordIndexAddResponse{
 	common.ResultStatus status = 1;
 	string id = 2;
 }
+
+message AdministrationIds{
+	repeated string ids = 1;
+	int32 register_id = 2;
+}
+
+message AppAdministration{
+	string id = 1;
+	string name = 2;
+	optional string uic = 3;
+}
+
+message AppAdministrations{
+	common.ResultStatus status = 1;
+	repeated AppAdministration administrations = 2;
+}
+
+message GetMPRIListMessage{
+	repeated string id_list = 1;
+}
+
+message MPRILisItemMessage{
+	string id = 1;
+	string pid_type = 2;
+	string pid = 3;
+	google.protobuf.StringValue name= 4;
+}
+
+message MPRIListMessage{
+	common.ResultStatus status = 1;
+ 	repeated MPRILisItemMessage items = 2;
+}
+
+message RemoveAdministrationFromRegisterRequest {
+	string register_administration_id = 1;
+}
+
+message RegisterStatusItem {
+	string id = 1;
+	int32 register_id = 2;
+	int32 status_id = 3;
+	google.protobuf.StringValue remark = 4;
+	bool is_active = 6;
+	optional google.protobuf.Timestamp modified_on = 7;
+	google.protobuf.StringValue modified_by = 8;
+    repeated RegisterFileItem register_files = 10;
+}
+
+message RegisterStatusListResponse{
+    common.ResultStatus status = 1;
+    repeated RegisterStatusItem data = 2;
+    int32 count_all = 3;
+}
+
+message RegisterStatusResponse{
+    common.ResultStatus status = 1;
+    RegisterStatusItem data = 2;
+}
+
+message RegisterStatusRequest{
+	common.DatatableRequest data_table_request = 1;
+    int32 register_id = 2;
+}
+message GetRegisterStatusRequest{
+    string register_status_id = 2;
+}
+message FileMessage {
+	int32 source_type_id = 1;
+	string source_id = 2;
+}
+
+message FileDownLoadMessage {
+	string id = 1;
+}
+
+message FileContent{
+	int64 fileSize = 1;
+	bytes buffer = 2;
+	int32 readedByte = 3;
+	string file_name = 4;
+    string content_type = 5;
+	FileMessage file_info = 6;
+}
+
+message UploadFileResponse{
+	common.ResultStatus status = 1;
+	google.protobuf.StringValue meta_file_id = 5;
+}
+
+message AdministrationUicItem {
+	string administration_id = 1;
+	string uic = 2;
+	google.protobuf.StringValue name = 3;
+	repeated int32 register_ids = 4;
+}
+
+message AdministrationUicList {
+	common.ResultStatus status = 1;
+    repeated AdministrationUicItem data = 2;
+}
+
+message ServiceItem {
+	int32 register_id = 1;
+	int32 service_id = 2;
+	google.protobuf.StringValue eform_code = 3;
+	bool isActive = 4;
+	string register_code = 5;
+}
+
+message ServiceList {
+	common.ResultStatus status = 1;
+    repeated ServiceItem data = 2;
+}
+
+message CalendarDayRequest{
+	int32 id = 1;
+}
+
+message CalendarDayResponse{
+	common.ResultStatus status = 1;
+    CalendarDayItem data = 2;
+}
+
+message CalendarDayItem {
+	int32 id = 1;
+    google.protobuf.Timestamp current_date = 2;
+    string kind_id = 3;
+	google.protobuf.StringValue description = 4;
+	google.protobuf.StringValue  kind = 5;
+}
+
+message CalendarDayList {
+	common.ResultStatus status = 1;
+    repeated CalendarDayItem data = 2;
+	int32 count_all = 3;
+}
+
+message CalendarDayListRequest{
+	common.DatatableRequest data_table_request = 1;
+	google.protobuf.Timestamp from_date = 2;
+	google.protobuf.Timestamp to_date = 3;
+}
+message CalendarDayCalcRequest{
+	google.protobuf.Timestamp from_date = 1;
+	int32 days = 2;
+}
+message CalendarDayCalcResponse{
+	common.ResultStatus status = 1;
+	google.protobuf.Timestamp to_date = 3;
+}
+

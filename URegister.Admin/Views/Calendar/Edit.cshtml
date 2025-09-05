@@ -1,0 +1,40 @@
+﻿@using URegister.Core.Models
+@using URegister.Infrastructure.Constants
+@model CalendarVM
+
+@{
+    if (Model.Id == 0)
+    {
+        ViewData["Title"] = "Добавяне на дата";
+    }
+    else
+    {
+        ViewData["Title"] = "Редакция на дата";
+    }
+}
+<div class="ui grid">
+    <form class="ui eight wide column" action="@Url.Action("Edit")" method="post" enctype="multipart/form-data">
+        <div class="content">
+            @Html.HiddenFor(x => x.Id)
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class='eight wide field'>
+                            @Html.EditorFor(model => model.CurrentDate)
+                        </div>
+                        <div class='eight wide field'>
+                            @Html.EditorFor(x => x.KindId, "DropDown", new { Ddl = ViewData[$"{InternalNomenclatureTypes.CalendarDayKind}_ddl"] })
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.Description, "String")
+                        </div>
+                    </div>
+                </div>
+            </div>
+             @await Html.PartialAsync("_BackSubmitButton", @Url.Action("Index"))
+        </div>
+    </form>
+</div>
+        

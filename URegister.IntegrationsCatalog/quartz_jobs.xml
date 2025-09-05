@@ -1,0 +1,55 @@
+﻿<job-scheduling-data xmlns="http://quartznet.sourceforge.net/JobSchedulingData" version="2.0">
+	<schedule>
+		<job>
+			<name>EDeliveryReceiveJob</name>
+			<group>EDeliveryReceiveJobGroup</group>
+			<description>My Delivery Receive job</description>
+			<job-type>URegister.IntegrationsCatalog.Jobs.EDeliveryReceiveJob, URegister.IntegrationsCatalog</job-type>
+		</job>
+		<trigger>
+			<cron>
+				<name>EDeliveryReceiveTrigger</name>
+				<group>EDeliveryReceiveTriggerGroup</group>
+				<job-name>EDeliveryReceiveJob</job-name>
+				<job-group>EDeliveryReceiveJobGroup</job-group>
+				<misfire-instruction>SmartPolicy</misfire-instruction>
+				<cron-expression>0 0/1 * * * ?</cron-expression>
+				<time-zone>UTC</time-zone>
+			</cron>
+		</trigger>
+		<job>
+			<name>EDeliverySendJob</name>
+			<group>EDeliverySendJobGroup</group>
+			<description>My Delivery Send job</description>
+			<job-type>URegister.IntegrationsCatalog.Jobs.EDeliverySendJob, URegister.IntegrationsCatalog</job-type>
+		</job>
+		<trigger>
+			<cron>
+				<name>EDeliverySendTrigger</name>
+				<group>EDeliverySendTriggerGroup</group>
+				<job-name>EDeliverySendJob</job-name>
+				<job-group>EDeliverySendJobGroup</job-group>
+				<misfire-instruction>SmartPolicy</misfire-instruction>
+				<cron-expression>0 0/1 * * * ?</cron-expression>
+				<time-zone>UTC</time-zone>
+			</cron>
+		</trigger>
+		<job>
+			<name>EMailSendJob</name>
+			<group>EMailSendJobGroup</group>
+			<description>My Mail Send job</description>
+			<job-type>URegister.IntegrationsCatalog.Jobs.EMailSendJob, URegister.IntegrationsCatalog</job-type>
+		</job>
+		<trigger>
+			<cron>
+				<name>EMailSendTrigger</name>
+				<group>EMailSendTriggerGroup</group>
+				<job-name>EMailSendJob</job-name>
+				<job-group>EMailSendJobGroup</job-group>
+				<misfire-instruction>SmartPolicy</misfire-instruction>
+				<cron-expression>0 0 12 15 * ?</cron-expression>
+				<time-zone>UTC</time-zone>
+			</cron>
+		</trigger>
+	</schedule>
+</job-scheduling-data>

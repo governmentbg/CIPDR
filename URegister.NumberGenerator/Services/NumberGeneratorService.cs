@@ -158,7 +158,7 @@ namespace URegister.NumberGenerator.Services
 
             if (number.ToString().Length != numberLength)
             {
-                throw new ArgumentException("Номера трябва да е 15 цифри (без контролна сума)");
+                throw new ArgumentException($"Номера трябва да е {numberLength} цифри (без контролна сума)");
             }
 
             long tempNumber = number;

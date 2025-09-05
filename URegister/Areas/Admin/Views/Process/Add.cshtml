@@ -1,7 +1,7 @@
 ﻿@using URegister.Core.Models.Process
 @model ProcessVM
 @{
-    ViewData["Title"] = "Стартиране на процес";
+    ViewData["Title"] = "Стартиране на заявена услуга";
 }
 
 <div class="ui segments">
@@ -9,15 +9,14 @@
         @Html.HiddenFor(m => m.Id)
         <div class="ui green clearing segment">
             <div class="ui form">
-                @Html.AntiForgeryToken()
-                <div class="fields">
+            @*     <div class="fields">
                     <div class="four wide field">
                         @Html.EditorFor(model => model.IncomingNumber, "String")
                     </div>
                     <div class="four wide field">
                         @Html.EditorFor(model => model.IncomingDate, "DateTime")
                     </div>
-                </div>
+                </div> *@
                 <div class="fields">
                     <div class='sixteen wide field'>
                         @Html.EditorFor(model => model.ServiceId, "DropDownInt")

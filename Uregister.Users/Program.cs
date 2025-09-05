@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.DataProtection;
 using Uregister.Users.Data;
 using Uregister.Users.Extensions;
 using Uregister.Users.Services;
+using URegister.AuditLog;
+using URegister.Infrastructure.Constants;
+using URegister.Infrastructure.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,7 +17,15 @@ builder.Services.AddDataProtection()
         .PersistKeysToDbContext<UserDbContext>();
 
 // Add services to the container.
-builder.Services.AddGrpc();
+builder.Services.AddGrpc(options =>
+{
+    options.Interceptors.Add<ServerAuditLogInterceptor>();
+});
+
+builder.Services.AddGrpcClient<AuditLogGrpc.AuditLogGrpcClient>(o =>
+{
+    o.Address = new(string.Format(builder.Configuration[ContainerNameConstants.ContainerAddressMask], ContainerNameConstants.AuditLog));
+});
 
 var app = builder.Build();
 

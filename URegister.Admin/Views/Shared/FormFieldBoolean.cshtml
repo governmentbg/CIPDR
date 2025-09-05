@@ -9,7 +9,7 @@
                  {
                      <text>data-content="@toolTip"</text>
                  }>
-                <input @(Model.IsReadonly ? "disabled = 'disabled'" : string.Empty) type="checkbox" class="checkbox-template" @(Model.Value == "true" ? "checked=''" : "") @(Model.IsRequired ? "required" : "")>
+                <input @(Model.IsReadonly ? "disabled = 'disabled'" : string.Empty) type="checkbox" id="@Model.Identifier" class="checkbox-template" @(Model.Value == "true" ? "checked=''" : "") @(Model.IsRequired ? "required" : "")>
                 <input value="@(string.IsNullOrWhiteSpace(Model.Value) ? "false" : Model.Value)" id="@Model.Identifier" name="@Model.Name" type="hidden" />
                 <label for="@Model.Identifier">@Model.Label</label>
             </div>

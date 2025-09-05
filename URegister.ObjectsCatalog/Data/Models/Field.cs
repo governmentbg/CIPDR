@@ -1,6 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using URegister.Infrastructure.Constants;
+using URegister.Infrastructure.Data.Common;
 
 namespace URegister.ObjectsCatalog.Data.Models
 {
@@ -10,7 +12,7 @@ namespace URegister.ObjectsCatalog.Data.Models
     [Comment("Полета")]
     [Index(nameof(Name), nameof(Version))]
     [Index(nameof(Name), nameof(IsCurrent))]
-    public class Field
+    public class Field : SoftDeletable
     {
         /// <summary>
         /// Идентификатор
@@ -44,7 +46,7 @@ namespace URegister.ObjectsCatalog.Data.Models
         /// Информация за полето. Настройки по подразбиране
         /// </summary>
         [Required]
-        [Column(TypeName = "jsonb")]
+        [Column(TypeName = AttributeConstants.Jsonb)]
         [Comment("Информация за полето. Настройки по подразбиране")]
         public string FieldData { get; set; } = null!;
 

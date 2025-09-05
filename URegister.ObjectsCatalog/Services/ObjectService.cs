@@ -1,10 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using URegister.Common;
 using URegister.Infrastructure.Extensions;
+using URegister.Infrastructure.Helper;
 using URegister.Infrastructure.Model.RegisterForms;
 using URegister.ObjectsCatalog.Contracts;
 using URegister.ObjectsCatalog.Data;
 using URegister.ObjectsCatalog.Data.Models;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace URegister.ObjectsCatalog.Services
 {
@@ -43,8 +45,6 @@ namespace URegister.ObjectsCatalog.Services
                 throw new ArgumentException("Грешка при зареждане на данните за полето");
             }
 
-            field.FieldId = data.Id;
-
             return field.ToJson();
         }
 
@@ -52,14 +52,14 @@ namespace URegister.ObjectsCatalog.Services
         /// Вземане на списък на полетата
         /// </summary>
         /// <returns></returns>
-        public async Task<ICollection<(string type, string label, bool isComplex, string template)>> GetFieldTypesAsync()
+        public async Task<ICollection<(string type, string label, bool isComplex, string template, int fieldTypeId)>> GetFieldTypesAsync()
         {
             var types = await objectCatalogRepository.AllReadonly<FieldType>()
                 .TagWith(nameof(GetFieldTypesAsync))
-                .Select(t => new { t.Name, t.Label, t.IsComplexField, t.Template })
+                .Select(t => new { t.Name, t.Label, t.IsComplexField, t.Template, t.Id })
                 .ToListAsync();
 
-            return types.Select(t => (t.Name, t.Label, t.IsComplexField, t.Template)).ToList();
+            return types.Select(t => (t.Name, t.Label, t.IsComplexField, t.Template, t.Id)).ToList();
         }
 
         /// <summary>
@@ -195,6 +195,7 @@ namespace URegister.ObjectsCatalog.Services
                                   .Select(x => new StepMessage
                                   {
                                       Id = x.Id,
+                                      RoleId = x.RoleId?.ToString(),
                                       Name = x.Name,
                                       Type = x.Type,
                                       Method = x.Method,
@@ -222,6 +223,7 @@ namespace URegister.ObjectsCatalog.Services
             {
                 await objectCatalogRepository.AddAsync(step);
             }
+            step.RoleId = request.RoleId == null ? null : Guid.Parse(request.RoleId);
             step.Name = request.Name;
             step.Type = request.Type;
             step.Method = request.Method;
@@ -239,6 +241,7 @@ namespace URegister.ObjectsCatalog.Services
             return new StepMessage
             {
                 Id = step.Id,
+                RoleId = step.RoleId?.ToString(),
                 Name = step.Name,
                 Type = step.Type,
                 Method = step.Method
@@ -309,5 +312,316 @@ namespace URegister.ObjectsCatalog.Services
                 .ToList());
             await objectCatalogRepository.SaveChangesAsync();
         }
+
+        /// <summary>
+        /// Изтриване на тип услуга
+        /// </summary>
+        /// <param name="serviceTypeId">Идентификатор на тип услуга</param>
+        /// <returns></returns>
+        public async Task<ResultStatus> DeleteServiceType(int serviceTypeId)
+        {
+            try
+            {
+
+                ServiceType serviceTypeToDelete = await objectCatalogRepository.All<ServiceType>()
+                    .TagWith(nameof(DeleteServiceType))
+                    .Where(s => s.Id == serviceTypeId)
+                    .Include(s => s.ServiceTypeSteps)
+                    .SingleOrDefaultAsync();
+
+                if (serviceTypeToDelete == null)
+                {
+                    return new ResultStatus
+                    {
+                        Code = ResultCodes.NotFound,
+                        Message = $"Тип услуга с идентификатор {serviceTypeId} не е намерена"
+                    };
+                }
+
+                objectCatalogRepository.DeleteRange(serviceTypeToDelete.ServiceTypeSteps);
+                objectCatalogRepository.Delete(serviceTypeToDelete);
+                await objectCatalogRepository.SaveChangesAsync();
+                return new ResultStatus
+                {
+                    Code = ResultCodes.Ok,
+                };
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, $"Проблем при триене на тип услуга с идентификатор {serviceTypeId} в {nameof(DeleteServiceType)}");
+                return new ResultStatus
+                {
+                    Code = ResultCodes.InternalServerError,
+                    Message = $"Проблем при триене на тип услуга с идентификатор {serviceTypeId}"
+                };
+            }
+        }
+
+        /// <summary>
+        /// Изтриване на тип поле
+        /// </summary>
+        /// <param name="fieldTypeId">Идентификатор на тип поле</param>
+        /// <returns></returns>
+        public async Task<ResultStatus> DeleteFieldType(int fieldTypeId)
+        {
+            try
+            {
+
+                FieldType fieldTypeToDelete = await objectCatalogRepository.All<FieldType>()
+                          .TagWith(nameof(DeleteFieldType))
+                          .Where(ft => ft.Id == fieldTypeId)
+                          .Include(ft => ft.Fields)
+                          .SingleOrDefaultAsync();
+
+                if (fieldTypeToDelete == null)
+                {
+                    logger.LogError($"Тип поле с идентификатор {fieldTypeId} не е намерено");
+
+                    return new ResultStatus
+                    {
+                        Code = ResultCodes.NotFound,
+                        Message = $"Тип поле с идентификатор {fieldTypeId} не е намерено"
+                    };
+                }
+
+                objectCatalogRepository.DeleteRange(fieldTypeToDelete.Fields);
+                objectCatalogRepository.Delete(fieldTypeToDelete);
+                await objectCatalogRepository.SaveChangesAsync();
+                return new ResultStatus
+                {
+                    Code = ResultCodes.Ok,
+                };
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, $"Проблем при триене на тип поле с идентификатор {fieldTypeId} в {nameof(DeleteFieldType)}");
+                return new ResultStatus
+                {
+                    Code = ResultCodes.InternalServerError,
+                    Message = $"Проблем при триене на тип поле с идентификатор {fieldTypeId}"
+                };
+            }
+        }
+
+        public async Task<ServiceTypeNameExistsReply> CheckServiceNameExists(string name)
+        {
+            try
+            {
+                return new ServiceTypeNameExistsReply
+                {
+                    Status = CommonGrpcHelper.CreateStatusOK(),
+                    IsExists = objectCatalogRepository.AllReadonly<ServiceType>()
+                    .TagWith(nameof(CheckServiceNameExists))
+                    .Any(s => EF.Functions.ILike(s.Name, name))
+                };
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, $"Проблем при проверка за съществуващо име на тип услуга в {nameof(CheckServiceNameExists)}");
+                return new ServiceTypeNameExistsReply
+                {
+                    Status = new ResultStatus
+                    {
+                        Code = ResultCodes.InternalServerError,
+                        Message = $"Проблем при проверка за съществуващо име на тип услуга"
+                    }
+                };
+            }
+        }
+
+        /// <summary>
+        /// Изтриване на стъпка
+        /// </summary>
+        /// <param name="stepId">Идентификатор на стъпка</param>
+        /// <returns></returns>
+        public async Task<ResultStatus> DeleteStep(int stepId)
+        {
+            try
+            {
+
+                Step stepToDelete = await objectCatalogRepository.All<Step>()
+                    .TagWith(nameof(DeleteStep))
+                    .Where(s => s.Id == stepId)
+                    .Include(s => s.ServiceTypeSteps)
+                    .SingleOrDefaultAsync();
+
+                if (stepToDelete == null)
+                {
+                    return new ResultStatus
+                    {
+                        Code = ResultCodes.NotFound,
+                        Message = $"Стъпка с идентификатор {stepId} не е намерена"
+                    };
+                }
+
+                if (stepToDelete.ServiceTypeSteps.Any())
+                {
+                    return new ResultStatus
+                    {
+                        Code = ResultCodes.BadRequest,
+                        Message = "Премахнете стъпката от съществуващите типове услуги, в които е включена, за да може да бъде изтрита."
+                    };
+                }
+
+                objectCatalogRepository.Delete(stepToDelete);
+                await objectCatalogRepository.SaveChangesAsync();
+                return new ResultStatus
+                {
+                    Code = ResultCodes.Ok,
+                };
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, $"Проблем при триене на стъпка с идентификатор {stepId} в {nameof(DeleteStep)}");
+                return new ResultStatus
+                {
+                    Code = ResultCodes.InternalServerError,
+                    Message = $"Проблем при триене на стъпка с идентификатор {stepId}"
+                };
+            }
+        }
+        /// <summary>
+        /// Списък бланки
+        /// </summary>
+        /// <param name="request">Заявка с инфромация</param>
+        /// <returns></returns>
+        public async Task<(List<FieldTemplateMessage>, int)> GetFieldTemplateList(DatatableRequest request)
+        {
+            var query = objectCatalogRepository.AllReadonly<FieldTemplate>()
+                                               .TagWith(nameof(GetFieldTemplateList));
+            var countAll = 0;
+            (query, countAll) = await request.GetFilteredData(query);
+            var data = await query.Select(x => new FieldTemplateMessage
+            {
+                Id = x.Id,
+                BlankIfNoValue = x.BlankIfNoValue,
+                Name = x.Name,
+                FieldTypeId = x.FieldTypeId,
+                FieldTypeName = x.FieldType.Label,
+                FieldType = x.FieldType.Name
+            })
+                                  .ToListAsync();
+            return (data, countAll);
+        }
+        /// <summary>
+        /// Списък бланки
+        /// </summary>
+        /// <param name="request">Заявка с инфромация</param>
+        /// <returns></returns>
+        public async Task<List<FieldTemplateContentMessage>> GetFieldTemplateContentList()
+        {
+            var query = objectCatalogRepository.AllReadonly<FieldTemplate>()
+                                               .TagWith(nameof(GetFieldTemplateList));
+            var countAll = 0;
+            var data = await query.Select(x => new FieldTemplateContentMessage
+            {
+                Id = x.Id,
+                BlankIfNoValue = x.BlankIfNoValue,
+                Name = x.Name,
+                FieldTypeId = x.FieldTypeId,
+                FieldTypeName = x.FieldType.Label,
+                FieldType = x.FieldType.Name,
+                Content = x.Content,
+                ContentText = x.ContentText,
+            })
+            .ToListAsync();
+            return data;
+        }
+
+        /// <summary>
+        /// Данни за бланка
+        /// </summary>
+        /// <param name="request">Заявка с инфромация</param>
+        /// <returns></returns>
+        public async Task<FieldTemplateResponse> GetFieldTemplate(int id)
+        {
+            return await objectCatalogRepository.AllReadonly<FieldTemplate>()
+                                           .Where(x => x.Id == id)
+                                           .TagWith(nameof(GetFieldTemplate))
+                                           .Select(x => new FieldTemplateResponse
+                                           {
+                                               FieldTemplate = new FieldTemplateMessage
+                                               {
+                                                   Id = x.Id,
+                                                   BlankIfNoValue = x.BlankIfNoValue,
+                                                   Name = x.Name,
+                                                   FieldTypeId = x.FieldTypeId,
+                                                   FieldType = x.FieldType.Name,
+                                                   FieldTypeName = x.FieldType.Label,
+                                               },
+                                           })
+                                           .FirstAsync();
+        }
+        /// <summary>
+        /// Данни за бланка
+        /// </summary>
+        /// <param name="request">Заявка с инфромация</param>
+        /// <returns></returns>
+        public async Task<FieldTemplateContentResponse> GetFieldTemplateContent(int id)
+        {
+            return await objectCatalogRepository.AllReadonly<FieldTemplate>()
+                                           .Where(x => x.Id == id)
+                                           .TagWith(nameof(GetFieldTemplateContent))
+                                           .Select(x => new FieldTemplateContentResponse
+                                           {
+                                               FieldTemplate = new FieldTemplateContentMessage
+                                               {
+                                                   Id = x.Id,
+                                                   BlankIfNoValue = x.BlankIfNoValue,
+                                                   Name = x.Name,
+                                                   FieldTypeId = x.FieldTypeId,
+                                                   FieldType = x.FieldType.Name,
+                                                   FieldTypeName = x.FieldType.Label,
+                                                   Content = x.Content,
+                                                   ContentText = x.ContentText,
+                                               }
+                                           })
+                                           .FirstAsync();
+        }
+
+        public async Task AppendUpdateFieldTemplate(FieldTemplateMessage request)
+        {
+            FieldTemplate data;
+            if (request.Id <= 0)
+            {
+                data = new FieldTemplate();
+                await objectCatalogRepository.AddAsync(data);
+            }
+            else
+            {
+                data = await objectCatalogRepository.All<FieldTemplate>()
+                                                    .Where(x => x.Id == request.Id)
+                                                    .FirstAsync();
+            }
+            data.FieldTypeId = request.FieldTypeId;
+            data.BlankIfNoValue = request.BlankIfNoValue;
+            data.Name = request.Name;
+            await objectCatalogRepository.SaveChangesAsync();
+        }
+        public async Task UpdateFieldTemplateContent(FieldTemplateContentMessage request)
+        {
+            var data = await objectCatalogRepository.All<FieldTemplate>()
+                                                    .Where(x => x.Id == request.Id)
+                                                    .FirstAsync();
+            data.Content = request.Content;
+            data.ContentText = request.ContentText;
+            await objectCatalogRepository.SaveChangesAsync();
+        }
+        /// <summary>
+        /// Изтрива бланка по идентификатор
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public async Task DeleteFieldTemplate(int id)
+        {
+            var template = await objectCatalogRepository.All<FieldTemplate>()
+              .TagWith(nameof(DeleteFieldTemplate))
+              .IgnoreQueryFilters()
+              .SingleOrDefaultAsync(f => f.Id == id);
+
+            template.IsActive = false;
+            await objectCatalogRepository.SaveChangesAsync();
+        }
     }
+
 }

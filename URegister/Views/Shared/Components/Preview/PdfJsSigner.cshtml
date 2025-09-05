@@ -1,0 +1,93 @@
+﻿@model URegister.Core.Models.Previewer.PreviewInfoViewModel
+@{
+    TempData["PageTitle"] = ViewBag.Title;
+    string fileUrl = Url.Action("GetFileInline", "Files", new { area = "Admin", id = Model.FileId });
+    string fileUrlDownload = Url.Action("DownloadFileByOnlyFileId", "Files", new { area = "Admin", fileId = Model.FileId });
+    string checkSignatureUrl = Url.Action("VerifyPdfSignature", "Files", new { area = "Admin", fileId = Model.FileId });
+}
+
+@if (!Model.IsSigned)
+{
+    <form id="signForm" asp-action="SignPdf" asp-controller="Files" method="post">
+        @Html.HiddenFor(model => model.ReturnUrl)
+        @Html.HiddenFor(model => model.ReturnSignUrl)
+        @Html.HiddenFor(model => model.FileId)
+        @Html.HiddenFor(model => model.FileHash)
+        @Html.HiddenFor(model => model.Signature)
+        @Html.HiddenFor(model => model.ErrorCode)
+        @Html.HiddenFor(model => model.FileName)
+        @Html.HiddenFor(model => model.Reason)
+        @Html.HiddenFor(model => model.TempPdfId)
+    </form>
+
+    <script defer src="~/js/prod/pdfSigner.min.js"></script>
+}
+else
+{
+    <script defer src="~/js/prod/signatureVerifier.min.js"></script>
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="box box-success">
+            <div class="box-header with-border">
+                <h3 class="box-title">Преглед на документ</h3>
+            </div>
+            <div class="box-body">
+                <div class="preview-page-container" style="@(Model.ContentType.StartsWith("image") ? "overflow-y: auto" : "")">
+                    <div class="container">
+                        <div class="row" id="previewHolder">
+                            <div class="col-12 embeded-element">
+                                @if (Model.ShowPreview)
+                                {
+                                    <div id="pdf-container"></div>
+                                }
+                                else
+                                {
+                                    <div class="row" style="height: 75vh;">
+                                        <div class="col-sm-12 my-auto">
+                                            <div class="card card-block w-25" style="margin:auto">
+                                                Размерът на файла надвишава максималния позволен.
+                                                <button class="btn btn-primary" onclick="window.open('@fileUrlDownload', '_blank')">Преглед на файл</button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                }
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+            </div>
+            <div class="box-footer">
+                <a href="@(Model.ReturnUrl)" class="negative ui button"><i class="door open icon"></i>Назад</a>
+                @if (Model.IsSigned)
+                {
+                    <a href="#" id="verifySignatureButton" data-url="@checkSignatureUrl" class="ui positive button pull-right"><i class="pencil ruler icon"></i>Провери подпис</a>
+                    @* <a href="#" id="verifySignatureButton" data-url="@checkSignatureUrl" class="btn btn-success pull-right">Провери подпис</a> *@
+                }
+                else
+                {
+                    <span class="pull-right">
+                        @* <input type="checkbox" id="cbVisual" name="visual" />
+                        <label for="cbVisual">Визуален подпис</label>&nbsp; *@
+                        @* <button type="button" id="signButton" class="btn btn-warning" disabled>Подпиши</button> *@
+                        <button type="button" id="signButton" class="ui orange button" disabled><i class="pen fancy icon"></i>Подпиши</button>
+                    </span>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<script defer src="~/js/prod/sweetalert2.min.js"></script>
+<script defer src="~/js/pdfjs/pdf.mjs" type="module"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        let canvas = document.getElementById('pdf-container');
+        loadPdf('@fileUrl', canvas);
+    }, false);
+</script>

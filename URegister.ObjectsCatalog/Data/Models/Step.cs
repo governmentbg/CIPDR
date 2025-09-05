@@ -1,6 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using URegister.Infrastructure.Constants;
+using URegister.Infrastructure.Data.Common;
 
 namespace URegister.ObjectsCatalog.Data.Models
 {
@@ -8,7 +10,7 @@ namespace URegister.ObjectsCatalog.Data.Models
     /// Стъпка
     /// </summary>
     [Comment("Стъпка")]
-    public class Step
+    public class Step : SoftDeletable
     {
         /// <summary>
         /// Идентификатор на стъпка
@@ -28,23 +30,27 @@ namespace URegister.ObjectsCatalog.Data.Models
         /// <summary>
         /// Тип на обработчик на стъпка
         /// </summary>
-        [Required]
         [MaxLength(200)]
         [Comment("Тип на обработчик на стъпка")]
-        public string Type { get; set; } = null!;
+        public string? Type { get; set; }
 
         /// <summary>
         /// Метод на обработчик на стъпка
         /// </summary>
-        [Required]
         [MaxLength(100)]
         [Comment("Метод на обработчик на стъпка")]
-        public string Method { get; set; } = null!;
+        public string? Method { get; set; }
+
+        /// <summary>
+        /// Идентификатор на роля
+        /// </summary>
+        [Comment("Идентификатор на роля")]
+        public Guid? RoleId { get; set; }
 
         /// <summary>
         /// Конфигурация на стъпка
         /// </summary>
-        [Column(TypeName = "jsonb")]
+        [Column(TypeName = AttributeConstants.Jsonb)]
         [Comment("Конфигурация на стъпка")]
         public string? Configuration { get; set; }
 

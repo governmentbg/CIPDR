@@ -40,9 +40,9 @@ function LoadFieldTypes() {
                             className: "dt-center", 
                             render: function (data, type, row, metadata) {
                                 if (data === true) {
-                                    return '<i class="check icon"></i>'
+                                    return 'Да'
                                 }
-                                return '';
+                                return 'Не';
                             }
                         },
                         {
@@ -54,18 +54,20 @@ function LoadFieldTypes() {
                         },
                         {
                             name: 'id',
-                            data: 'id',
+                            data: 'fieldTypeId',
                             title: 'Действия',
                             className: "dt-center noExport",
                             sortable: false,
                             render: function (data, type, row, meta) {                                                                
                                 let configureLink = `<a href="/Designer/ConfigureFields?preSelectedType=${row.type}" type='button' class='ui tertiary icon button' data-tooltip='Конфигуратор'><i class="table icon"></i></a>`;
-                                //let deleteLink = "<a href='javascript:actionWithConfirmation(\"/Admin/Catalog/DeleteForm\", " +
-                                //    data + ", \"Сигурни ли сте, че искате да изтриете " +
-                                //    row.title +
-                                //    "?\", null)' type='button' class='ui tertiary icon button' data-tooltip='Изтрий'><i class='red trash alternate icon'></i></button>";
+                                let deleteLink = (row.isComplex && row.type != 'Person' && row.type != 'Company') ? "<a href='javascript:actionWithConfirmation(\"/Designer/DeleteFieldType\", " +
+                                    data + ", \"Сигурни ли сте, че искате да изтриете \\\"" +
+                                    row.label + 
+                                    "\\\"?\", null)' type='button' class='ui tertiary icon button' data-tooltip='Изтрий'><i class='red trash alternate icon'></i></a>"
+                                    :
+                                    "";
 
-                                return configureLink;
+                                return configureLink + deleteLink;
                             }
                         }
                     ]

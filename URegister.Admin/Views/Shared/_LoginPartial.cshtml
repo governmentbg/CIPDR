@@ -1,15 +1,43 @@
-﻿@* @using Microsoft.AspNetCore.Identity
-@inject SignInManager<IdentityUser> SignInManager
-@inject UserManager<IdentityUser> UserManager *@
+﻿@using URegister.Infrastructure.Constants
+@using System.Reflection
+@using System.ComponentModel
+@{
+    // Get all the roles from the UserRoles static class using reflection
+    var roles = typeof(UserRoles)
+               .GetFields(BindingFlags.Public | BindingFlags.Static)
+               .Select(f => new
+               {
+                   Role = f.GetValue(null).ToString(),
+                   Description = f.GetCustomAttribute<DescriptionAttribute>()?.Description
+               })
+               .ToList();
 
-@* @if (SignInManager.IsSignedIn(User))
-    {*@
-<div class="right menu">
-    <div class="ui simple dropdown item">
-        Тестов потребител <i class="dropdown icon"></i>
-        <div class="menu">
-            <a asp-action="LogOff" asp-controller="Account" class="item">Изход</a>
+    // Get all roles that the user belongs to and their descriptions
+    var userRoles = roles.Where(r => User.IsInRole(r.Role)).ToList();
+    //var rolesText = string.Join(", ", userRoles.Select(r => r.Description)); // Join descriptions with commas
+}
+
+@if (User.Identity.IsAuthenticated)
+{
+    <div class="right menu">
+        <div class="ui simple dropdown item">
+            Здравей, @User.Identity?.Name! <i class="dropdown icon"></i>          
+            <div class="menu">
+                @if (userRoles.Any())
+                {
+                    foreach (var role in userRoles)
+                    {
+                        <a class="disabled item">@role.Description</a>
+                    }
+                }
+                <a class="item" href="@Url.Action("Logout", "Account")"><i class="log out icon"></i> Изход</a>
+            </div>
         </div>
     </div>
-</div>
-@* } *@
+}
+else
+{
+    <div class="right menu">
+        <a class="item" href="@Url.Action("Login", "Account")"><i class="sign in alternate icon"></i> Вход</a>
+    </div>
+}

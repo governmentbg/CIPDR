@@ -23,13 +23,13 @@
 }
 
 html {
-  font-size: 14px;
+    font-size: 14px;
 }
 
 @media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
+    html {
+        font-size: 16px;
+    }
 }
 
 /*.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
@@ -37,8 +37,8 @@ html {
 }*/
 
 html {
-  position: relative;
-  min-height: 100%;
+    position: relative;
+    min-height: 100%;
 }
 
 body {
@@ -47,7 +47,7 @@ body {
 }
 
 .ui.main.fluid.container {
-    margin-top: 70px;
+    padding-top: 80px;
     padding-left: 20px;
     padding-right: 20px;
 }
@@ -86,17 +86,17 @@ body {
 .extra.content.field-buttons {
     background-color: ghostwhite;
 }
-    
-.extra.content.field-buttons .ui.wrapped.wrapping.icon.buttons button {
-    background-color: ghostwhite;
-}
-        
-.extra.content.field-buttons .ui.wrapped.wrapping.icon.buttons button:hover {
-    background-color: #e0e1e2;
-}
+
+    .extra.content.field-buttons .ui.wrapped.wrapping.icon.buttons button {
+        background-color: ghostwhite;
+    }
+
+        .extra.content.field-buttons .ui.wrapped.wrapping.icon.buttons button:hover {
+            background-color: #e0e1e2;
+        }
 
 .ui.form .required.field .ui.input input {
-    background:#fff; 
+    background: #fff;
     border: 1px solid rgba(34,36,38,.15);
 }
 
@@ -169,11 +169,89 @@ body {
 }
 
 .draggable:hover {
-   cursor: move;
+    cursor: move;
 }
 
 .center-item-container {
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+.button-like-link {
+    all: unset;
+    display: block;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+}
+
+.register-title {
+    text-align: center;
+    max-width: 30rem;
+}
+
+
+.hoverable-table tbody tr {
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+    .hoverable-table tbody tr:hover {
+        background-color: #f0f8ff !important;
+    }
+
+.hover-black:hover {
+    color: black !important;
+}
+
+    .hover-black:hover .progress {
+        color: black !important;
+    }
+
+.pointable {
+    cursor: pointer !important;
+}
+
+.active-black {
+    color: black !important;
+    text-decoration: underline !important;
+}
+
+    .active-black a,
+    .active-black .progress {
+        color: black !important;
+        text-decoration: underline !important;
+    }
+
+}
+
+#previewHolder > .embeded-element {
+    text-align: center;
+}
+
+    #previewHolder > .embeded-element > .embeded-object {
+        width: 100%;
+        min-height: 75vh;
+        max-width: 794px;
+        background-color: ivory
+    }
+
+#toggleRegisters {
+    margin-bottom: 20px;
+    margin-left: 20px;
+}
+
+.dtBtnContainer {
+    margin-left: 0.5rem !important;
+}
+
+.ui.multi-select.active.dropdown > .menu {
+    z-index: 10000 !important;
+    /*position: relative !important;*/
+}
+
+.step-container{
+
+    overflow:visible!important;
 }

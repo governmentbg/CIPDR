@@ -11,6 +11,10 @@ namespace Uregister.Users.Data.Identity
         public Guid AdministrationId { get; set; }
         public string Administration { get; set; } = null!;
         public string FirstName { get; set; } = null!;
+        public string MiddleName { get; set; } = null!;
         public string LastName { get; set; } = null!;
+        public string Position { get; set; } = null!;
+        public bool Enable { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }

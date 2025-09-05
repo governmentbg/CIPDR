@@ -1,24 +1,57 @@
-﻿@model URegister.Infrastructure.Model.RegisterForms.FormField
+﻿@using URegister.Core.Contracts
+@using URegister.Infrastructure.Contracts
+@model URegister.Infrastructure.Model.RegisterForms.FormField
+@inject IFormConfigurationPersistenceService formConfigurationPersistenceService
+@inject IObjectStoreService _objectStoreService
 @{
     string allowedFileExtensions = (Model.AllowedFileExtensions != null && Model.AllowedFileExtensions.Any())
         ? String.Join(',', Model.AllowedFileExtensions) 
         : String.Empty;
+
+    string filename;
+    string link = String.Empty;
+
+    if (string.IsNullOrWhiteSpace(Model.Value))
+    {
+        filename = string.Empty;
+    }
+    else
+    {
+        if (Model.IsReadonly)
+        {
+            link = await _objectStoreService.GetPresignedUrl(Model.Value);
+        }
+
+        filename = await formConfigurationPersistenceService.GetStoredFileName(Guid.Parse(Model.Value));
+        if (string.IsNullOrWhiteSpace(filename))
+        {
+            filename = Model.Label;
+        }
+    }
 }
 <div class="ui form">
     <div class="field @(Model.IsRequired ? "required" : string.Empty)">
         <label for="@Model.Identifier">@Model.Label</label>
-        <div class="ui file action input">
-            <label for="@Model.Identifier" class="ui blue icon button">
-                <i class="upload icon"></i>
-                Изберете файл
-            </label>
-            <input hidden id="@Model.Identifier" name="@Model.Name" type="file" accept="@allowedFileExtensions" class="upload-file-input"
-            @(Model.IsReadonly ? "readonly" : "")>
-            <div class='ui icon button' for="@Model.File" style="max-width: calc(100% - 140px);">
-                <span for="@Model.File" class='selected-file' style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; padding-right: 2px;"></span>
-                <i class="delete icon remove-file"></i>
+        @if (Model.IsReadonly)
+        {
+            <a href="@link" target="_blank">@filename</a>
+        }
+        else
+        {
+            <div class="ui file action input">
+                <label for="@Model.Identifier" class="ui blue icon button">
+                    <i class="upload icon"></i>
+                    Изберете файл
+                </label>
+                <input hidden id="@Model.Identifier" type="file" accept="@allowedFileExtensions" class="upload-file-input"
+                       @(Model.IsReadonly ? "readonly" : "")>
+                <input name="@Model.Name" hidden class="upload-file-key" value="@Model.Value" type="text"/>
+                <div class='ui icon button' style="max-width: calc(100% - 140px);">
+                    <span class='selected-file' style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; padding-right: 2px;">@filename</span>
+                    <i class="delete icon remove-file"></i>
+                </div>
             </div>
-        </div>
+        }
         @{
             await Html.RenderPartialAsync("ValidationErrorSpan", Model.ValidationError);
         }

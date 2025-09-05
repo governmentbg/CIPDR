@@ -1,0 +1,18 @@
+﻿@using URegister.Core.Models.Process
+@using URegister.Infrastructure.Constants
+@model ProcessInfoVM
+<div class="ui green clearing segment">
+    <div class="ui form">
+        <div class="fields">
+            @if (!string.IsNullOrEmpty(Model.OldIncomingNumber))
+            {
+                <div class="four wide field">
+                    @Html.EditorFor(model => model.OldIncomingNumber, "String")
+                </div>
+                <div class="four wide field">
+                    @Html.EditorFor(model => model.OldIncomingDate, "DateTime")
+                </div>
+            }
+        </div>
+    </div>
+</div>

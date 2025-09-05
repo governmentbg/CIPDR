@@ -2,7 +2,7 @@
 {
     public class Ek_kmet
     {
-        // <summary>
+        /// <summary>
         /// Кметство
         /// </summary>
 

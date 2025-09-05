@@ -25,19 +25,27 @@
         if (nomenclatureResult.ResultStatus.Code != ResultCodes.Ok)
         {
             //Logger.LogError($"Проблем при зареждане на номенклатура {Model.NomenclatureType} в FormFieldSelect)");
-            TempData[MessageConstant.ErrorMessage] = "Проблем с връзката, презаредете страницата";
+            TempData[MessageConstant.ErrorMessage] = MessageConstant.NetworkProblemReload;
         }
         else
         {
-            list = nomenclatureResult.NomenclatureTypes
-                .First()
-                .CodeableConcepts.Select(concept => new SelectListItem(concept.Value, concept.Code)).ToList();
+            if (!nomenclatureResult.NomenclatureTypes.Any())
+            {
+                TempData[MessageConstant.WarningMessage] =
+                    string.Format(MessageConstant.NomenclatureNotAvailable, Model.NomenclatureType);
+            }
+            else
+            {
+                list = nomenclatureResult.NomenclatureTypes
+                    .Single()
+                    .CodeableConcepts.Select(concept => new SelectListItem(concept.Value, concept.Code)).ToList();
+            }
         }
     }
     catch (Exception ex)
     {
         //Logger.LogError(ex, $"Проблем при зареждане на номенклатура {Model.NomenclatureType} в FormFieldSelect)");
-        TempData[MessageConstant.ErrorMessage] = "Проблем с връзката, презаредете страницата";
+        TempData[MessageConstant.ErrorMessage] = MessageConstant.NetworkProblemReload;
     }
 
     string placeHolder = string.IsNullOrEmpty(Model.Placeholder) ? string.Empty : Model.Placeholder;
@@ -66,6 +74,12 @@
                     </div>
                 </div>
                 <input class="@(Model.IsReadonly ? "ui disabled input" : "ui input")" @(Model.IsReadonly ? "readonly" : String.Empty) type="text" placeholder="@placeHolder" value="@pid" @(Model.IsRequired ? "required" : String.Empty)>
+                @if (!Model.IsReadonly)
+                {
+                    <div class="ui icon button load-person-info" style="display: none;" data-tooltip="Зареди данни за лицето">
+                        <i class="play icon"></i>
+                    </div>
+                }
             </div>
             
         </div>

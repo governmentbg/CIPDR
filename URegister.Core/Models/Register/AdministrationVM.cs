@@ -1,5 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
+using URegister.Core.Validation;
+using URegister.Infrastructure.Constants;
 
 namespace URegister.Core.Models.Register
 {
@@ -17,16 +18,28 @@ namespace URegister.Core.Models.Register
         /// ЕИК
         /// </summary>
         [Display(Name = "ЕИК/БУЛСТАТ")]
-        [Required]
-        [MaxLength(16)]
-        public string Uic { get; set; } = null!;
+        [Required(ErrorMessage = MessageConstant.FieldIsRequired)]
+        [MaxLength(16, ErrorMessage = MessageConstant.StringMaxLengthValidation)]
+        [UrEik(ErrorMessage = "Въведете валиден ЕИК/БУЛСТАТ")]
+        public string Uic
+        {
+            get => _uic;
+            set => _uic = value?.Trim();
+        }
+        private string _uic = null!;
 
         /// <summary>
-        /// Име
+        /// Наименование на административния орган
         /// </summary>
-        [Display(Name = "Име")]
-        [Required]
-        [MaxLength(500)]
-        public string Name { get; set; } = null!;
+        [Display(Name = "Наименование на административния орган")]
+        [Required(ErrorMessage = MessageConstant.FieldIsRequired)]
+        [MaxLength(500, ErrorMessage = MessageConstant.StringMaxLengthValidation)]
+        [RegularExpression(RegexPatterns.CyrillicTextPattern, ErrorMessage = MessageConstant.NotCyrillic)]
+        public string Name
+        {
+            get => _name;
+            set => _name = value?.Trim();
+        }
+        private string _name = null!;
     }
 }

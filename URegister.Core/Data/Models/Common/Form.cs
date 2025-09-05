@@ -44,9 +44,16 @@ namespace URegister.Core.Data.Models.Common
         /// Конфигурация на полетата
         /// </summary>        
         [Comment("Конфигурация на полетата")]
-        [Column(TypeName = "jsonb")]
+        [Column(TypeName = AttributeConstants.Jsonb)]
         [Required]
         public string FieldConfiguration {  get; set; }
+
+        /// <summary>
+        /// Статус на одобрение на формата
+        /// </summary>        
+        [Comment("Статус на одобрение на формата")]
+        [Required]
+        public int ApprovalStatus { get; set; }
 
         /// <summary>
         /// Първата версия на формата

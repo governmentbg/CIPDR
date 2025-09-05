@@ -1,0 +1,68 @@
+﻿@model URegister.Core.Models.Previewer.PreviewInfoViewModel
+@{
+    TempData["PageTitle"] = ViewBag.Title;
+    string fileUrl = Url.Action("GetFileInline", "Files", new { area = "Admin", id = Model.FileId });
+    string checkSignatureUrl = Url.Action("VerifySignature", "Files", new { area = "Admin", fileId = Model.FileId });
+}
+
+<form id="signForm" asp-action="Sign" asp-controller="Files" method="post">
+    <div class="content">
+        <div class="column ui segment green">
+            <div class="ui form box box-success">
+                <input type="hidden" id="fileUrl" value="@fileUrl" />
+                @Html.HiddenFor(model => model.ReturnUrl)
+                @Html.HiddenFor(model => model.ReturnSignUrl)
+                @Html.HiddenFor(model => model.FileId)
+                @Html.HiddenFor(model => model.FileHash)
+                @Html.HiddenFor(model => model.Signature)
+                @Html.HiddenFor(model => model.ErrorCode)
+                @Html.HiddenFor(model => model.FileName)
+
+                <div class="fields box-header with-border">
+                    <h3 class="box-title">Преглед на документ</h3>
+                </div>
+                <div class="fields box-body">
+                    <div class="docx-page-container">
+                        <div id="container"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="ui right floated buttons">
+                        <a href="@(Model.ReturnUrl)" class="negative ui button">
+                            <i class="door open icon"></i>
+                            Назад
+                        </a>
+
+                        <div class="or" data-text="или"></div>
+                        @if (Model.IsSigned)
+                        {
+                            <a href="#" id="verifySignatureButton" data-url="@checkSignatureUrl" class="ui positive button">
+                                Провери подпис
+                            </a>
+                        }
+                        else
+                        {
+                            <button type="button" class="ui orange basic button" id="signButton" disabled>
+                                Подпиши
+                            </button>
+                        }
+                    </div>
+                    <div class="ui hidden clearing divider"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <script defer src="~/js/prod/docx.min.js"></script>
+    <script defer src="~/js/prod/sweetalert2.min.js"></script>
+    <script defer src="~/js/prev-docx.js"></script>
+    @if (!Model.IsSigned) {
+        <script defer src="~/js/prod/signer.min.js"></script>
+    }
+    else {
+        <script defer src="~/js/prod/signatureVerifier.min.js"></script>
+    }
+}

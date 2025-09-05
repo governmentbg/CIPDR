@@ -1,0 +1,30 @@
+﻿@using URegister.Core.Models.Service
+@using URegister.Infrastructure.Constants
+@model PublicFieldTemplateVM
+@{
+    ViewBag.Title = "Бланки за публични полета";
+}
+<div class="ui grid">
+    <form class="ui sixteen wide column" action="@Url.Action("Edit")" method="post" enctype="multipart/form-data">
+        <div class="content">
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.FieldName, "String")
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.Label, "String")
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ui fluid container basic clearing segment"></div>
+            @await Html.PartialAsync("_BackSubmitButton", @Url.Action("Index"))
+        </div>
+    </form>
+</div>
+
+

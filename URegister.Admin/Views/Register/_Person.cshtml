@@ -9,6 +9,7 @@
 <div class="ui sixteen wide field content item-template">
     <input type="hidden" name="@indexPath" value="@Model.Index" />
     @Html.HiddenFor(model => model.Type)
+    @Html.HiddenFor(model => model.Id)
     <div class="column ui segment green">
         <div class="ui form">
             <div class="fields">
@@ -22,7 +23,10 @@
                     @Html.EditorFor(model => model.LastName, "String")
                 </div>
                 <div class="one wide field">
-                    @await Html.PartialAsync("_RemoveItem")
+                    @if (Model.Index > 0)
+                    {
+                        @await Html.PartialAsync("_RemoveItem")
+                    }
                 </div>
             </div>
 

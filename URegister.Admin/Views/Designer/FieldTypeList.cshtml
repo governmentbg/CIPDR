@@ -14,6 +14,9 @@
     @* </div> *@
 @* </div> *@
 
+@{
+    await Html.RenderPartialAsync("_ConfirmAction");
+}
 @section Scripts {
-    <script src="~/js/designer/fieldTypeList.js"></script>
+    <script src="~/js/designer/fieldTypeList.js" asp-append-version="true"></script>
 }

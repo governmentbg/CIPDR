@@ -3,6 +3,7 @@ using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Dynamic;
+using System.Text.RegularExpressions;
 using URegister.Core.Models.Nomenclature;
 using URegister.Common;
 using URegister.Infrastructure.Constants;
@@ -10,6 +11,9 @@ using URegister.Infrastructure.Extensions;
 using URegister.NomenclaturesCatalog;
 using URegister.RegistersCatalog;
 using URegister.Core.Contracts;
+using URegister.Admin.Models;
+using URegister.Admin.Models.Service;
+using System.ComponentModel.DataAnnotations;
 
 namespace URegister.Admin.Controllers
 {
@@ -17,6 +21,7 @@ namespace URegister.Admin.Controllers
     /// Управление на номенклатури
     /// </summary>
     /// <param name="nomenclatureGrpcClient"></param>
+    [Display(Name = "Номенклатури")]
     public class NomenclatureController(
         NomenclatureGrpc.NomenclatureGrpcClient nomenclatureGrpcClient,
         RegistersCatalogGrpc.RegistersCatalogGrpcClient registerGrpcClient,
@@ -27,6 +32,7 @@ namespace URegister.Admin.Controllers
         /// Списък номенклатурни типове
         /// </summary>
         /// <returns></returns>
+        [Display(Name = "Зареждане на списък с номенклатурни типове")]
         public IActionResult IndexType()
         {
             var filter = new NomenclatureTypeFilterVM();
@@ -37,6 +43,7 @@ namespace URegister.Admin.Controllers
         /// Списък номенклатурни типове за регистър
         /// </summary>
         /// <returns></returns>
+        [Display(Name = "Зареждане на списък с номенклатурни типове за регистър")]
         public async Task<IActionResult> IndexTypeRegister(int registerId)
         {
             var registers = await registerGrpcClient.GetRegisterListAsync(new Empty());
@@ -57,6 +64,7 @@ namespace URegister.Admin.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet]
+        [Display(Name = "Зареждане на форма за добавяне на номенклатурен тип")]
         public async Task<IActionResult> AddNomenclatureType()
         {
             var response = await nomenclatureGrpcClient.CreateNewNomenclatureTypeAsync(new Empty());
@@ -69,6 +77,7 @@ namespace URegister.Admin.Controllers
         /// <param name="model">Модел на номенклатурен тип</param>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Добавяне на номенклатурен тип")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddNomenclatureType(NomenclatureTypeVM model)
         {
@@ -76,6 +85,35 @@ namespace URegister.Admin.Controllers
             {
                 return View(nameof(EditNomenclatureType), model);
             }
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+            {
+                ModelState.AddModelError(nameof(model.Name), MessageConstant.FieldIsRequiredNoParam);
+            }
+            else
+            {
+                model.Name = model.Name.Trim();
+
+                if (!Regex.IsMatch(model.Name, RegexPatterns.CyrillicTextPattern))
+                {
+                    ModelState.AddModelError(nameof(model.Name), MessageConstant.NotCyrillic);
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(model.Type))
+            {
+                ModelState.AddModelError(nameof(model.Type), MessageConstant.FieldIsRequiredNoParam);
+            }
+            else
+            {
+                model.Type = model.Type.Trim();
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return View(nameof(EditNomenclatureType), model);
+            }
+
             NomenclatureTypeRequest request = nomenclatureClientService.NomenclatureTypeToGrpcModel(model);
             var result = await nomenclatureGrpcClient.AddNomenclatureTypeAsync(request);
             if (result?.Code == ResultCodes.Ok)
@@ -83,10 +121,8 @@ namespace URegister.Admin.Controllers
                 SetSuccessMessage("Успешно добавен номенклатурен тип");
                 return RedirectToAction(nameof(IndexType));
             }
-            else
-            {
-                SetErrorMessage(result?.Message ?? "Проблем при запис!");
-            }
+
+            SetErrorMessage(result?.Message ?? "Проблем при запис!");
             return View(nameof(EditNomenclatureType), model);
         }
 
@@ -96,6 +132,7 @@ namespace URegister.Admin.Controllers
         /// <param name="id">идентификатор</param>
         /// <returns></returns>
         [HttpGet]
+        [Display(Name = "Зареждане на форма за редакция на номенклатурен тип")]
         public async Task<IActionResult> EditNomenclatureType(int id)
         {
             var response = await nomenclatureGrpcClient.GetNomenclatureTypeAsync(new GetNomenclatureTypeRequest { Id = id });
@@ -109,6 +146,7 @@ namespace URegister.Admin.Controllers
         /// <param name="model">данни за тип</param>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Редактиране на номенклатурен тип")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> EditNomenclatureType(NomenclatureTypeVM model)
         {
@@ -138,6 +176,7 @@ namespace URegister.Admin.Controllers
         /// <param name="nomenclatureType">Име на новия тип стойност</param>
         /// <returns></returns>
         [HttpGet]
+        [Display(Name = "Зареждане на форма за добавяне на номенклатурна стойност")]
         public async Task<IActionResult> Add(string nomenclatureType)
         {
             var response = await nomenclatureGrpcClient.CreateNewCodeableConceptAsync(new CreateNewCodeableConceptRequest { Type = nomenclatureType });
@@ -151,6 +190,7 @@ namespace URegister.Admin.Controllers
         /// <param name="model"></param>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Добавяне на номенклатурна стойност")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Add(CodeableConceptVM model)
         {
@@ -158,11 +198,11 @@ namespace URegister.Admin.Controllers
             {
                 return View(nameof(Edit), model);
             }
-            CodeableConceptRequest request = nomenclatureClientService.CodeableConceptToGrpcModel(model);
+            CodeableConceptRequest request = nomenclatureClientService.CodeableConceptToGrpcModel(model, (int)CodeableConceptStatus.Confirmed);
             var result = await nomenclatureGrpcClient.AddCodeableConceptAsync(request);
             if (result?.Code == ResultCodes.Ok)
             {
-                SetSuccessMessage("Успешно добавен номенклатуррна стойност");
+                SetSuccessMessage("Успешно добавена номенклатурна стойност");
                 return RedirectToAction("Index", new { nomenclatureType = model.Type });
             }
             else
@@ -179,6 +219,7 @@ namespace URegister.Admin.Controllers
         /// <param name="id">Идентификатор на стойността</param>
         /// <returns></returns>
         [HttpGet]
+        [Display(Name = "Зареждане на форма за редакция на номенклатурна стойност")]
         public async Task<IActionResult> Edit(int id)
         {
             var response = await nomenclatureGrpcClient.GetCodeableConceptAsync(new GetCodeableConceptRequest { Id = id });
@@ -192,6 +233,7 @@ namespace URegister.Admin.Controllers
         /// <param name="model"></param>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Редактиране на номенклатурна стойност")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(CodeableConceptVM model)
         {
@@ -199,7 +241,7 @@ namespace URegister.Admin.Controllers
             {
                 return View(model);
             }
-            CodeableConceptRequest request = nomenclatureClientService.CodeableConceptToGrpcModel(model);
+            CodeableConceptRequest request = nomenclatureClientService.CodeableConceptToGrpcModel(model, (int)CodeableConceptStatus.Confirmed);
             var result = await nomenclatureGrpcClient.EditCodeableConceptAsync(request);
             if (result?.Code == ResultCodes.Ok)
             {
@@ -220,6 +262,7 @@ namespace URegister.Admin.Controllers
         /// <param name="filter"></param>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Извличане на списък с номенклатурни стойности")]
         public async Task<IActionResult> GetCodeableConceptList(IDataTablesRequest request, NomenclatureTypeFilterVM filter)
         {
             var protoRequest = request!.GetDataTablesRequestProto();
@@ -233,12 +276,49 @@ namespace URegister.Admin.Controllers
         }
 
         /// <summary>
+        /// Списък на номенклатурнани стойности в json формат за експорт
+        /// </summary>
+        /// <param name="filterType"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Display(Name = "Извличане на списък с номенклатурни стойности за експорт в JSON")]
+        public async Task<IActionResult> GetCodeableConceptListExport(string filterType, string filterName)
+        {
+            var response = await nomenclatureGrpcClient.GetCodeableConceptListExportAsync(
+                new CodeableConceptListExportRequest
+                {
+                    Type = filterType
+                });
+            if(response.ResultStatus.Code != ResultCodes.Ok)
+            {
+                return BadRequest(response.ResultStatus.Message);
+            }
+
+            var model = new CodeableConceptListExportVM()
+            {
+                Label = filterName,
+                Value = filterType
+            };
+            foreach (var el in response.Data.OrderBy(d=>d.Code))
+            {
+                model.Values.Add(new CodeableConceptItemExportVM()
+                {
+                    Label = el.Value,
+                    Value = el.Code
+                });
+            }
+            return Json(model);
+        }
+
+        /// <summary>
         /// Списък на номенклатурнани стойности за регистър
         /// </summary>
         /// <param name="request"></param>
         /// <param name="filter"></param>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Извличане на списък с номенклатурни стойности за регистър")]
         public async Task<IActionResult> GetCodeableConceptRegisterList(IDataTablesRequest request, NomenclatureTypeRegisterFilterVM filter)
         {
             return await nomenclatureClientService.GetCodeableConceptRegisterList(request, filter);
@@ -251,6 +331,7 @@ namespace URegister.Admin.Controllers
         /// <param name="filter"></param>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Извличане на списък с номенклатурни типове")]
         public async Task<IActionResult> GetNomenclatureTypeList(IDataTablesRequest request, NomenclatureTypeFilterVM filter)
         {
             var protoRequest = request!.GetDataTablesRequestProto();
@@ -270,6 +351,7 @@ namespace URegister.Admin.Controllers
         /// <param name="filter"></param>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Извличане на списък с номенклатурни типове за регистър")]
         public async Task<IActionResult> GetNomenclatureTypeRegisterList(IDataTablesRequest request, NomenclatureTypeRegisterFilterVM filter)
         {
             return await nomenclatureClientService.GetNomenclatureTypeRegisterList(request, filter);
@@ -281,6 +363,7 @@ namespace URegister.Admin.Controllers
         /// </summary>
         /// <param name="nomenclatureType"></param>
         /// <returns></returns>
+        [Display(Name = "Зареждане на списък с номенклатурни стойности по тип")]
         public async Task<IActionResult> Index(string nomenclatureType)
         {
             var response = await nomenclatureGrpcClient.GetNomenclatureTypeOnTypeAsync(new GetNomenclatureTypeOnTypeRequest { Type = nomenclatureType });
@@ -297,6 +380,7 @@ namespace URegister.Admin.Controllers
         /// </summary>
         /// <param name="nomenclatureType"></param>
         /// <returns></returns>
+        [Display(Name = "Зареждане на списък с номенклатурни стойности за регистър по тип")]
         public async Task<IActionResult> IndexRegister(string nomenclatureType, int registerId)
         {
             var response = await nomenclatureGrpcClient.GetNomenclatureTypeRegisterOnTypeAsync(
@@ -320,6 +404,7 @@ namespace URegister.Admin.Controllers
         /// <param name="index"></param>
         /// <param name="prefix"></param>
         /// <returns></returns>
+        [Display(Name = "Добавяне на допълнителна колона за номенклатура")]
         public IActionResult AddAdditionalColumn(int index, string prefix)
         {
             var model = new AdditionalColumnVM
@@ -330,6 +415,7 @@ namespace URegister.Admin.Controllers
             return PartialView("_AdditionalColumn", model);
         }
 
+        [Display(Name = "Тест за импортиране на номенклатура от НСИ")]
         public async Task<IActionResult> TestImport()
         {
             // var r = nomenclatureGrpcClient.ImportNrnmNsi(new Common.EmptyRequest(), deadline: DateTime.UtcNow.AddMinutes(5));
@@ -337,6 +423,7 @@ namespace URegister.Admin.Controllers
             return RedirectToAction("IndexType");
         }
 
+        [Display(Name = "Тест за извличане на публични номенклатури")]
         public async Task<IActionResult> TestPublic()
         {
             var request = new NomenclaturePublicRequest
@@ -349,6 +436,7 @@ namespace URegister.Admin.Controllers
             return RedirectToAction("IndexType");
         }
 
+        [Display(Name = "Тест за извличане на номенклатури по код на притежател")]
         public async Task<IActionResult> TestPublicHolder()
         {
             var request = new NomenclatureHolderRequest
@@ -363,6 +451,7 @@ namespace URegister.Admin.Controllers
             return RedirectToAction("IndexType");
         }
 
+        [Display(Name = "Тест за проверка на номенклатура")]
         public async Task<IActionResult> TestCheckNomenclature()
         {
             var request = new CheckNomenclatureRequest
@@ -378,6 +467,8 @@ namespace URegister.Admin.Controllers
 
             return RedirectToAction("IndexType");
         }
+
+        [Display(Name = "Тест за извличане на ЕКАТТЕ данни")]
         public async Task<IActionResult> TestEkatte()
         {
             var request = new EkattePublicRequest
@@ -395,6 +486,7 @@ namespace URegister.Admin.Controllers
         /// <param name="model">Модел на типа</param>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Актуализиране на номенклатурен тип за регистър")]
         [ValidateAntiForgeryToken]
         public async Task<JsonResult> UpdateNomenclatureTypeRegister([FromBody] NomenclatureTypeRegisterUpdateVM model)
         {
@@ -408,6 +500,7 @@ namespace URegister.Admin.Controllers
         /// <param name="model">Модел на допустимите стойности</param>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Актуализиране на номенклатурна стойност за регистър")]
         [ValidateAntiForgeryToken]
         public async Task<JsonResult> UpdateCodeableConceptRegister([FromBody] CodeableConceptRegisterUpdateVM model)
         {
@@ -416,12 +509,26 @@ namespace URegister.Admin.Controllers
         }
 
         /// <summary>
+        /// Запис статус на номенклатурни стойности
+        /// </summary>
+        /// <param name="model">Модел на статус на номенклатурна стойност</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Display(Name = "Актуализиране на статус на номенклатурна стойност")]
+        [ValidateAntiForgeryToken]
+        public async Task<JsonResult> UpdateCodeableConceptStatus([FromBody] CodeableConceptStatusVM model)
+        {
+            var result = await nomenclatureClientService.UpdateCodeableConceptStatus(model);
+            return Json(result);
+        }
+        /// <summary>
         /// Връща номенклатурните стойности за тип по низ от символи
         /// </summary>
         /// <param name="query">Низ от символи за търсене</param>
         /// <param name="nomenclatureType">Номенклатурен тип</param>
         /// <returns></returns>
         [HttpGet]
+        [Display(Name = "Извличане на номенклатурни стойности за автодопълване")]
         public async Task<JsonResult> GetAutocompleteValues(string query, string nomenclatureType)
         {
             NomenclaturePublicRequest getNomenclaturesRequest = new NomenclaturePublicRequest
@@ -441,7 +548,7 @@ namespace URegister.Admin.Controllers
                     return new JsonResult(string.Empty);
                 }
 
-                var result = nomenclatureResult.NomenclatureTypes.First().CodeableConcepts
+                var result = nomenclatureResult.NomenclatureTypes.Single().CodeableConcepts
                     .Select(c => new
                     {
                         title = c.Value,
@@ -463,6 +570,7 @@ namespace URegister.Admin.Controllers
         /// <param name="query">Низ за търсене</param>
         /// <returns></returns>
         [HttpGet]
+        [Display(Name = "Извличане на населени места")]
         public async Task<JsonResult> GetEkatteValues(string query)
         {
             EkattePublicRequest getEkatteRequest = new EkattePublicRequest
@@ -516,12 +624,71 @@ namespace URegister.Admin.Controllers
         }
 
         /// <summary>
+        /// Връща населените места по низ за търсене
+        /// </summary>
+        /// <param name="query">Низ за търсене</param>
+        /// <param name="nomenclatureType">Тип номенклатура</param>
+        /// <returns></returns>
+        [HttpGet]
+        [Display(Name = "Извличане на номенклатурни стойности с категории за автодопълване")]
+        public async Task<JsonResult> GetAutocompleteWithCategoryValues(string query, string nomenclatureType)
+        {
+            NomenclatureWithHolderValuesRequest request = new NomenclatureWithHolderValuesRequest
+            {
+                RegisterId = 0,
+                FilterValue = query,
+                NomenclatureCode = nomenclatureType
+            };
+            try
+            {
+                URegister.NomenclaturesCatalog.NomenclatureWithHolderResponse response =
+                    await nomenclatureGrpcClient.GetNomenclatureWithHolderValuesAsync(request);
+
+                if (response.ResultStatus.Code != ResultCodes.Ok)
+                {
+                    logger.LogError($"GetNomenclatureWithHolderValuesAsync неуспешен в {nameof(GetAutocompleteWithCategoryValues)}");
+                    return new JsonResult(string.Empty);
+                }
+
+                dynamic result = new ExpandoObject();
+                result.results = new ExpandoObject();
+
+                foreach (var category in response.Categories)
+                {
+                    dynamic categoryObj = new ExpandoObject();
+                    categoryObj.name = category.Category;
+
+                    var cityList = new List<dynamic>();
+                    foreach (var city in category.Entities)
+                    {
+                        dynamic cityObj = new ExpandoObject();
+                        cityObj.title = city.Name;
+                        cityObj.value = city.Code;
+                        cityList.Add(cityObj);
+                    }
+
+                    categoryObj.results = cityList;
+
+                    ((IDictionary<string, object>)result.results).Add(category.Category, categoryObj);
+                }
+
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, $"Проблем при зареждане на данни за номенклатура в {nameof(GetAutocompleteWithCategoryValues)}");
+                return Json(string.Empty);
+            }
+        }
+
+        /// <summary>
         /// Връща списък за падащо меню от номенклатурни стойности според номенклатурен код
         /// </summary>
         /// <param name="nomenclatureCode">код на номенклатура</param>
         /// <param name="holderCode">код на подстойност</param>
         /// <returns></returns>
         [HttpGet]
+        [Display(Name = "Извличане на номенклатурни стойности за падащо меню")]
         public async Task<IActionResult> GetNomenclatureValues(string nomenclatureCode, string holderCode)
         {
             try
@@ -564,6 +731,7 @@ namespace URegister.Admin.Controllers
         /// <param name="holderCode">код на подстойност</param>
         /// <returns></returns>
         [HttpGet]
+        [Display(Name = "Извличане на номенклатурни стойности за автодопълване")]
         public async Task<IActionResult> GetNomenclatureValuesForAutocomplete(string nomenclatureCode, string holderCode, string query = "")
         {
             try
@@ -599,6 +767,35 @@ namespace URegister.Admin.Controllers
                 return Json(string.Empty);
             }
 
+        }
+
+        /// <summary>
+        /// Изтриване на номенклатура
+        /// </summary>
+        /// <param name="id">Идентификатор на номенклатура</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Display(Name = "Изтриване на номенклатурен тип")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteNomenclatureType(int id)
+        {
+            GetNomenclatureTypeRequest request = new GetNomenclatureTypeRequest()
+            {
+                Id = id
+            };
+
+            ResultStatus result = await nomenclatureGrpcClient.DeleteNomenclatureTypeAsync(request);
+
+            if (result.Code == ResultCodes.Ok)
+            {
+                SetSuccessMessage("Номенклатурата е изтрита успешно");
+            }
+            else
+            {
+                SetErrorMessage(result.Message);
+            }
+
+            return Json(null);
         }
     }
 }

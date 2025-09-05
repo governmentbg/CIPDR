@@ -1,0 +1,84 @@
+﻿@model URegister.Core.Models.Previewer.PreviewInfoViewModel
+@{
+    TempData["PageTitle"] = ViewBag.Title;
+    string fileUrl = Url.Action("GetFileInline", "Files", new { area = "Admin", id = Model.FileId });
+    string fileUrlDownload = Url.Action("Download", "Files", new { area = "Admin", id = Model.FileId });
+    string checkSignatureUrl = Url.Action("VerifyPdfSignature", "Files", new { area = "Admin", fileId = Model.FileId });
+}
+
+<form class="ui form" id="signForm" asp-action="Sign" asp-controller="Files" method="post">
+    <div class="content">
+        <div class="column ui segment green">
+            <div class="ui form box box-success">
+                @Html.HiddenFor(model => model.ReturnUrl)
+                @Html.HiddenFor(model => model.ReturnSignUrl)
+                @Html.HiddenFor(model => model.FileId)
+                @Html.HiddenFor(model => model.FileHash)
+                @Html.HiddenFor(model => model.Signature)
+                @Html.HiddenFor(model => model.ErrorCode)
+                @Html.HiddenFor(model => model.FileName)
+                @Html.HiddenFor(model => model.Reason)
+                @Html.HiddenFor(model => model.TempPdfId)
+
+                <div class="fields box-header with-border">
+                    <h3 class="box-title">Преглед на документ</h3>
+                </div>
+
+                <div class="fields box-body">
+                    <div class="preview-page-container" style="@(Model.ContentType.StartsWith("image") ? "overflow-y: auto" : "")">
+                        <div class="container">
+                            <div class="fields" id="previewHolder">
+                                <div class="sixteen wide field embeded-element">
+                                    @if (Model.ShowPreview)
+                                    {
+                                        <object data="@(fileUrl)#toolbar=0&navpanes=0" type="@Model.ContentType" class="embeded-object">
+                                            <embed src="@(fileUrl)#toolbar=0&navpanes=0" type="@Model.ContentType" width="100%" />
+                                        </object>
+                                    }
+                                    else
+                                    {
+                                        <div class="fields" style="height: 75vh;">
+                                            <div class="sixteen wide field my-auto">
+                                                <div class="card card-block w-25" style="margin:auto">
+                                                    Размерът на файла надвишава максималния позволен.
+                                                    <button class="btn btn-primary" onclick="window.open('@fileUrlDownload', '_blank')">Преглед на файл</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box-footer">
+                    <a href="@(Model.ReturnUrl)" class="btn btn-danger">Назад</a>
+                    @if (Model.IsSigned)
+                    {
+                        <a href="#" id="verifySignatureButton" data-url="@checkSignatureUrl" class="btn btn-success pull-right">Провери подпис</a>
+                    }
+                    else
+                    {
+                        <span class="pull-right">
+                            <input type="checkbox" id="cbVisual" name="visual" checked />
+                            <label for="cbVisual">Визуален подпис</label>&nbsp;
+                            <button type="button" id="signButton" class="btn btn-warning" disabled>Подпиши</button>
+                        </span>
+                    }
+                </div>
+
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <script defer src="~/js/prod/sweetalert2.min.js"></script>
+    @if (!Model.IsSigned) {
+    <script defer src="~/js/prod/pdfSigner.min.js"></script>
+    }
+    else {
+    <script defer src="~/js/prod/signatureVerifier.min.js"></script>
+    }
+}

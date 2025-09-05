@@ -7,6 +7,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Text;
 using URegister.Infrastructure.Attributes;
+using URegister.Infrastructure.Constants;
 
 
 namespace URegister.Infrastructure.Extensions
@@ -89,7 +90,7 @@ namespace URegister.Infrastructure.Extensions
             DateTime tmpDate;
             DateTime? _date;
 
-            if (string.IsNullOrEmpty(value) == false && DateTime.TryParseExact(value, "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out tmpDate))
+            if (string.IsNullOrEmpty(value) == false && DateTime.TryParseExact(value, FormattingConstant.NormalDateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out tmpDate))
                 _date = tmpDate;
             else
                 _date = null;
@@ -193,6 +194,16 @@ namespace URegister.Infrastructure.Extensions
         public static string CombineTemplatePrefix(this string prefix, string add)
         {
             return (string.IsNullOrEmpty(prefix) ? string.Empty : prefix + ".") + add;
+        }
+
+        public static Guid? ToGuid(this string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return null;
+            }
+            Guid.TryParse(value, out var id);
+            return id;
         }
     }
 }

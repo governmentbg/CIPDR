@@ -2,9 +2,11 @@
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 using URegister.Core.Data.Models.Common;
+using URegister.Core.Data.Models.Logging;
 using URegister.Core.Data.Models.Process;
 using URegister.Core.Data.Models.Register;
 using URegister.Infrastructure.Data;
+using URegister.Infrastructure.Data.AuditLog;
 using URegister.Infrastructure.Data.Common;
 
 namespace URegister.Core.Data
@@ -48,16 +50,6 @@ namespace URegister.Core.Data
         public DbSet<Register> Registers { get; set; }
 
         /// <summary>
-        /// Администрации
-        /// </summary>
-        public DbSet<Administration> Administrations { get; set; }
-
-        /// <summary>
-        /// Записи на лица в регистър
-        /// </summary>
-        public DbSet<AdministrationPerson> AdministrationPersons { get; set; }
-
-        /// <summary>
         /// Процеси
         /// </summary>
         public DbSet<Process> Processes { get; set; }
@@ -71,5 +63,54 @@ namespace URegister.Core.Data
         /// Вписвания
         /// </summary>
         public DbSet<RegisterItem> RegisterItems { get; set; }
+
+        /// <summary>
+        /// Инфорация за качени от потребителите файлове
+        /// </summary>
+        public DbSet<FileMetadata> FileMetadata { get; set; }
+
+        /// <summary>
+        /// Темплейти на бланки
+        /// </summary>
+        public DbSet<BlanksTemplate> BlanksTemplates { get; set; }
+
+        /// <summary>
+        /// Темплейти на публични полета
+        /// </summary>
+        public DbSet<PublicFieldTemplate> PublicFieldTemplates { get; set; }
+
+        /// <summary>
+        /// Указания към процес
+        /// </summary>
+        public DbSet<Instruction> Instructions { get; set; }
+
+        /// <summary>
+        /// Отговори на указания към процес
+        /// </summary>
+        public DbSet<InstructionResponse> InstructionResponses { get; set; }
+
+        /// <summary>
+        /// Файлове получени от ССЕВ
+        /// </summary>
+        public DbSet<IntegrationFile> IntegrationFiles { get; set; }
+
+        /// <summary>
+        /// Потребителски изгледи на справки
+        /// </summary>
+        public DbSet<CustomView> CustomViews { get; set; }
+
+        /// <summary>
+        /// Потребителски изгледи на справки
+        /// </summary>
+        public DbSet<Audit> Audits{ get; set; }
+
+        public List<AuditEntity> AuditEntities { get; set; }
+
+        /// <summary>
+        /// Комуникация с Regix
+        /// </summary>
+        public DbSet<RegixReport> RegixReports { get; set; }
+
+        public DbSet<DeadlineDay> DeadlineDays { get; set; }
     }
 }

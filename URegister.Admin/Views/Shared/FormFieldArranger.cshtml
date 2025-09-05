@@ -1,4 +1,8 @@
-﻿@using URegister.Infrastructure.Model.RegisterForms
+﻿@using Microsoft.AspNetCore.Mvc.ModelBinding
+@using URegister.Core.Services
+@using URegister.Infrastructure.Model.RegisterForms
+@using URegister.ObjectsCatalog
+@inject ObjectsCatalogGrpc.ObjectsCatalogGrpcClient objectCatalogGrpcClient
 @model List<FormField>
 @{
     const int TotalColumns = 4;
@@ -24,6 +28,8 @@
         { 15, "fifteen" },
         { 16, "sixteen" }
     };
+
+    var fieldTypes = await FieldTypeCatalogService.GetAllFieldType(objectCatalogGrpcClient);
 }
 
 <div class="ui form">
@@ -53,7 +59,12 @@
 
             <div class="@numberNames[Model[i].Columns * FomanticColumnsForUserColumn] wide field">
                 @{                
-                    await Html.RenderPartialAsync("FormField", Model[i]);
+                    var templateName = fieldTypes.FirstOrDefault(t => t.Type == Model[i].Type)?.TemplateName;
+                    var viewData = new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary())
+                    {
+                        { "modelTemplateName", templateName }
+                    };
+                    await Html.RenderPartialAsync("FormField", Model[i], viewData);
                 }
             </div>
         }        

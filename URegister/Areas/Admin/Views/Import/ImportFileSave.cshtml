@@ -1,0 +1,38 @@
+﻿@using URegister.Core.Models.Process
+@model ImportFileVM
+@{
+    ViewData["Title"] = "Преглед данни за импорт";
+}
+
+<div class="ui grid">
+    <form id="formImportFile" class="ui sixteen wide column" action="@Url.Action("ImportFileSave")" method="post" enctype="multipart/form-data">
+        @Html.HiddenFor(model => model.ServiceId)
+        @Html.HiddenFor(model => model.FileId)
+        <div class="content">
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Model.ServiceName
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Model.FormName
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <table id="import"
+                   class="ui celled striped very compact table" style="width:100%; padding:0px;"
+                   data-url="@Url.Action("GetImportDataList", "Process")">
+            </table>
+            @await Html.PartialAsync("_BackSubmitButton", @Url.Action("ImportFile"))
+        </div>
+    </form>
+
+</div>
+@section Scripts
+{
+   <script src="~/js/admin/import/processImportList.js" asp-append-version="true"></script>
+}

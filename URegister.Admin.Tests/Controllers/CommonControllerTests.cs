@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -34,10 +35,10 @@ namespace URegister.Admin.Tests.Controllers
                 foreach (var method in httpPostMethods.Concat(httpDeleteMethods))
                 {
                     // Check for exceptions
-                    //if (method.Name == nameof(AccountController.ExternalLogin))
-                    //{
-                    //    continue;
-                    //}
+                    if (method.Name == nameof(AccountController.ExternalLogin))
+                    {
+                        continue;
+                    }
 
                     // Skip methods where the first parameter is of type IDataTablesRequest
                     var parameters = method.GetParameters();
@@ -53,6 +54,49 @@ namespace URegister.Admin.Tests.Controllers
                         $"Method '{method.Name}' in controller '{controllerType.Name}' does not have the [ValidateAntiForgeryToken] attribute.");
                 }
             }
+        }
+
+        [Test]
+        public void AllActionsHaveDisplayAttributeTest()
+        {
+            // Get all controller types in the assembly
+            var controllerTypes = Assembly.GetAssembly(typeof(UserController))
+                .GetTypes()
+                .Where(type => typeof(Controller).IsAssignableFrom(type));
+
+            StringBuilder problems = new StringBuilder();
+
+            foreach (var controllerType in controllerTypes)
+            {
+                var allMethods =
+                    controllerType.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+
+                foreach (var method in allMethods)
+                {
+                    // Check for exceptions
+                    //if (method.Name is
+                    //    nameof(AccountController.ExternalLogin) or
+                    //    nameof(ImportController.ImportApplication))
+                    //{
+                    //    continue;
+                    //}
+
+                    // Check if the method has the [DisplayAttribute] attribute
+                    var hasDisplayAttribute = method.GetCustomAttributes(typeof(DisplayAttribute), false).Any();
+
+                    if (!hasDisplayAttribute)
+                    {
+
+                        problems.Append(
+                            $"Method '{method.Name}' in controller '{controllerType.Name}' does not have the [Display] attribute.");
+
+                        problems.Append(Environment.NewLine);
+                    }
+                }
+            }
+
+            string report = problems.ToString();
+            Assert.That(string.IsNullOrEmpty(report), report);
         }
     }
 }

@@ -1,13 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using URegister.Core.Data.Models.Register;
+using URegister.Infrastructure.Data.Common;
 
 namespace URegister.Core.Data.Models.Process
 {
@@ -15,7 +10,7 @@ namespace URegister.Core.Data.Models.Process
     /// Вписвания
     /// </summary>
     [Comment("Вписвания")]
-    public class RegisterItem
+    public class RegisterItem : SoftDeletable
     {
         /// <summary>
         /// Идентификатор
@@ -38,16 +33,22 @@ namespace URegister.Core.Data.Models.Process
         public Guid ProcessId { get; set; }
 
         /// <summary>
+        /// Идентификатор на стъпка от процес
+        /// </summary>
+        [Comment("Идентификатор на стъпка от процес")]
+        public Guid? ProcessStepId { get; set; }
+        /// <summary>
         /// Идентификатор на администрация
         /// </summary>
         [Comment("Идентификатор на администрация")]
-        public Guid TennantId { get; set; }
+        public Guid TenantId { get; set; }
 
         /// <summary>
         /// Номер на вписване 
         /// </summary>
         [Required]
         [Comment("Номер на вписване ")]
+        [StringLength(16)]
         public string RegisterNumber { get; set; } = null!;
 
         /// <summary>
@@ -74,13 +75,25 @@ namespace URegister.Core.Data.Models.Process
         /// </summary>
         [Required]
         [Comment("Име")]
+        [StringLength(255)]
         public string Name { get; set; } = null!;
+
+        /// <summary>
+        /// Име
+        /// </summary>
+        [Comment("Индекс на повтарящо се поле")]
+        public int Index { get; set; }
 
         /// <summary>
         /// Стойност
         /// </summary>
         [Comment("Стойност")]
         public string? Value { get; set; }
+        /// <summary>
+        /// Тип номенклатура
+        /// </summary>
+        [Comment("Тип номенклатура")]
+        public string? NomenclatureType { get; set; }
 
         /// <summary>
         /// Стойност на номенклатура
@@ -96,11 +109,35 @@ namespace URegister.Core.Data.Models.Process
         public bool IsPublic { get; set; }
 
         /// <summary>
-        /// Заличено поле
+        /// Стойност на номенклатура
         /// </summary>
+        [Comment("Етикет на полето")]
+        public string? Label { get; set; }
+
+        /// <summary>
+        /// Булева стойност
+        /// </summary>
+        [Comment("Булева стойност")]
+        public bool? BoolValue { get; set; }
+
+        /// <summary>
+        /// Числова стойност
+        /// </summary>
+        [Comment("Числова стойност")]
+        public decimal? DecimalValue { get; set; }
+
+        /// <summary>
+        /// Дата стойност
+        /// </summary>
+        [Comment("Дата стойност")]
+        public DateTime? DateTimeValue { get; set; }
+
+        /// <summary>
+        /// Тип на поле
+        /// </summary>
+        [Comment("Тип на поле")]
         [Required]
-        [Comment("Заличено поле")]
-        public bool IsDelеted { get; set; }
+        public int FieldTypeId { get; set; }
 
         /// <summary>
         /// Процес
@@ -109,9 +146,10 @@ namespace URegister.Core.Data.Models.Process
         public Process Process { get; set; } = null!;
 
         /// <summary>
-        /// Администрация
+        /// Стъпка от процес
         /// </summary>
-        [ForeignKey(nameof(TennantId))]
-        public Administration Administration { get; set; } = null!;
+        [ForeignKey(nameof(ProcessStepId))]
+        public ProcessStep ProcessStep { get; set; } = null!;
+
     }
 }

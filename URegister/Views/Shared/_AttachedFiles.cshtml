@@ -1,0 +1,31 @@
+﻿@using URegister.Core.Models.Common
+@model List<FileVM>
+@{
+    var htmlFieldPrefix = ViewData.TemplateInfo.HtmlFieldPrefix;
+    var dataIndex = Model.Count;
+    var dataPrefix = $"{htmlFieldPrefix}";
+}
+<div class="ui form">
+    <fieldset>
+        <legend>
+            <b>&nbsp; Прикачени файлове &nbsp;</b>
+        </legend>
+        <div id="@(htmlFieldPrefix)Container" class="ui form dynamic-form-container register-file-container" data-index="@dataIndex" data-prefix="@dataPrefix">
+            @for (int i = 0; i < Model.Count; i++)
+            {
+                Model[i].Index = i;
+                ViewData.TemplateInfo.HtmlFieldPrefix = $"{htmlFieldPrefix}[{i}]";
+                await Html.RenderPartialAsync("_AttachedFile", Model[i]);
+                ViewData.TemplateInfo.HtmlFieldPrefix = htmlFieldPrefix;
+            }
+        </div>
+        <div class="ui fluid container basic clearing segment"></div>
+        <div class="ui buttons right floated">
+            <button type="button" class=" ui button add-item" data-url="@Url.Action("AddAttachedFile")" data-container-id="@(htmlFieldPrefix)Container">
+                <i class="add icon"></i>
+                Добави файл
+            </button>
+        </div>
+
+    </fieldset>
+</div>

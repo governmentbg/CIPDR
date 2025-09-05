@@ -1,3 +1,6 @@
+using URegister.AuditLog;
+using URegister.Infrastructure.Constants;
+using URegister.Infrastructure.Filters;
 using URegister.ObjectsCatalog.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -8,7 +11,16 @@ builder.Services.AddDbSupport(builder.Configuration);
 
 builder.Services.AddApplicationServices();
 
-builder.Services.AddGrpc();
+builder.Services.AddGrpc(options =>
+{
+    options.Interceptors.Add<ServerAuditLogInterceptor>();
+});
+
+builder.Services.AddGrpcClient<AuditLogGrpc.AuditLogGrpcClient>(o =>
+{
+    o.Address = new(string.Format(builder.Configuration[ContainerNameConstants.ContainerAddressMask], ContainerNameConstants.AuditLog));
+});
+
 
 var app = builder.Build();
 

@@ -1,0 +1,92 @@
+﻿@using URegister.Infrastructure.Model.AuditLog
+@{
+    ViewData["Title"] = "Системен журнал";
+}
+@model AuditLogFilterVM
+@Html.AntiForgeryToken()
+<div class="ui grid">
+    <div class="column">
+        <div class="ui fluid container basic clearing">
+            <div class="ui accordion">
+                <div class="title">
+                    <i class="dropdown icon"></i>
+                    Филтър
+                </div>
+                <div class="content">
+                    <div class="column ui segment green">
+                        <div class="ui form">
+                            <div class="fields">                              
+                                <div class="two wide field">
+                                    @Html.EditorFor(model => model.DateFrom, "DateTime")
+                                </div>
+                                <div class="two wide field">
+                                    @Html.EditorFor(model => model.DateTo, "DateTime")
+                                </div>
+                                <div class="four wide field">
+                                    @Html.EditorFor(model => model.UserName)
+                                </div>
+                                <div class="three wide field">
+                                    @Html.EditorFor(model => model.ActionType)
+                                </div>
+                                <div class="three wide field">
+                                    @Html.EditorFor(model => model.IpAddress)
+                                </div>
+                                <div class="ui two wide right aligned field custom buttons">
+                                    <div class="ui fluid container basic clearing">
+                                        <a href="javascript:LoadAuditLogRecords()" class="ui primary button" style="margin-top:1.5rem">
+                                            <i class="icon search"></i>
+                                            Търси
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>                      
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <table id="auditLogRecords"
+               class="ui celled striped very compact table" style="width:100%; padding:0px;"
+               data-url="@Url.Action("GetAuditLogRecordsList", "AuditLog")">
+        </table>
+    </div>
+</div>
+
+<div class="ui first coupled modal">
+    <i class="close icon"></i>
+    <div class="header">
+        Детайли
+    </div>
+    <div class="content">      
+        <div class="description">
+            <div class="ui header">Параметри</div>
+            <p id="parameters"></p>
+        </div>
+    </div>
+    <div class="actions">      
+        <div id="previewValuesBtn" class="ui primary button" data-audit-id="">Преглед на стари и нови стойности</div>
+    </div>
+</div>
+
+<div class="ui second longer coupled modal">
+    <i class="close icon"></i>
+    <div class="header">
+        Стойности
+    </div>
+    <div class="scrolling content">
+        <div class="description">          
+        </div>
+    </div>
+    <div class="actions">
+        <div class="ui primary approve button">
+            <i class="checkmark icon"></i>
+            Затвори
+        </div>
+    </div>
+</div>
+
+
+@section Scripts
+{
+    <script src="~/js/audit_log/auditLogList.js" asp-append-version="true"></script>
+}

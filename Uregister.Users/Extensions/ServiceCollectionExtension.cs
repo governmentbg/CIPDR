@@ -3,6 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using Uregister.Users.Data;
 using Uregister.Users.Data.Identity;
 using Uregister.Users.Services;
+using URegister.Infrastructure.Constants;
+using URegister.Infrastructure.Contracts;
+using URegister.Infrastructure.Models;
+using URegister.Infrastructure.Services;
 
 namespace Uregister.Users.Extensions
 {
@@ -19,7 +23,12 @@ namespace Uregister.Users.Extensions
         public static IServiceCollection AddApplicationServices(this IServiceCollection services)
         {
             services.AddScoped<IUserManagerService, UserMangerService>();
-
+            services.AddScoped<IAuditLogServiceClient, AuditLogServiceClient>();
+            services.AddScoped<IAuditInfo>(x => new AuditInfo()
+            {
+                TypeAuditTask = TypeAuditTask.GrpcClient,
+                ProjectName = "Users"
+            });
             return services;
         }
 

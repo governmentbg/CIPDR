@@ -1,0 +1,19 @@
+﻿@model URegister.Infrastructure.Model.RegisterForms.JsonFormDataViewModel
+
+@{
+    ViewData["Title"] = $"Подаване на данни чрез JSON файл";
+}
+
+<div class="ui segments">
+    <div class="ui green clearing segment">
+        <form action="@Url.Action("SubmitJson", "Designer", new { area = "Admin" })" method="post" id="submit" novalidate enctype="multipart/form-data">
+            @Html.HiddenFor(m => m.FormId)
+            @Html.AntiForgeryToken()
+            <div class="fields">
+                @Html.EditorFor(m => m.JsonData, "Textarea")
+                <input class="ui primary right floated button" type="submit" value="Изпрати"/>
+                <a href="@Url.Action("FormIndex", "Catalog")" class="ui right floated button"><i class="arrow left icon"></i> Назад</a>
+            </div>
+        </form>
+    </div>
+</div>

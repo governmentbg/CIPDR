@@ -1,23 +1,17 @@
-﻿using Grpc.Core;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
+﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using URegister.Core.Data.Models.Common;
-using URegister.Core.Data.Models.Register;
 using URegister.Infrastructure.Constants;
+using URegister.Infrastructure.Data.Common;
 
 namespace URegister.Core.Data.Models.Process
 {
     /// <summary>
     /// Процеси
     /// </summary>
-    [Comment("Процеси")]
-    public class Process
+    [Comment("Заявени услуги")]
+    public class Process: EntityBaseWithLastModifiedInfo
     {
         /// <summary>
         /// Идентификатор
@@ -25,6 +19,13 @@ namespace URegister.Core.Data.Models.Process
         [Key]
         [Comment("Идентификатор")]
         public Guid Id { get; set; } = Guid.NewGuid();
+
+
+        /// <summary>
+        /// Идентификатор на първоначален процес
+        /// </summary>
+        [Comment("Идентификатор на първоначален процес")]
+        public Guid? FromProcessId { get; set; }
 
         /// <summary>
         /// Входящ номер
@@ -35,8 +36,16 @@ namespace URegister.Core.Data.Models.Process
         public string IncomingNumber { get; set; } = null!;
 
         /// <summary>
+        /// Стар входящ номер
+        /// </summary>
+        [MaxLength(50)]
+        [Comment("Стар входящ номер")]
+        public string? OldIncomingNumber { get; set; }
+
+        /// <summary>
         /// Номер на вписване 
         /// </summary>
+        [MaxLength(20)]
         [Comment("Номер на вписване ")]
         public string? RegisterNumber { get; set; }
 
@@ -46,6 +55,13 @@ namespace URegister.Core.Data.Models.Process
         [Comment("Дата на входиране")]
         [Column(TypeName = AttributeConstants.Timestamptz)]
         public DateTime IncomingDate { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// Стара дата на входиране
+        /// </summary>
+        [Comment("Стара дата на входиране")]
+        [Column(TypeName = AttributeConstants.Timestamptz)]
+        public DateTime? OldIncomingDate { get; set; }
 
         /// <summary>
         /// Идентификатор на услуга
@@ -62,25 +78,103 @@ namespace URegister.Core.Data.Models.Process
         /// <summary>
         /// Статус
         /// </summary>
+        [Comment("Статус")]
         public int StatusId { get; set; }
 
         /// <summary>
-        /// Идентификатор на MasterPersonIndex
+        /// Идентификатор на партида в MasterPersonIndex
         /// </summary>
-        [Comment("Идентификатор на MasterPersonIndex")]
+        [Comment("Идентификатор на партида в MasterPersonIndex")]
         public Guid MpriId { get; set; }
+
+        /// <summary>
+        /// Идентификатор на заявител в MasterPersonIndex
+        /// </summary>
+        [Comment("Идентификатор на заявител в MasterPersonIndex")]
+        public Guid MpriApplicantId { get; set; }
 
         /// <summary>
         /// Идентификатор на администрация
         /// </summary>
         [Comment("Идентификатор на администрация")]
-        public Guid TennantId { get; set; }
+        public Guid TenantId { get; set; }
 
         /// <summary>
-        /// Администрация
+        /// Идентификатор на стъпка
         /// </summary>
-        [ForeignKey(nameof(TennantId))]
-        public Administration Administration { get; set; } = null!;
+        [Comment("Идентификатор на стъпка")]
+        public int? LastServiceStepId { get; set; }
+
+        /// <summary>
+        /// Идентификатор на форма
+        /// </summary>
+        [Comment("Идентификатор на форма")]
+        public int FormId { get; set; }
+
+        /// <summary>
+        /// Поредност на вписването
+        /// </summary>
+        [Comment("Поредност на вписването")]
+        public long OrderNumber { get; set; }
+
+        /// <summary>
+        /// Записани полета
+        /// </summary>
+        [Comment("Причина за прекратяване")]
+        [StringLength(1000)]
+        public string? ReasonForRejection { get; set; } = null;
+
+        /// <summary>
+        /// Номер на отказ
+        /// </summary>
+        [MaxLength(20)]
+        [Comment("Номер на отказ")]
+        public string? RejectionNumber { get; set; } = null!;
+
+        ///<summary> 
+        ///Потребител, на който е присвоена услугата
+        ///</summary>
+        [Comment("Потребител, на който е присвоена услугата")]
+        public Guid? AssignedToUser { get; set; }
+
+        /// <summary>
+        /// Начини на предоставяне на резултата"
+        /// </summary>
+        [MaxLength(11)]
+        [Comment("Начини на предоставяне на резултата")]
+        public string? PreferredResultDeliveryMethod { get; set; } 
+
+        /// <summary>
+        /// Номер на заявена услуга при импорт от е-форма
+        /// </summary>
+        [Comment("Номер на заявена услуга при импорт от е-форма")]
+        public Guid? EFormRegisteredServiceNumber { get; set; } = null;
+
+        /// <summary>
+        /// Начин на получаване на заявлението
+        /// </summary>
+        [Comment("Начин на получаване на заявлението")]
+        public string? ReceivedChannelId { get; set; }
+
+        /// <summary>
+        /// Вид срок за изпълнение на услуга
+        /// </summary>
+        [Comment("Вид срок за изпълнение на услуга")]
+        public int DeadlineId { get; set; }
+
+        /// <summary>
+        /// Срок за изпълнение на услуга/дни
+        /// </summary>
+        [Comment("Срок за изпълнение на услуга/дни")]
+        public int DeadlineDay { get; set; }
+
+        /// <summary>
+        /// Срок за изпълнение на услуга
+        /// </summary>
+        [Comment("Срок за изпълнение на услуга")]
+        public DateTime? DeadlineDate { get; set; }
+
+        #region ForeignKey
 
         /// <summary>
         /// услуга
@@ -88,7 +182,57 @@ namespace URegister.Core.Data.Models.Process
         [ForeignKey(nameof(ServiceId))]
         public Service Service { get; set; } = null!;
 
+        /// <summary>
+        /// Форма
+        /// </summary>
+        [ForeignKey(nameof(FormId))]
+        public Form Form { get; set; } = null!;
 
+        /// <summary>
+        /// Стъпка
+        /// </summary>
+        [ForeignKey(nameof(LastServiceStepId))]
+        public ServiceStep LastServiceStep { get; set; } = null!;
+
+
+        /// <summary>
+        /// Стъпки на заявената услуга
+        /// </summary>
+        [Comment("Стъпки на заявената услуга")]
         public List<ProcessStep> ProcessSteps { get; set; } = new();
+
+
+        /// <summary>
+        /// Указания
+        /// </summary>
+        [Comment("Указания")]
+        public List<Instruction> Instructions { get; set; } = new();
+
+
+        /// <summary>
+        /// Първоначален процес
+        /// </summary>
+        [Comment("Първоначален процес")]
+        [ForeignKey(nameof(FromProcessId))]
+        public Process? FromProcess { get; set; }
+
+        /// <summary>
+        /// Промени и заличавания
+        /// </summary>
+        [Comment("Промени и заличавания")]
+        public List<Process> ChangeProcesses { get; set; } = new();
+
+        /// <summary>
+        /// Записани полета
+        /// </summary>
+        [Comment("Записани полета")]
+        public List<RegisterItem> RegisterItems { get; set; } = new();
+
+        /// <summary>
+        /// Връчвания
+        /// </summary>
+        [Comment("Връчвания към заявената услуга")]
+        public List<ProcessDelivery> ProcessDeliveries { get; set; } = new();
+        #endregion
     }
 }

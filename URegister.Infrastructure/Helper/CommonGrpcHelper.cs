@@ -33,12 +33,12 @@ namespace URegister.Infrastructure.Helper
                 Message = message
             };
         }
-        public static ResultStatus CreateStatusInternalServerError(Exception ex)
+        public static ResultStatus CreateStatusInternalServerError(Exception ex, string message = "")
         {
             return new ResultStatus
             {
                 Code = ResultCodes.InternalServerError,
-                Message = ex.Message
+                Message = string.IsNullOrWhiteSpace(message) ? ex.Message : message
             };
         }
         public static ResultStatus CreateStatusUniqueIndexError(Exception ex)

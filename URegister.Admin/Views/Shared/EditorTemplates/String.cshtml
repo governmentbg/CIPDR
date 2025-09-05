@@ -2,12 +2,13 @@
 @{
     var reqClass = ViewData.ModelMetadata.GetIOReqClass();
     var container_css = (string)(ViewData["container_css"] ?? String.Empty);
+    var class_css = (string)(ViewData["class"] ?? String.Empty);
 }
 
 <div class="ui form @container_css">
     <div class="field @reqClass">
         <label asp-for="@Model"></label>
-        @Html.TextBox(String.Empty, Model.Decode(), ViewData["htmlAttributes"])
+        @Html.TextBox(String.Empty, Model.Decode(), new { placeholder = ViewData.ModelMetadata.Placeholder, @class= class_css })
         <span asp-validation-for="@Model" class="validation-error" tabindex="-1"></span>
     </div>
 </div>

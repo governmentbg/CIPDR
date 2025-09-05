@@ -9,23 +9,32 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Grpc.AspNetCore" Version="2.66.0" />
-    <PackageReference Include="IdStampITAuthentication" Version="6.0.1" />
-    <PackageReference Include="IO.EAuthIntegration" Version="1.0.6" />
+    <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="3.7.400" />
+    <PackageReference Include="Grpc.AspNetCore" Version="2.71.0" />
+    <PackageReference Include="IdStampITAuthentication" Version="8.0.1" />
+    <PackageReference Include="IO.EAuthIntegration" Version="1.0.10" />
+    <PackageReference Include="IO.HtmlToPdf" Version="8.0.0" />
+    <PackageReference Include="IO.SignTools" Version="8.0.5" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="3.1.32" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.10">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.2.1" />
-    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.3.1" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.2" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.6" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.11.2" />
+    <PackageReference Include="RulesEngine" Version="5.0.5" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.3.1" />
+    <PackageReference Include="System.Linq.Dynamic.Core" Version="1.6.7" />
     <PackageReference Include="System.Net.Http" Version="4.3.4" />
-    <PackageReference Include="System.Text.Encodings.Web" Version="9.0.0" />
-    <PackageReference Include="System.Text.Json" Version="9.0.0" />
+    <PackageReference Include="System.Text.Encodings.Web" Version="9.0.1" />
+    <PackageReference Include="System.Text.Json" Version="9.0.1" />
     <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
   </ItemGroup>
 
@@ -35,12 +44,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Areas\Admin\Data\" />
-    <Folder Include="Areas\Admin\Extensions\" />
-    <Folder Include="Areas\Admin\Models\" />
     <Folder Include="Areas\Admin\Views\Shared\EditorTemplates\" />
     <Folder Include="Areas\Public\Data\" />
     <Folder Include="Areas\Public\Models\" />
+    <Folder Include="Certificates\" />
     <Folder Include="wwwroot\css\assets\css\scss\basics\" />
     <Folder Include="wwwroot\css\assets\css\scss\components\" />
     <Folder Include="wwwroot\css\assets\css\scss\layout\" />
@@ -56,9 +63,9 @@
     <Folder Include="wwwroot\css\assets\images\user\" />
     <Folder Include="wwwroot\css\assets\img\" />
     <Folder Include="wwwroot\css\assets\scripts\" />
-    <Folder Include="wwwroot\css\NewFolder\" />
     <Folder Include="wwwroot\fonts\montserrat\" />
     <Folder Include="wwwroot\library\" />
+    <Folder Include="wwwroot\manual\" />
   </ItemGroup>
 
   <ItemGroup>
@@ -74,14 +81,51 @@
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
+    <Content Update="Areas\Admin\Views\Shared\FormFieldStaticText.cshtml">
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
     <Content Update="wwwroot\js\userMessages.js">
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
   </ItemGroup>
+	<ItemGroup><!--<Protobuf Include="..\protos\nomenclature.proto" GrpcServices="Client" />-->
+		<!--<Protobuf Include="..\protos\object.proto" GrpcServices="Client" />-->
+		
+	
+	  <Compile Remove="Areas\Admin\Data\**" />
+	  <Compile Remove="Areas\Admin\Extensions\**" />
+	  <Compile Remove="Areas\Admin\Models\**" />
+	  <Content Remove="Areas\Admin\Data\**" />
+	  <Content Remove="Areas\Admin\Extensions\**" />
+	  <Content Remove="Areas\Admin\Models\**" />
+	  <EmbeddedResource Remove="Areas\Admin\Data\**" />
+	  <EmbeddedResource Remove="Areas\Admin\Extensions\**" />
+	  <EmbeddedResource Remove="Areas\Admin\Models\**" />
+	  <None Remove="Areas\Admin\Data\**" />
+	  <None Remove="Areas\Admin\Extensions\**" />
+	  <None Remove="Areas\Admin\Models\**" />
+	</ItemGroup>
 	<ItemGroup>
-		<!--<Protobuf Include="..\Protos\nomenclature.proto" GrpcServices="Client" />-->
-		<!--<Protobuf Include="..\Protos\object.proto" GrpcServices="Client" />-->
+	  <None Update="Certificates\my_organization_stamp.pfx">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	  <None Update="credentials">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	  <None Update="SignFonts\times.ttf">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	  <None Update="SignFonts\timesbd.ttf">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	  <None Update="SignFonts\timesbi.ttf">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	  <None Update="SignFonts\timesi.ttf">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
 	</ItemGroup>
 
 </Project>

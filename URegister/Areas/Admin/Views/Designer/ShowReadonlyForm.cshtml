@@ -5,11 +5,20 @@
     foreach (FormField modelFormField in Model.FormFields)
     {
         modelFormField.IsReadonly = true;
+        modelFormField.Tooltip = String.Empty;
+        if (modelFormField.Fields?.Count > 0)
+        {
+            foreach (var fieldsetFormField in modelFormField.Fields)
+            {
+                fieldsetFormField.Tooltip = String.Empty;
+            }
+        }
         if (modelFormField.Repetitions != null)
         {
             foreach (FormField modelFormFieldRep in modelFormField.Repetitions)
             {
                 modelFormFieldRep.IsReadonly = true;
+                modelFormFieldRep.Tooltip = String.Empty;
             }
         }
     }
@@ -20,7 +29,9 @@
         <div>
             @Html.HiddenFor(m => m.FormParentId)
             @Html.HiddenFor(m => m.SelectedType)
-            @Html.AntiForgeryToken()
+            @Html.HiddenFor(m => m.DontUploadFilesToStorage)
+            @Html.HiddenFor(m => m.UserTimeZoneOffsetInMinutes)
+            @* @Html.AntiForgeryToken() *@
             @{
                 await Html.RenderPartialAsync("FormFieldArranger", Model.FormFields);
             }
@@ -32,6 +43,5 @@
 </div>
 
 @section Scripts {
-    <script src="~/js/uuid/uuidv4.min.js"></script>
-    <script src="~/js/admin/designer/showPreview.js"></script>
+    <script src="~/js/admin/designer/showPreview.js" asp-append-version="true"></script>
 }

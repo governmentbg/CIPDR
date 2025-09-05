@@ -1,18 +1,31 @@
-﻿@using URegister.Infrastructure.Model.KeyCloak
+﻿@using URegister.Core.Models.User
+
 @model UserViewModel
-<a href="@Url.Action("Index")" class="ui button">
+<a href="@Url.Action("Index", new { administrationId = Model.AdministrationId })" class="ui button">
     <i class="arrow left icon"></i>
     Назад
 </a>
-<div class="ui top attached tabular menu">
-    <a class="item active" data-tab="userDetails">Потребител</a>
-    <a class="item" data-tab="userRoles">Роли</a>
-    <a class="item" data-tab="userGroups">Групи</a>
-</div>
+
+@if (Model.IsGlobalAdmin)
+{
+    <div class="ui top attached tabular menu">
+        <a class="item active" data-tab="userDetails">Глобален администратор</a>
+        <a class="item" data-tab="userAdministrations">Администрации</a>
+    </div>
+}
+else
+{
+    <h3>@Model.AdministrationName</h3>
+    <div class="ui top attached tabular menu">
+        <a class="item active" data-tab="userDetails">Потребител</a>
+        <a class="item" data-tab="userRoles">Роли</a>
+        <a class="item" data-tab="userAdministrations">Администрации</a>
+    </div>
+}
 
 <div class="ui bottom attached tab segment active" data-tab="userDetails">
     <div class="ui form">
-        <form class="ui sixteen wide column" action="@Url.Action("Edit", "User")" method="post" enctype="multipart/form-data" onsubmit="beforeSubmit();">
+        <form class="ui sixteen wide column" action="@Url.Action("Edit", "User")" method="post" enctype="multipart/form-data">
             <div class="content">
                 <div class="column ui segment green">
                     <div class="ui form">
@@ -21,18 +34,10 @@
                                 <h3>Потребител @Model.Username</h3>
                             </div>
                         </div>
-                        <div class="fields">
-                            <div class="four wide field">
-                                @Html.EditorFor(model => model.Id, "StringDisabled")
-                            </div>
-                            <div class="four wide field">
-                                @Html.HiddenFor(model => model.CreatedTimestamp)
-                                @Html.EditorFor(model => model.CreatedAtStr, "StringDisabled")
-                            </div>
-                            <div class="four wide field">
-                                @Html.EditorFor(model => model.Enabled, "CheckBoxBoolean")
-                            </div>
-                        </div>
+                        @Html.HiddenFor(model => model.AdministrationId)
+                        @Html.HiddenFor(model => model.AdministrationName)
+                        @Html.HiddenFor(model => model.Id)
+                        @Html.AntiForgeryToken()
                         <div class="fields">
                             <div class="four wide field">
                                 @Html.EditorFor(model => model.Username, "StringDisabled")
@@ -41,19 +46,32 @@
                                 @Html.EditorFor(model => model.FirstName, "String")
                             </div>
                             <div class="four wide field">
+                                @Html.EditorFor(model => model.MiddleName, "String")
+                            </div>
+                            <div class="four wide field">
                                 @Html.EditorFor(model => model.LastName, "String")
                             </div>
+
                         </div>
                         <div class="fields">
+                            <div class="four wide field">
+                                @Html.EditorFor(model => model.Pid, "String")
+                            </div>
+                            <div class="four wide field">
+                                @Html.EditorFor(model => model.Position, "String")
+                            </div>
                             <div class="four wide field">
                                 @Html.EditorFor(model => model.Email, "String")
                             </div>
                             <div class="four wide field">
-                                @Html.EditorFor(model => model.EmailVerified, "CheckBoxBoolean")
+                                @Html.EditorFor(model => model.PhoneNumber, "String")
                             </div>
+                        </div>
+                        <div class="fields">
                             <div class="four wide field">
-                                @Html.EditorFor(model => model.AdministrationId, "String")
+                                @Html.EditorFor(model => model.Enabled, "CheckBoxBoolean")
                             </div>
+
                         </div>
                     </div>
                 </div>
@@ -67,47 +85,73 @@
 </div>
 
 <div class="ui bottom attached tab segment" data-tab="userRoles">
-    <table id="userRoles" class="ui celled striped very compact table" style="width:100%; padding:0px;" data-userid="@Model.Id" 
-        data-url="@Url.Action("GetUserRoles", "User")">
+    <table id="userRoles" class="ui celled striped very compact table" style="width:100%; padding:0px;" data-userid="@Model.Id"
+           data-url="@Url.Action("GetUserRoles", "User")">
     </table>
 </div>
 
-<div class="ui bottom attached tab segment" data-tab="userGroups">
-    <table id="userGroups" class="ui celled striped very compact table" style="width:100%; padding:0px;" data-userid="@Model.Id"
-           data-url="@Url.Action("GetUserGroups", "User")">
+<div class="ui bottom attached tab segment" data-tab="userAdministrations">
+    <table id="userAdministrations" class="ui celled striped very compact table" style="width:100%; padding:0px;" data-userid="@Model.Id"
+           data-url="@Url.Action("GetUserAdministrations", "User")">
     </table>
 </div>
 
 <div id="rolesModal" class="ui modal">
     <div class="header">Избери роля</div>
     <div class="content">
-        <div class="ui form">
-            <label for="rolesMultiselect">Роли</label>
-            <select id="rolesMultiselect" class="ui fluid dropdown" multiple>
-            </select>
+        <div class="ui grid">
+            <div class="eight wide column">
+                <div class="ui form">
+                    <div class="field">
+                        <label for="registriesDropdown">
+                            Регистър<span style="color: red;">*</span>
+                        </label>
+                        <select id="registriesDropdown" class="ui fluid search selection dropdown">
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="eight wide column">
+                <div class="ui form">
+                    <div class="field">
+                        <label for="rolesDropdown">Роли<span style="color: red;">*</span></label>
+                        <select id="rolesDropdown" multiple class="ui fluid multiple search selection dropdown">
+                        </select>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     <div class="actions">
         <button class="ui button" id="cancelRolesButton">Затвори</button>
-        <button class="ui primary button" id="submitAddRoleButton" data-url="@Url.Action("AddRoleToUser", "User")">Запази</button>
+        <button class="ui primary button" id="submitAddRoleButton">Запази</button>
     </div>
 </div>
 
-<div id="groupsModal" class="ui modal">
-    <div class="header">Избери група</div>
+<div id="administrationModal" class="ui modal">
+    <div class="header">Избери администрации</div>
     <div class="content">
-        <div class="ui form">
-            <label for="groupsMultiselect">Групи</label>
-            <select id="groupsMultiselect" class="ui fluid dropdown" multiple>
-            </select>
+        <div class="ui grid">
+            <div class="eighteen wide column">
+                <div class="ui form">
+                    <div class="field">
+                        <label for="administrationsDropdown">Администрации<span style="color: red;">*</span></label>
+                        <select id="administrationsDropdown" multiple class="ui fluid multiple search selection dropdown">
+                        </select>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     <div class="actions">
-        <button class="ui button" id="cancelGroupButton">Затвори</button>
-        <button class="ui primary button" id="submitAddGroupButton" data-url="@Url.Action("AddGroupToUser", "User")">Запази</button>
+        <button class="ui button" id="cancelAdministrationsButton">Затвори</button>
+        <button class="ui primary button" id="submitAddAdministrationsButton">Запази</button>
     </div>
 </div>
-
+@{
+    await Html.RenderPartialAsync("_ConfirmAction");
+}
 @section Scripts {
-    <script src="~/js/user/userDetails.js"></script>
+    <script src="~/js/user/userDetails.js" asp-append-version="true"></script>
+    @await Html.PartialAsync("_ValidationScriptsPartial")
 }

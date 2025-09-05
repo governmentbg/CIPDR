@@ -1,0 +1,116 @@
+﻿@using URegister.Core.Models.User
+
+@model UserViewModel
+<a href="@Url.Action("Index", new { administrationId = Model.AdministrationId })" class="ui button">
+    <i class="arrow left icon"></i>
+    Назад
+</a>
+
+<h3>@Model.AdministrationName</h3>
+<div class="ui top attached tabular menu">
+    <a class="item active" data-tab="userDetails">Потребител</a>
+    <a class="item" data-tab="userRoles">Роли</a>
+</div>
+
+<div class="ui bottom attached tab segment active" data-tab="userDetails">
+    <div class="ui form">
+        <form id="mainForm" class="ui sixteen wide column" action="@Url.Action("Edit", "Admin")" method="post" enctype="multipart/form-data">
+            <div class="content">
+                <div class="column ui segment green">
+                    <div class="ui form">
+                        <div class="fields">
+                            <div class='sixteen wide field'>
+                                <h3>Потребител @Model.Username</h3>
+                            </div>
+                        </div>
+                        @Html.HiddenFor(model => model.AdministrationId)
+                        @Html.HiddenFor(model => model.AdministrationName)
+                        @Html.HiddenFor(model => model.Id)
+                        @Html.AntiForgeryToken()
+                        <div class="fields">
+                            <div class="four wide field">
+                                @Html.EditorFor(model => model.Username, "StringDisabled")
+                            </div>
+                            <div class="four wide field">
+                                @Html.EditorFor(model => model.FirstName, "String")
+                            </div>
+                            <div class="four wide field">
+                                @Html.EditorFor(model => model.MiddleName, "String")
+                            </div>
+                            <div class="four wide field">
+                                @Html.EditorFor(model => model.LastName, "String")
+                            </div>
+
+                        </div>
+                        <div class="fields">
+                            <div class="four wide field">
+                                @Html.EditorFor(model => model.Pid, "String")
+                            </div>
+                            <div class="four wide field">
+                                @Html.EditorFor(model => model.Position, "String")
+                            </div>
+                            <div class="four wide field">
+                                @Html.EditorFor(model => model.Email, "String")
+                            </div>
+                            <div class="four wide field">
+                                @Html.EditorFor(model => model.PhoneNumber, "String")
+                            </div>
+                        </div>
+                        <div class="fields">
+                            <div class="four wide field">
+                                @Html.EditorFor(model => model.Enabled, "CheckBoxBoolean")
+                            </div>
+                            <div class="eight wide field">
+                                @Html.EditorFor(model => model.ReceiveEFormNotification, "CheckBoxBoolean")
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+                <button class="ui primary button" type="submit">
+                    <i class="save outline icon"></i>
+                    Запис
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="ui bottom attached tab segment" data-tab="userRoles">
+    <table id="userRoles" class="ui celled striped very compact table" style="width:100%; padding:0px;" data-userid="@Model.Id"
+           data-url="@Url.Action("GetUserRoles", "Admin")">
+    </table>
+</div>
+
+<div id="rolesModal" class="ui modal">
+    <div class="header">Избери роля</div>
+    <div class="content">
+        <div class="ui grid">
+            <div class="sixteen wide column">
+                <div class="ui form">
+                    <div class="field">
+                        <label for="rolesDropdown">Роли<span style="color: red;">*</span></label>
+                        <select id="rolesDropdown" multiple class="ui fluid multiple search selection dropdown">
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="actions">
+        <button class="ui button" id="cancelRolesButton">Затвори</button>
+        <button class="ui primary button" id="submitAddRoleButton">Запази</button>
+    </div>
+</div>
+<div id="errorMessage" class="ui message hidden">
+    <i class="close icon"></i>
+    <div class="header">Грешка</div>
+    <p>Моля, изберете поне една роля!</p>
+</div>
+@{
+    await Html.RenderPartialAsync("_ConfirmAction");
+}
+@section Scripts {
+    <script src="~/js/admin/admin/userDetails.js" asp-append-version="true"></script>
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

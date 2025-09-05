@@ -25,13 +25,6 @@ function LoadSteps() {
             filter: false,
             columns: [
                 {
-                    name: 'type',
-                    data: 'type',
-                    title: 'Тип',
-                    sortable: true,
-                    searchable: true
-                },
-                {
                     name: 'name',
                     data: 'name',
                     title: 'Име',
@@ -39,11 +32,11 @@ function LoadSteps() {
                     searchable: true
                 },
                 {
-                    name: 'method',
-                    data: 'method',
-                    title: 'Метод',
-                    sortable: true,
-                    searchable: true
+                    name: 'roleName',
+                    data: 'roleName',
+                    title: 'Потребителска роля',
+                    sortable: false,
+                    searchable: false
                 },
 
                 {
@@ -55,7 +48,11 @@ function LoadSteps() {
                     className: "text-left noExport",
                     width: 120,
                     "render": function(data, type, row) {
-                        return editButton(`/Service/EditStep/${data}`);
+                        return editButton(`/Service/EditStep/${data}`) +
+                            "<a href='javascript:actionWithConfirmation(\"/Service/DeleteStep\", " +
+                            data + ", \"Сигурни ли сте, че искате да изтриете \\\"" +
+                            row.name +
+                            "\\\"?\", null)' type='button' class='ui tertiary icon button' data-tooltip='Изтрий'><i class='red trash alternate icon'></i></a>";
                     }
                 }
             ]

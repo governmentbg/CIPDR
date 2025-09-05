@@ -6,8 +6,24 @@ const columnWidthStep = 1;
 const fomanticColumnsForUserColumn = 4;
 var skipLoadingDefaultsOnTypeChange = false;
 var isSubfieldEdited = false;
+var isDirty = false;
 
 $(function () {
+
+    $(window).on("beforeunload", function (e) {
+        if (isDirty) {
+            // Standard message (browsers may override this)
+            const confirmationMessage = "Имате незапазени промени. Искате ли да продължите?";
+
+            // Set the returnValue for the event (required for some browsers)
+            (e.originalEvent || window.event).returnValue = confirmationMessage;
+            return confirmationMessage;
+        }
+    });
+
+    $('.compact-tooltip').popup({
+        boundary: '#designer-workspace'
+    });
 
     $('#columns').on('keydown', event => {
         console.log(event.keyCode);
@@ -35,8 +51,9 @@ $(function () {
         }
 
         clearInputs();
-                
-        hideSpecificFields($('#configuredType').val())
+        $('.field-properties').find('span.validation-error').text('');        
+        hideSpecificFields($('#configuredType').val());
+        hideHiddenFields($('#configuredType').val());
 
         $('#componentFieldTypeContainer').closest('.item').hide();
 
@@ -105,6 +122,7 @@ $(function () {
 
     $('#type').change(function () {
         hideSpecificFields($('#type').val());
+        hideHiddenFields($('#type').val());
     });
 
     $('#addField').on('click', function (event) {
@@ -159,6 +177,7 @@ $(function () {
                 if (result === true) {
                     let fieldType = $('#configuredType').val();
                     let url = `/Designer/ShowPreview?fieldType=${fieldType}`;
+                    isDirty = false;
                     window.location.href = url;
                 }
                 else {
@@ -168,9 +187,7 @@ $(function () {
             .catch((error) => {
                 console.error("Проблем при запис на конфигурацията " + error);
             });
-    });
-  
-    $('[data-specific-for]').hide();
+    });  
 
     if ($('#SelectedType').val() !== '') {
         $('#configuredType').val($('#SelectedType').val()).trigger('change');
@@ -186,6 +203,20 @@ function hideSpecificFields(selectedType) {
             $(this).show(); // Show the element if it matches one of the values
         } else {
             $(this).hide(); // Hide it otherwise
+            $(this).find('#nomenclatureType').val('');
+        }
+    });
+}
+
+function hideHiddenFields(selectedType) {
+    // Hide all elements that match any of the values
+    $('[data-hide-for]').each(function () {
+        var hideForValue = $(this).data('hide-for').split(',');
+        // Check if the specificForValue is in the list of selected values
+        if (hideForValue.includes(selectedType)) {
+            $(this).hide(); // Show the element if it matches one of the values
+        } else {
+            $(this).show(); // Hide it otherwise
         }
     });
 }
@@ -287,6 +318,14 @@ function validateData() {
         $('span[for="columns"]').text('');
     }
 
+    if (["Person", "Company"].includes($('#configuredType').val()) && $('#canBeRepeated').is(':checked') && ($('#isBatchOwner').is(':checked') || $('#isSubmitter').is(':checked'))) {
+        result = false;
+        $('span[for="canBeRepeated"]').text('Заявител/собственик на партида, не може да е повтарящо се поле.');
+    }
+    else {
+        $('span[for="canBeRepeated"]').text('');
+    }
+
     return result;
 }
 
@@ -306,6 +345,7 @@ function saveField() {
     )
         .then((result) => {
             if (result === true) {
+                isDirty = false;
                 showToast('success', 'Успешен запис на конфигурацията');
             }
             else {
@@ -327,6 +367,7 @@ function createField() {
         return false;
     }
 
+    isDirty = true;
     let record = {};
 
     if (selectedFieldId === null) {
@@ -660,6 +701,7 @@ function subscribeForPreviewButtonEvents() {
                 onApprove: function () {
                     configuredFieldModel.fields.splice(index, 1);
                     skipLoadingDefaultsOnTypeChange = true;
+                    isDirty = true;
                     toComplexFieldModel();
                     renderPreview();
                 }

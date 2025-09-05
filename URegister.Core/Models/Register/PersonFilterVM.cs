@@ -18,6 +18,6 @@ namespace URegister.Core.Models.Register
         /// <summary>
         /// Идентификатор на администрация
         /// </summary>
-        public Guid AdministrationId { get; set; }
+        public Guid RegisterAdministrationId { get; set; }
     }
 }

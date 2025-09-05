@@ -39,3 +39,13 @@ function updateOrder() {
         inputOrder.val(indexOrder);
     });
 }
+
+
+function stepTypeChange(cmb) {
+    const container = $(cmb).parents('.fields:first');
+    if ($(cmb).val() == 2) {
+        container.find(".coordination-item").show();
+    } else {
+        container.find(".coordination-item").hide();
+    }
+}

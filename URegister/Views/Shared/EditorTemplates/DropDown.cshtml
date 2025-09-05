@@ -12,7 +12,7 @@
 @if (ddl != null)
 {
     <div class="ui form @container_css">
-        <div class="field">
+        <div class="field @reqClass">
             <label asp-for="@Model"></label>
             @Html.DropDownListFor(
                 model => model, 

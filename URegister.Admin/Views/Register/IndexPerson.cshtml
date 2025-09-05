@@ -3,7 +3,8 @@
 @{
     ViewData["Title"] = "Оторозирани лица";
 }
-@Html.HiddenFor(x => x.AdministrationId)
+@Html.HiddenFor(x => x.RegisterAdministrationId)
+@Html.HiddenFor(x => x.RegisterId)
 <div class="ui grid">
     <div class="column">
          <div class="column">
@@ -15,7 +16,7 @@
         </div>
     </div>
 </div>
-@await Html.PartialAsync("_BackButton", @Url.Action("IndexAdministration"))
+@await Html.PartialAsync("_BackButton", @Url.Action("IndexAdministration", "Register", new {registerId = Model.RegisterId}))
 @await Html.PartialAsync("_ConfirmDelete")
 @section Scripts
 {

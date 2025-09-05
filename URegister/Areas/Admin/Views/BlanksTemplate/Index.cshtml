@@ -1,0 +1,24 @@
+﻿@{
+    ViewData["Title"] = "Бланки";
+}
+
+<div class="ui grid">
+    <div class="column">
+        <div class="column">
+            <table id="blank_template"
+                class="ui celled striped very compact table" style="width:100%; padding:0px;"
+                   data-url="@Url.Action("GetBlankTemplateList", "BlanksTemplate")"
+                   data-add-url="@Url.Action("Add", "BlanksTemplate")">
+             </table>
+        </div>
+    </div>
+</div>
+@await Html.PartialAsync("_BackButton", @Url.Action("Index", "Home", new { area = "" }))
+@{
+    await Html.RenderPartialAsync("_ConfirmAction");
+}
+
+@section Scripts
+{
+    <script src="~/js/admin/blanks_template/blankTemplateList.js" asp-append-version="true"></script>
+}

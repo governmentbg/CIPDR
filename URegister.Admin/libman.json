@@ -3,10 +3,6 @@
   "defaultProvider": "cdnjs",
   "libraries": [
     {
-      "library": "fomantic-ui@2.9.3",
-      "destination": "wwwroot/lib/fomantic-ui/"
-    },
-    {
       "library": "uuid@8.3.2",
       "destination": "wwwroot/js/uuid/"
     },
@@ -25,10 +21,6 @@
     {
       "library": "datatables.net-buttons-se@3.1.2",
       "destination": "wwwroot/lib/datatables/buttons-se/"
-    },
-    {
-      "library": "sweetalert2@11.14.0",
-      "destination": "wwwroot/lib/sweetalert2"
     },
     {
       "library": "jszip@3.10.1",

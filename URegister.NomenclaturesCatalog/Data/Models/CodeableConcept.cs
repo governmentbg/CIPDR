@@ -1,6 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -36,7 +34,7 @@ namespace URegister.NomenclaturesCatalog.Data.Models
         public string Value { get; set; } = null!;
 
         [StringLength(255, ErrorMessage = "Максималната дължина на полето {0} е {1}")]
-        [Comment("Стойност ЕН")]
+        [Comment("Стойност EN")]
         public string? ValueEn { get; set; }
 
         /// <summary>
@@ -83,6 +81,25 @@ namespace URegister.NomenclaturesCatalog.Data.Models
         [Comment("Дата и час на записа")]
         public DateTime? CreatedOn { get; set; } = null!;
 
+        /// <summary>
+        /// Одобрен от
+        /// </summary>
+        [StringLength(255)]
+        [Comment("Одобрен от")]
+        public string? StatusBy { get; set; }
+
+        /// <summary>
+        /// Дата и час на статус
+        /// </summary>
+        [Column(TypeName = "timestamptz")]
+        [Comment("Дата и час на одобрение")]
+        public DateTime? StatusOn { get; set; }
+
+        /// <summary>
+        /// Статус
+        /// </summary>
+        [Comment("Статус")]
+        public int Status { get; set; }
 
         /// <summary>
         /// Горно ниво в друг номенклатурен тип

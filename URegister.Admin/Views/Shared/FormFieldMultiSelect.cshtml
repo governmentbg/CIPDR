@@ -14,7 +14,8 @@
             NomenclaturePublicRequest getNomenclaturesRequest = new NomenclaturePublicRequest
             {
                 RegisterId = 0,
-                NomenclatureTypes = { Model.NomenclatureType }
+                NomenclatureTypes = { Model.NomenclatureType },
+                SkipDateCheck = Model.IsReadonly
             };
 
             NomenclaturePublicResponse nomenclatureResult =
@@ -23,7 +24,7 @@
             if (nomenclatureResult.ResultStatus.Code != ResultCodes.Ok)
             {
                 //Logger.LogError($"Проблем при зареждане на номенклатура {Model.NomenclatureType} в FormFieldSelect)");
-                TempData[MessageConstant.ErrorMessage] = "Проблем с връзката, презаредете страницата";
+                TempData[MessageConstant.ErrorMessage] = MessageConstant.NetworkProblemReload;
             }
             else
             {
@@ -36,7 +37,7 @@
     catch (Exception ex)
     {
         //Logger.LogError(ex, $"Проблем при зареждане на номенклатура {Model.NomenclatureType} в FormFieldSelect)");
-        TempData[MessageConstant.ErrorMessage] = "Проблем с връзката, презаредете страницата";
+        TempData[MessageConstant.ErrorMessage] = MessageConstant.NetworkProblemReload;
     }
 
     string placeHolder = string.IsNullOrEmpty(Model.Placeholder) ? string.Empty : Model.Placeholder;

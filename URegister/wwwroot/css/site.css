@@ -544,3 +544,32 @@ body {
     width: 100%;
     margin-bottom: 3px;
 }
+
+#previewHolder > .embeded-element {
+    text-align: center;
+}
+
+#previewHolder > .embeded-element > .embeded-object {
+    width: 100%;
+    min-height: 75vh;
+    max-width: 794px;
+    background-color: ivory
+}
+
+body * {
+    visibility: hidden;
+}
+
+.printable-area, .printable-area * {
+    visibility: visible;
+}
+
+.printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.dtBtnContainer {
+    margin-left: 0.5rem !important;
+}

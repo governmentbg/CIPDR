@@ -1,3 +1,44 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Информационна система за централизирано изграждане и поддържане на регистри";
 }
+
+<div class="container">   
+    <div class="ui three column center aligned divided grid">
+        <div class="row"></div>
+        <div class="row">
+            <div class="column">
+                <a class="ui red statistic" href="/Register/Index">
+                    <div class="value">
+                        <i class="list alternate outline icon"></i>
+                        @Model.RegisterCount
+                    </div>
+                    <div class="label">
+                        Регистъра
+                    </div>
+                </a>
+            </div>
+            <div class="column">
+                <div class="ui green statistic">
+                    <div class="value">
+                        <i class="tasks icon"></i>
+                        @Model.AdministrationCount
+                    </div>
+                    <div class="label">
+                        Администрации
+                    </div>
+                </div>
+            </div>
+            <div class="column">
+                <a class="ui blue statistic" href="/User/Index">
+                    <div class="value">
+                        <i class="users icon"></i>
+                        @Model.UserCount
+                    </div>
+                    <div class="label">
+                        Потребители
+                    </div>
+                </a>
+            </div>
+        </div>        
+    </div>
+</div>

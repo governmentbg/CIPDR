@@ -33,7 +33,7 @@ function LoadAdministrations() {
                 {
                     name: 'name',
                     data: 'name',
-                    title: 'Име',
+                    title: 'Наименование на административния орган',
                     sortable: true,
                     searchable: true
                 },
@@ -53,14 +53,23 @@ function LoadAdministrations() {
                     className: "text-left noExport",
                     width: 120,
                     "render": function (data, type, row) {
-                        return editButton(`/Admin/Register/EditAdministration?administrationId=${row.id}`);
+                        return `<a href="/Admin/Register/indexPerson?administrationId=${row.id}" data-tooltip="Оторизирани лица" class="ui tertiary icon button">
+                                   <i class="tasks icon"></i>
+                                </a>`;
+                        //editButton(`/Admin/Register/EditAdministration?administrationId=${row.id}`)+
+
                     }
                 }
             ]
         });
 
         dt.ready(function () {
-            SetAddButton($(tableId).data('add-url'));
+           // SetAddButtonWithTitle("addAdministration", "Обновяване", "addAdministration();", '#administrationsContainer');
         });
     }
+}
+
+async function addAdministration() {
+    await post_fetch_string_async('/Admin/Register/AddAdministration', { __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val() });
+    LoadAdministrations()
 }

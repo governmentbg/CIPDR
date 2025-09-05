@@ -71,6 +71,13 @@ function LoadCodeableConceptRegister() {
                     }
                 },
                 {
+                    name: 'status',
+                    data: 'status',
+                    title: 'Статус',
+                    sortable: false,
+                    searchable: false
+                },
+                {
                     name: 'isValid',
                     data: 'isValid',
                     title: isValidTitle,
@@ -78,11 +85,19 @@ function LoadCodeableConceptRegister() {
                     searchable: false,
                     width: 120,
                     "render": function (data, type, row) {
-                        if (isValidAllType) {
-                            return `<input id="isValidRow${row.id}" class="center" type="checkbox" checked disabled/>`;
-                        } 
-                        const checked = data ? 'checked' : '';
-                        return `<input id="isValidRow${row.id}" class="center" type="checkbox" onclick="isValidRowClick('${row.code}', ${row.id});" ${checked}/>`;
+                        let btn = '';
+                        if (row.statusId == "2") {
+                            if (isValidAllType) {
+                                btn = `<input id="isValidRow${row.id}" class="center" type="checkbox" checked disabled/>`;
+                            } else {
+                                const checked = data ? 'checked' : '';
+                                btn = `<input id="isValidRow${row.id}" class="center" type="checkbox" onclick="isValidRowClick('${row.code}', ${row.id});" ${checked}/>`;
+                            }
+                        }
+                        if (row.statusId == "1") {
+                            btn = editButton(`/Admin/Nomenclature/Edit/${row.id}`);
+                        }
+                        return btn;
                     }
 
                 },

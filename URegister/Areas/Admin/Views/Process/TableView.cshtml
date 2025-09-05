@@ -1,0 +1,55 @@
+﻿@using Microsoft.AspNetCore.Mvc.TagHelpers
+@model URegister.Infrastructure.Model.RegisterForms.CustomTableViewViewModel
+@{
+    ViewData["Title"] = $"Табличен вид на заявена услуга '{Model.Title}'";
+}
+@Html.HiddenFor(m => m.ServiceId)
+@Html.HiddenFor(m => m.CustomViewId)
+@Html.AntiForgeryToken()
+<div class="ui form">
+    
+</div>
+<div class="ui grid">
+    <div class="column">
+        <div class="ui fluid container basic clearing">
+            <div class="ui accordion">
+                <div class="title">
+                    <i class="dropdown icon"></i>
+                    Филтър
+                </div>
+                <div class="content">
+                    <div class="column ui segment green">
+                        <div class="ui form">
+                            <div class="fields">
+                                <div class="six wide field">
+                                    @Html.EditorFor(model => model.FieldName, "DropDown")
+                                </div>
+                                <div class="four wide field">
+                                    @Html.EditorFor(model => model.SearchPattern, "String")
+                                </div>
+                                <div class="four wide field"></div>
+                                <div class="ui two wide right aligned field custom buttons">
+                                    <div class="ui fluid container basic clearing">
+                                        <a href="javascript:LoadItems()" class="ui primary button right floated" style="margin-top:1.5rem">
+                                            <i class="icon search"></i>
+                                            Търси
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <table id="registeredEntities"
+               class="ui celled striped very compact table" style="width:100%; padding:0px;"
+               data-url="@Url.Action("GetRegisteredEntitiesList", "Process")">
+        </table>
+    </div>
+</div>
+@* @await Html.PartialAsync("_BackButton", @Url.Action("Index", "Home", new { area = "" })) *@
+@section Scripts
+{
+    <script src="~/js/admin/process/registeredEntitiesList.js" asp-append-version="true"></script>
+}

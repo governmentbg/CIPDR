@@ -1,9 +1,10 @@
-﻿@model DateTime?
+﻿@using URegister.Infrastructure.Constants
+@model DateTime?
 @{
     var val = "";
     if (Model.HasValue)
     {
-        val = Model.Value.ToString("dd.MM.yyyy");
+        val = Model.Value.ToString(FormattingConstant.NormalDateFormat);
     }
     var containerClass = ViewData["container_class"] ?? "form-group"; 
 }

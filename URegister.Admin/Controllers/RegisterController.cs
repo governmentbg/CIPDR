@@ -1,13 +1,18 @@
 ﻿using DataTables.AspNet.Core;
 using Microsoft.AspNetCore.Mvc;
-using URegister.Core.Models.Register;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Org.BouncyCastle.Utilities;
+using System.ComponentModel.DataAnnotations;
 using URegister.Common;
 using URegister.Core.Contracts;
-using URegister.Infrastructure.Extensions;
-using URegister.NomenclaturesCatalog;
-using URegister.RegistersCatalog;
-using static URegister.NomenclaturesCatalog.NomenclatureGrpc;
+using URegister.Core.Models.Register;
+using URegister.Core.Services;
 using URegister.Infrastructure.Constants;
+using URegister.Infrastructure.Contracts;
+using URegister.IntegrationsCatalog;
+using URegister.RegistersCatalog;
+using static FastExpressionCompiler.ExpressionCompiler;
+using static URegister.IntegrationsCatalog.IntegrationGrpc;
 
 namespace URegister.Admin.Controllers
 {
@@ -16,18 +21,34 @@ namespace URegister.Admin.Controllers
     /// </summary>
     /// <param name="nomenclatureClient"></param>
     /// <param name="registerClient"></param>
+    [Display(Name = "Регистри")]
     public class RegisterController(
         INomenclatureClientService nomenclatureClient,
-        IRegisterClientService registerClient
+        IRegisterClientService registerClient,
+        RegistersCatalogGrpc.RegistersCatalogGrpcClient registerGrpcClient,
+        IntegrationGrpcClient integrationGrpcClient,
+        ILogger<RegisterController> logger
         ) : BaseController
     {
         /// <summary>
         /// Списък регистри
         /// </summary>
         /// <returns></returns>
-        public IActionResult Index()
+        [Display(Name = "Зареждане на списък с регистри")]
+        public async Task<IActionResult> Index()
         {
             var filter = new RegisterFilterVM();
+            await nomenclatureClient.SetViewBagRegister(ViewData);
+
+            var administrationDdlItems = (await registerClient.GetAllAdministrations())
+                .Administrations.Select(a => new SelectListItem(a.Name, a.Id)).ToList();
+            administrationDdlItems.Insert(0, new SelectListItem
+            {
+                Text = "Изберете",
+                Value = null
+            });
+            ViewBag.AdministrationId_ddl = administrationDdlItems;
+
             return View(filter);
         }
 
@@ -38,6 +59,7 @@ namespace URegister.Admin.Controllers
         /// <param name="filter"></param>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Извличане на списък с регистри")]
         public async Task<IActionResult> GetRegisterList(IDataTablesRequest request, RegisterFilterVM filter)
         {
             return await registerClient.GetRegisterFullList(request, filter);
@@ -47,13 +69,20 @@ namespace URegister.Admin.Controllers
         /// Списък регистри
         /// </summary>
         /// <returns></returns>
-        public IActionResult IndexAdministration(int registerId)
+        [Display(Name = "Зареждане на списък с администрации за регистър")]
+        public async Task<IActionResult> IndexAdministration(int registerId)
         {
-            var filter = new AdministrationFilterVM
+            var response = await registerGrpcClient.GetRegisterAsync(new GetRegisterRequest
             {
                 RegisterId = registerId
+            });
+
+            var model = new RegisterVM
+            {
+                Id = registerId,
+                Name = response.Data.Name
             };
-            return View(filter);
+            return View(model);
         }
 
         /// <summary>
@@ -63,6 +92,7 @@ namespace URegister.Admin.Controllers
         /// <param name="filter"></param>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Извличане на списък с администрации към регистър")]
         public async Task<IActionResult> GetAdministrationList(IDataTablesRequest request, AdministrationFilterVM filter)
         {
             return await registerClient.GetAdministrationList(request, filter);
@@ -73,11 +103,12 @@ namespace URegister.Admin.Controllers
         /// Списък от оторозирани лица
         /// </summary>
         /// <returns></returns>
-        public IActionResult IndexPerson(Guid administrationId, int registerId)
+        [Display(Name = "Зареждане на списък с упълномощени лица за администрация")]
+        public IActionResult IndexPerson(Guid registerAdministrationId, int registerId)
         {
             var filter = new PersonFilterVM
             {
-                AdministrationId = administrationId,
+                RegisterAdministrationId = registerAdministrationId,
                 RegisterId = registerId
             };
             return View(filter);
@@ -90,6 +121,7 @@ namespace URegister.Admin.Controllers
         /// <param name="filter"></param>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Извличане на списък с упълномощени лица към администрация")]
         public async Task<IActionResult> GetPersonList(IDataTablesRequest request, PersonFilterVM filter)
         {
             return await registerClient.GetPersonList(request, filter);
@@ -98,14 +130,39 @@ namespace URegister.Admin.Controllers
         /// <summary>
         /// Добавяне на регистър
         /// </summary>
-        /// <param name="nomenclatureType"></param>
         /// <returns></returns>
         [HttpGet]
+        [Display(Name = "Зареждане на форма за добавяне на нов регистър")]
         public async Task<IActionResult> Add()
         {
             await nomenclatureClient.SetViewBagRegister(ViewData);
             var model = await registerClient.CreateRegister();
-            return View(nameof(Add), model);
+            SetRegisterFilesLabel(model);
+            return View(nameof(Edit), model);
+        }
+
+        private void SetRegisterFilesLabel(RegisterVM model)
+        {
+            model.RegisterFiles.FilesLabel = "Прикачени файлове за регистър";
+            model.AdministrationFiles.FilesLabel = "Прикачени файлове за администрация";
+        }
+
+        /// <summary>
+        /// Редакция на регистър
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet]
+        [Display(Name = "Зареждане на форма за редакция на регистър")]
+        public async Task<IActionResult> Edit(int id)
+        {
+            await nomenclatureClient.SetViewBagRegister(ViewData);
+            var model = await registerClient.GetRegister(id, Guid.Empty);
+            if (model.Administration.Id == Guid.Empty)
+            {
+                return View("EditRegister", model);
+            }
+            SetRegisterFilesLabel(model);
+            return View(nameof(Edit), model);
         }
 
         /// <summary>
@@ -114,15 +171,81 @@ namespace URegister.Admin.Controllers
         /// <param name="model">Модел на регистър</param>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Запис или редакция на регистър или администрация")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Add(RegisterVM model)
+        public async Task<IActionResult> Edit(RegisterVM model)
         {
             if (ModelState.IsValid)
-            {
+            {              
+                model.Manager.Phone = model.Manager.Phone.Trim();
+                if (model.Manager.Phone.StartsWith('0'))
+                {
+                    model.Manager.Phone = "+359" + model.Manager.Phone.Remove(0, 1);
+                }
+
+                model.ContactPersons.ForEach(p =>
+                { 
+                p.Phone = p.Phone.Trim();
+                if (p.Phone.StartsWith("0"))
+                {
+                    p.Phone = "+359" + p.Phone.Remove(0, 1);
+                }
+                });
+
                 (var result, var errMsg) = await registerClient.AddRegister(model);
                 if (result)
                 {
-                    SetSuccessMessage("Успешно добавен регистър");
+                    SetSuccessMessage(model.IsEditAdministration ? 
+                        "Успешно записана администрация" : 
+                        "Успешно записан регистър");
+                    return model.IsEditAdministration ? RedirectToAction("IndexAdministration", new {registerId = model.Id}) : RedirectToAction("Index");
+                }
+                else
+                {
+                    SetErrorMessage($"Проблем при запис!{Environment.NewLine}{errMsg}");
+                }
+            }
+            await nomenclatureClient.SetViewBagRegister(ViewData);
+            if (model.Administration.Id == Guid.Empty && model.Id > 0)
+            {
+                return View(nameof(EditRegister), model);
+            }
+            return View(nameof(Edit) , model);
+        }
+
+        private void RemoveErrorForNotUsed(string startWith)
+        {
+            var errors = ModelState.Where(x => x.Value.Errors.Count > 0)
+                                     .Select(x => new { x.Key, x.Value.Errors })
+                                     .ToList();
+            foreach (var error in errors)
+            {
+                if (error.Key.StartsWith(startWith))
+                {
+                    ModelState.Remove(error.Key);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Запис на добавен регистър 
+        /// </summary>
+        /// <param name="model">Модел на регистър</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Display(Name = "Запис на редактиран регистър")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditRegister(RegisterVM model)
+        {
+            RemoveErrorForNotUsed("Manager.");
+            RemoveErrorForNotUsed("Administration.");
+            RemoveErrorForNotUsed("ContactPersons");
+            if (ModelState.IsValid)
+            {
+                (var result, var errMsg) = await registerClient.EditRegister(model);
+                if (result)
+                {
+                    SetSuccessMessage("Успешно записан регистър");
                     return RedirectToAction("Index");
                 }
                 else
@@ -131,8 +254,24 @@ namespace URegister.Admin.Controllers
                 }
             }
             await nomenclatureClient.SetViewBagRegister(ViewData);
-            return View(nameof(Add) , model);
+            return View("EditRegister", model);
         }
+        /// <summary>
+        /// Форма за добавяне на администрация към регистър
+        /// </summary>
+        /// <param name="registerId">Идентификатор на регистъра</param>
+        /// <returns></returns>
+        [HttpGet]
+        [Display(Name = "Зареждане на форма за добавяне на администрация към регистър")]
+        public async Task<IActionResult> AddAdministration(int registerId)
+        {
+            await nomenclatureClient.SetViewBagRegister(ViewData);
+            var model = await registerClient.GetRegisterForAddAdministration(registerId);
+            model.IsEditAdministration = true;
+            SetRegisterFilesLabel(model);
+            return View(nameof(Edit), model);
+        }
+
 
         /// <summary>
         /// Форма за добавяне на администрация към регистър
@@ -140,11 +279,14 @@ namespace URegister.Admin.Controllers
         /// <param name="registerId">Идентификатор на регистъра</param>
         /// <returns></returns>
         [HttpGet]
-        public async Task<IActionResult> AddAdministration(int registerId)
+        [Display(Name = "Зареждане на форма за редакция на администрация към регистър")]
+        public async Task<IActionResult> EditAdministration(int registerId, Guid registerAdministrationId)
         {
             await nomenclatureClient.SetViewBagRegister(ViewData);
-            var model = await registerClient.GetRegisterForAddAdministration(registerId);
-            return View(nameof(Add), model);
+            var model = await registerClient.GetRegister(registerId, registerAdministrationId);
+            model.IsEditAdministration = true;
+            SetRegisterFilesLabel(model);
+            return View(nameof(Edit), model);
         }
 
         /// <summary>
@@ -153,6 +295,7 @@ namespace URegister.Admin.Controllers
         /// <param name="model">Модел на администрацията</param>
         /// <returns></returns>
         [HttpPost]
+        [Display(Name = "Добавяне на администрация към регистър")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddAdministration(RegisterVM model)
         {
@@ -162,7 +305,7 @@ namespace URegister.Admin.Controllers
                 if (result)
                 {
                     SetSuccessMessage("Успешно добавена администрация");
-                    return RedirectToAction("Index");
+                    return RedirectToAction("IndexAdministration", new {registerId = model.Id});
                 }
                 else
                 {
@@ -170,7 +313,25 @@ namespace URegister.Admin.Controllers
                 }
             }
             await nomenclatureClient.SetViewBagRegister(ViewData);
-            return View(nameof(Add), model);
+            return View(nameof(Edit), model);
+        }
+
+        [HttpPost]
+        [Display(Name = "Извличане на базов адрес за регистър")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GetBaseAddress(int id)
+        {
+            var response = await registerGrpcClient.GetRegisterAsync(new GetRegisterRequest
+            {
+                RegisterId = id
+            });
+            var model = new RegisterBaseAddressVM { 
+                Id = id,
+                Code = response.Data.Code,
+                Name = response.Data.Name,
+                BaseAddress = response.Data.BaseAddress,
+            };
+            return PartialView("_BaseAddress", model);
         }
 
         /// <summary>
@@ -179,6 +340,7 @@ namespace URegister.Admin.Controllers
         /// <param name="index"></param>
         /// <param name="prefix"></param>
         /// <returns></returns>
+        [Display(Name = "Добавяне на контактно лице към администрация")]
         public IActionResult AddContactPerson(int index, string prefix)
         {
             var model = new PersonVM
@@ -189,5 +351,216 @@ namespace URegister.Admin.Controllers
             ViewData.TemplateInfo.HtmlFieldPrefix = string.IsNullOrEmpty(prefix) ? $"ContactPersons[{index}]" : $"{prefix}.ContactPersons[{index}]";
             return PartialView("_Person", model);
         }
+
+        /// <summary>
+        /// Премахване на администрация от регистър
+        /// </summary>
+        /// <param name="id">Идентификатор администрацията</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Display(Name = "Премахване на администрация от регистър")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteRegisterAdministration(Guid id)
+        {
+            RemoveAdministrationFromRegisterRequest request =
+                new RemoveAdministrationFromRegisterRequest
+                {
+                    RegisterAdministrationId = id.ToString()
+                };
+
+            ResultStatus resultStatus = registerGrpcClient.RemoveAdministrationFromRegister(request);
+
+            if (resultStatus.Code == ResultCodes.Ok)
+            {
+                SetSuccessMessage("Услугата е изтрита успешно");
+            }
+            else
+            {
+                SetErrorMessage(resultStatus.Message);
+            }
+
+            return Json(null);
+        }
+
+        [HttpPost]
+        [Display(Name = "Извличане на данни за компания по ЕИК")]
+        [ValidateAntiForgeryToken]
+        public async Task<JsonResult> GetCompanyData(string uic)
+        {
+            var validationResult = PidValidateService.ValidateCompanyId(uic, (int)CidTypes.EIK);
+
+            if (!validationResult)
+            {
+                return new JsonResult(new { success = false, message = $"'{uic}' e невалиден" });
+            }
+
+            GetCompanyInfoRequest request = new GetCompanyInfoRequest()
+            {
+                Cid = uic,
+                CidType = (int)CidTypes.EIK,
+                ContextInfo = new IntegrationServiceContextInfo()
+                {
+                    EmployeeAdministration = 
+                        UserContext.AvailableAdministrations.FirstOrDefault(a => UserContext.AdministrationId.ToString() == a.Id)?.Name,
+                    EmployeeNames = UserContext.FirstName + " " + UserContext.LastName,
+                    EmployeePosition = string.Join(UserRoles.GlobalAdmin)
+                }
+            };
+
+            GetCompanyInfoResponse response = await integrationGrpcClient.GetCompanyInfoAsync(request);
+
+            if (response.ResultStatus.Code != ResultCodes.Ok)
+            {
+                logger.LogError($"Не може да се извлекат данни за компания в {nameof(GetCompanyData)}");
+                return new JsonResult(new
+                {
+                    success = false,
+                    //message = response.ResultStatus.Message,
+                    message = "Проблем при извличане на данни за компания",
+                });
+            }
+
+            return new JsonResult(new
+            {
+                success = true,
+                companyName = response.Name,
+                legalFormCode = response.LegalFormCode,
+                legalFormName = response.LegalFormName,
+                apartmentNumber = response.ApartmentNumber,
+                buildingNumber = response.BuildingNumber,
+                countryCode = response.CountryCode,
+                countryName = response.CountryName,
+                entranceName = response.EntranceName,
+                floorNumber = response.FloorNumber,
+                foreignAddress = response.ForeignAddress,
+                postCode = response.PostCode,
+                regionCode = response.RegionCode,
+                regionName = response.RegionName,
+                settlementCode = response.SettlementCode,
+                settlementName = response.SettlementName,
+                streetName = response.StreetName,
+                streetNumber = response.StreetNumber
+            });
+        }
+        /// <summary>
+        /// Редакция на статус регистър
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet]
+        [Display(Name = "Зареждане на форма за редакция на статус на регистър")]
+        public async Task<IActionResult> EditStatus(int registerId)
+        {
+            await nomenclatureClient.SetViewBagRegister(ViewData);
+            var register = await registerClient.GetRegister(registerId, Guid.Empty);
+            var model = new RegisterStatusVM
+            {
+                RegisterId = register.Id,
+                StatusId = register.StatusId,
+            };
+            return View("EditStatus", model);
+        }
+        /// <summary>
+         /// Запис на статус регистър
+         /// </summary>
+         /// <returns></returns>
+        [HttpPost]
+        [Display(Name = "Запис на статус на регистър")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditStatus(RegisterStatusVM model)
+        {
+            if (!ModelState.IsValid) {
+                await nomenclatureClient.SetViewBagRegister(ViewData);
+                return View("EditStatus", model);
+            }
+            await registerClient.AddRegisterStatus(model);
+            SetSuccessMessage("Успешно записан статус на регистър");
+            return RedirectToAction("Index");
+        }
+        /// <summary>
+        /// Partial за файл към администрация
+        /// </summary>
+        /// <param name="index"></param>
+        /// <param name="prefix"></param>
+        /// <returns></returns>
+        [Display(Name = "Добавяне на файл към администрация")]
+        public IActionResult AddRegisterFile(int index, string prefix)
+        {
+            var model = new RegisterFileVM
+            {
+                Index = index,
+            };
+            ViewData.TemplateInfo.HtmlFieldPrefix = $"{prefix}[{index}]";
+            return PartialView("_RegisterFile", model);
+        }
+
+        /// <summary>
+        /// Уплоад на файл
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost]
+        [Display(Name = "Уплоад на файл")]
+        [ValidateAntiForgeryToken]
+        public async Task<JsonResult> UploadFile(IFormFile file)
+        {
+            var metaFileId = await registerClient.UploadFile(file, Guid.Empty, 0);
+            return Json(new { metaFileId });
+        }
+
+        /// <summary>
+        /// Доунлоад на файл
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost]
+        [Display(Name = "Доунлоад на файл")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DownloadFile(Guid id)
+        {
+            (var fileData, var contentType, var fileName) = await registerClient.DownloadFile(id);
+            return File(fileData, contentType,Uri.EscapeDataString(fileName));
+        }
+
+
+
+        // <summary>
+        /// списък с статуси на регистър
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="filter"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [Display(Name = "Извличане на списък с статуси на регистър")]
+        public async Task<IActionResult> GetRegisterStatusList(IDataTablesRequest request, AdministrationFilterVM filter)
+        {
+            return await registerClient.GetRegisterStatusList(request, filter.RegisterId);
+        }
+
+        // <summary>
+        /// Списък регистри
+        /// </summary>
+        /// <returns></returns>
+        [Display(Name = "Зареждане на списък с статуси на регистър")]
+        public async Task<IActionResult> IndexStatus(int registerId)
+        {
+            var response = await registerGrpcClient.GetRegisterAsync(new GetRegisterRequest
+            {
+                RegisterId = registerId
+            });
+
+            var model = new RegisterVM
+            {
+                Id = registerId,
+                Name = response.Data.Name
+            };
+            return View(model);
+        }
+
+        [Display(Name = "Преглед на статус")]
+        public async Task<IActionResult> PreviewStatus(Guid registerStatusId)
+        {
+            await nomenclatureClient.SetViewBagRegister(ViewData);
+            var model = await registerClient.GetRegisterStatus(registerStatusId);
+            return View("PreviewStatus", model);
+        }
+        
     }
 }

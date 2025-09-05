@@ -1,0 +1,25 @@
+﻿@using URegister.Core.Models.Register
+@* @model AdministrationFilterVM *@
+@model RegisterVM
+@{
+    ViewData["Title"] = $"Промяна статус на {Model.Name}";
+}
+@Html.HiddenFor(x => x.Id)
+<div class="ui grid">
+    <div class="column">
+         <div class="column">
+            <table id="registerStatus"
+                   class="ui celled striped very compact table" style="width:100%; padding:0px;"
+                   data-url="@Url.Action("GetRegisterStatusList", "Register")">
+             </table>
+        </div>
+    </div>
+</div>
+@await Html.PartialAsync("_BackButton", @Url.Action("Index"))
+@{
+    await Html.RenderPartialAsync("_ConfirmAction");
+}
+@section Scripts
+{
+    <script src="~/js/register/registerStatusList.js" asp-append-version="true"></script>
+}

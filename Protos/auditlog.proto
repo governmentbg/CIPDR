@@ -1,0 +1,71 @@
+syntax = "proto3";
+import "common.proto";
+import "google/protobuf/wrappers.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "URegister.AuditLog";
+
+package auditlog;
+
+service AuditLogGrpc {
+    rpc AddAuditLogAndEntities(AuditEntitiesMessage) returns (common.ResultStatus);
+    rpc GetAuditLogRecordsList(DatatableRequestWithAuditLogFilter) returns (AuditListResponse);
+    rpc GetAuditEntityValues(google.protobuf.StringValue) returns (AuditEntityListResponse);
+}
+
+message AuditMessage{
+    google.protobuf.StringValue id = 1;
+    google.protobuf.StringValue user_id = 2;
+    string activity_id = 3;
+    google.protobuf.StringValue activity_tags = 4;
+    string project_name = 5;
+    string controller = 6;
+    string action = 7;
+    string method = 8;
+    google.protobuf.StringValue parameters = 9;
+    google.protobuf.StringValue post_data = 10;
+    google.protobuf.StringValue ip_address = 11;
+    string administration_id = 12;
+    optional google.protobuf.Timestamp createdDate = 13;
+    int32 register_id = 14;
+    google.protobuf.StringValue activity_from_id = 15;
+    google.protobuf.StringValue user_full_name = 16;
+}
+message AuditEntitiesMessage{
+    string audit_id = 1;
+    optional AuditMessage audit = 2;
+    repeated AuditEntityMessage audit_entities = 11;
+}
+
+message AuditEntityMessage{
+    string table_name = 2;
+    string type = 3;
+    google.protobuf.StringValue old_values = 4;
+    google.protobuf.StringValue new_values = 5;
+    google.protobuf.StringValue affected_columns = 6;
+    google.protobuf.StringValue primary_key = 7;
+}
+
+message AuditListResponse{
+    repeated AuditMessage audit_list = 1;
+    common.ResultStatus status = 2;
+    int32 count_all = 3;
+}
+
+message AuditEntityListResponse{
+    repeated AuditEntityMessage audit_entities = 1;
+    common.ResultStatus status = 2;
+}
+
+message DatatableRequestWithAuditLogFilter{
+    common.DatatableRequest request = 1;
+    AuditLogFilter filter = 2;
+}
+
+message AuditLogFilter{
+    optional google.protobuf.Timestamp date_from = 1;
+    optional google.protobuf.Timestamp date_to = 2;
+    optional string method = 3;
+    optional string ip_address = 4;
+    optional string user_name = 5;
+}

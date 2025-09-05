@@ -9,7 +9,8 @@
     NomenclaturePublicRequest getNomenclaturesRequest = new NomenclaturePublicRequest
     {
         RegisterId = await RegisterService.GetCurrentRegisterId(),
-        NomenclatureTypes = { Model.NomenclatureType }
+        NomenclatureTypes = { Model.NomenclatureType },
+        SkipDateCheck = Model.IsReadonly
     };
 
     NomenclaturePublicResponse nomenclatureResult = null;
@@ -23,19 +24,27 @@
         if (nomenclatureResult.ResultStatus.Code != ResultCodes.Ok)
         {
             //Logger.LogError($"Проблем при зареждане на номенклатура {Model.NomenclatureType} в FormFieldSelect)");
-            TempData[MessageConstant.ErrorMessage] = "Проблем с връзката, презаредете страницата";
+            TempData[MessageConstant.ErrorMessage] = MessageConstant.NetworkProblemReload;
         }
         else
         {
-            list = nomenclatureResult.NomenclatureTypes
-                .First()
-                .CodeableConcepts.Select(concept => new SelectListItem(concept.Value, concept.Code)).ToList();
+            if (!nomenclatureResult.NomenclatureTypes.Any())
+            {
+                TempData[MessageConstant.WarningMessage] =
+                    string.Format(MessageConstant.NomenclatureNotAvailable, Model.NomenclatureType);
+            }
+            else
+            {
+                list = nomenclatureResult.NomenclatureTypes
+                    .Single()
+                    .CodeableConcepts.Select(concept => new SelectListItem(concept.Value, concept.Code)).ToList();
+            }
         }
     }
     catch (Exception ex)
     {
         //Logger.LogError(ex, $"Проблем при зареждане на номенклатура {Model.NomenclatureType} в FormFieldSelect)");
-        TempData[MessageConstant.ErrorMessage] = "Проблем с връзката, презаредете страницата";
+        TempData[MessageConstant.ErrorMessage] = MessageConstant.NetworkProblemReload;
     }
 
     string placeHolder = string.IsNullOrEmpty(Model.Placeholder) ? string.Empty : Model.Placeholder;

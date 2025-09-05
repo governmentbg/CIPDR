@@ -1,26 +1,78 @@
-﻿@using Microsoft.AspNetCore.Identity
-@inject SignInManager<IdentityUser> SignInManager
-@inject UserManager<IdentityUser> UserManager
+﻿@using URegister.Core.Contracts
+@using URegister.Infrastructure.Constants
+@using System.Reflection
+@using System.ComponentModel
+@inject IUserContext UserContext
+@{
+    // Get all the roles from the UserRoles static class using reflection
+    var roles = typeof(UserRoles)
+               .GetFields(BindingFlags.Public | BindingFlags.Static)
+               .Select(f => new
+               {
+                   Role = f.GetValue(null).ToString(),
+                   Description = f.GetCustomAttribute<DescriptionAttribute>()?.Description
+               })
+               .ToList();
 
-<ul class="navbar-nav">
-@if (SignInManager.IsSignedIn(User))
+    // Get all roles that the user belongs to and their descriptions
+    var userRoles = roles.Where(r => User.IsInRole(r.Role)).ToList();
+    //var rolesText = string.Join(", ", userRoles.Select(r => r.Description)); // Join descriptions with commas
+}
+
+@if (User.Identity.IsAuthenticated)
 {
-    <li class="nav-item">
-        <a  class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage">Hello @User.Identity?.Name!</a>
-    </li>
-    <li class="nav-item">
-        <form  class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
-            <button  type="submit" class="nav-link btn btn-link text-dark">Logout</button>
-        </form>
-    </li>
+    <div class="right menu">
+        <div class="ui simple dropdown item">
+            Здравей, @User.Identity?.Name! <i class="dropdown icon"></i>
+            <div class="menu">
+                @if (userRoles.Any())
+                {
+                    foreach (var role in userRoles)
+                    {
+                        <a class="disabled item">@role.Description</a>
+                    }
+
+                    // Разделетил
+                }
+
+                @if (UserContext.AvailableAdministrations.Count > 0)
+                {
+                    <div class="divider"></div>
+                    <div class="header">
+                        <i class="university icon"></i>
+                        Администрации
+                    </div>
+                    @foreach (var administration in UserContext.AvailableAdministrations)
+                    {
+                        @if (administration.Id == UserContext.AdministrationId.ToString())
+                        {
+                            <a class="active item">@administration.Name</a>
+                        }
+                        else
+                        {
+                            <div class="item">
+                                <form asp-controller="Account" asp-area="Admin" asp-action="ChangeAdministration" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="returnUrl" value="@Context.Request.Path"/>
+                                    <input type="hidden" name="administrationId" value="@administration.Id"/>
+                                    <button type="submit" class="button-like-link" style="color: gray;">
+                                        @administration.Name
+                                    </button>
+                                </form>
+                            </div>
+                        }
+                    }
+                    // Разделител
+                }
+
+                <a class="item" href="@Url.Action("Logout", "Account", new {area = "Admin"})"><i class="log out icon"></i> Изход</a>
+            </div>
+        </div>
+    </div>
 }
 else
 {
-    <li class="nav-item">
-        <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Register">Register</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Login">Login</a>
-    </li>
+    <div class="right menu">
+        <a class="item" href="@Url.Action("Login", "Account", new {area = "Admin"})"><i class="sign in alternate icon"></i> Вход</a>
+    </div>
 }
-</ul>

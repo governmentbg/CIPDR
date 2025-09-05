@@ -1,0 +1,31 @@
+﻿@using URegister.Core.Models.Register
+@using URegister.Infrastructure.Constants
+@model RegisterStatusVM
+
+@{
+    ViewBag.Title = "Статус на регистър";
+    var htmlFieldPrefix = ViewData.TemplateInfo.HtmlFieldPrefix;
+}
+@Html.HiddenFor(model => model.Id)
+@Html.HiddenFor(model => model.RegisterId)
+@Html.AntiForgeryToken()
+<div class="ui form">
+    <div class="fields">
+        <div class='six wide field'>
+            @Html.EditorFor(model => model.StatusId, "DropDownIntDisabled", new { Ddl = ViewData[$"{InternalNomenclatureTypes.RegisterStatus}_ddl"] })
+        </div>
+    </div>
+    <div class="fields">
+        <div class="sixteen wide field">
+            @Html.EditorFor(model => model.Remark, "TextAreaDisabled")
+        </div>
+    </div>
+    <div class="column ui segment green register-info">
+        @foreach (var registerFile in Model.RegisterFiles.Files)
+        {
+            await Html.RenderPartialAsync("_DownloadRegisterFile", registerFile);
+        }
+    </div>
+</div>
+<div class="ui fluid container basic clearing segment"></div>
+@await Html.PartialAsync("_BackButton", @Url.Action("Index"))

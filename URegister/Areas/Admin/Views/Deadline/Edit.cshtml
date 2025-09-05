@@ -1,0 +1,37 @@
+﻿@using URegister.Core.Models.Deadline
+@using URegister.Core.Models.Service
+@using URegister.Infrastructure.Constants
+@model DeadlineVM
+@{
+    ViewBag.Title = Model.Id > 0 ? "Добавяне на срок" : "Редакция на срок";
+}
+<div class="ui grid">
+    <form class="ui sixteen wide column" action="@Url.Action("Edit")" method="post" enctype="multipart/form-data">
+        <div class="content">
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class='eight wide field'>
+                            @Html.EditorFor(model => model.ServiceId, "DropDownInt")
+                        </div>
+
+                        <div class='eight wide field'>
+                            @Html.EditorFor(model => model.DeadlineTypeId, "DropDown", new { Ddl = ViewData[$"{InternalNomenclatureTypes.DeadlineType}_ddl"] })
+                        </div>
+                    </div>
+
+                    <div class="fields">
+                        <div class='eight wide field'>
+                            @Html.EditorFor(model => model.DayTypeId, "DropDown", new { Ddl = ViewData[$"{InternalNomenclatureTypes.DeadlineDayType}_ddl"] })
+                        </div>
+                        <div class='eight wide field'>
+                            @Html.EditorFor(model => model.Days, "Int32Nullable")
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ui fluid container basic clearing segment"></div>
+            @await Html.PartialAsync("_BackSubmitButton", @Url.Action("Index"))
+        </div>
+    </form>
+</div>
