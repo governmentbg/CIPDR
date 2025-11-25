@@ -509,7 +509,7 @@ function renderPreview() {
                             <span class="category">${item.type}</span>
                         </div>                     
                     </div>
-                     <div class="extra content field-buttons">
+                     <div class="extra content field-buttons" style="${item.isBatchOwner ? 'background-color: lightgreen;' : (item.isSubmitter ? 'background-color: lightblue;' : '')}">
                         <div class="ui wrapped wrapping icon buttons">
                             <button class="ui mini icon button replace-left" data-tooltip="Преместване наляво" data-position="bottom left" data-variation="tiny" ${moveLeftDisabled}>
                                 <i class="icon angle left"></i>

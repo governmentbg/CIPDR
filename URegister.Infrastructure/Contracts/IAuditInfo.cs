@@ -92,5 +92,7 @@ namespace URegister.Infrastructure.Contracts
         string ProjectName { get; set; }
         int RegisterId { get; set; }
         Guid AdministrationId { get; set; }
+
+        void SetAuditInfoForQuartz(string queue, string method);
     }
 }

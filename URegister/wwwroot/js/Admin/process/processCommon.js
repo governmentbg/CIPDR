@@ -1,57 +1,65 @@
-function ProcessesColumns(addApplicant) {
-    let result = [
-        {
-            name: 'incomingNumber',
-            data: 'incomingNumber',
-            title: 'Входящ номер',
-            sortable: true,
-            searchable: true,
-            type: 'string'
-        },
-        {
-            name: 'incomingDate',
-            data: 'incomingDate',
-            title: 'Входирано на',
-            sortable: true,
-            searchable: false,
-            "render": function (data) {
-                return JsonBGDateTime(data);
-            }
-        },
-        {
-            name: 'oldIncomingDate',
-            data: 'oldIncomingDate',
-            title: 'Стара дата входиране',
-            sortable: true,
-            searchable: false,
-            "render": function (data) {
-                return JsonBGDateTime(data);
-            }
-        },
-        {
-            name: 'oldIncomingNumber',
-            data: 'oldIncomingNumber',
-            title: 'Стар входящ номер',
-            sortable: true,
-            searchable: true,
-            type: 'string'
-        },
-        {
-            name: 'registerNumber',
-            data: 'registerNumber',
-            title: 'Рег. номер',
-            sortable: true,
-            searchable: true,
-            type: 'string'
-        },
-        {
-            name: 'serviceName',
-            data: 'serviceName',
-            title: 'Услуга',
-            sortable: true,
-            searchable: true
-        },
-        {
+function ProcessesColumns(addApplicant, hideHistoryButton) {
+    let result = [];
+
+    result.push({
+        name: 'incomingNumber',
+        data: 'incomingNumber',
+        title: 'Входящ номер',
+        sortable: true,
+        searchable: true,
+        type: 'string'
+    });
+
+    result.push({
+        name: 'incomingDate',
+        data: 'incomingDate',
+        title: 'Входирано на',
+        sortable: true,
+        searchable: false,
+        "render": function (data) {
+            return JsonBGDateTime(data);
+        }
+    });
+
+    result.push({
+        name: 'oldIncomingDate',
+        data: 'oldIncomingDate',
+        title: 'Стара дата входиране',
+        sortable: true,
+        searchable: false,
+        "render": function (data) {
+            return JsonBGDateTime(data);
+        }
+    });
+
+    result.push({
+        name: 'oldIncomingNumber',
+        data: 'oldIncomingNumber',
+        title: 'Стар входящ номер',
+        sortable: true,
+        searchable: true,
+        type: 'string'
+    });
+
+    result.push({
+        name: 'registerNumber',
+        data: 'registerNumber',
+        title: 'Рег. номер',
+        sortable: true,
+        searchable: true,
+        type: 'string'
+    });
+
+    result.push({
+        name: 'serviceName',
+        data: 'serviceName',
+        title: 'Услуга',
+        sortable: true,
+        searchable: true
+    });
+
+    if (!$('#RegisterServiceHasJustOneStep').length || $('#RegisterServiceHasJustOneStep').val() !== 'True') {
+        result.push({
             name: 'statusId',
             data: 'statusId',
             title: 'Статус',
@@ -60,21 +68,25 @@ function ProcessesColumns(addApplicant) {
             render: function (data, type, row) {
                 return row.status;
             }
-        },
-        {
+        });
+
+        result.push({
             name: 'stepName',
             data: 'stepName',
             title: 'Изпълнена стъпка',
             sortable: true,
             searchable: true
-        },
-        {
-            name: 'partida',
-            data: 'partida',
-            title: 'Партида',
-            sortable: false,
-            searchable: false
-        }];
+        });
+    }
+
+    result.push({
+        name: 'partida',
+        data: 'partida',
+        title: 'Партида',
+        sortable: false,
+        searchable: false
+    });
+
     if (addApplicant) {
         result.push({
             name: 'applicant',
@@ -84,6 +96,7 @@ function ProcessesColumns(addApplicant) {
             searchable: false
         });
     }
+
     result.push({
         name: 'actions',
         data: "id",
@@ -95,24 +108,26 @@ function ProcessesColumns(addApplicant) {
         "render": function (data, type, row) {
             let result = `<a href="/Admin/Process/PreView?processId=${data}&isReadonly=true" data-tooltip="Преглед" class="ui tertiary icon button">
                                 <i class="info circle icon"></i>
-                           </a>` +
-                `<a href="javascript:showHistoryModal('${data}')" data-tooltip="История" class="ui tertiary icon button">
+                           </a>`;
+
+            if (!hideHistoryButton) {
+                result += `<a href="javascript:showHistoryModal('${data}')" data-tooltip="История" class="ui tertiary icon button">
                                 <i class="history icon"></i>
                            </a>`;
+            }
+                
             if (row.hasNextStep) {
                 result += `<a href="/Admin/Process/AddStep?processId=${data}" data-tooltip="Следваща стъпка ${row.nextStep}" class="ui tertiary icon button">
                                 <i class="angle double right icon"></i>
                            </a>`
-
             }
             if (row.hasClose) {
-                let deleteLink = `<a href="javascript:deleteProcess('${data}', '${row.incomingNumber}')" 
-                                                  type="button" 
-                                                  class="ui tertiary icon button" 
+                let deleteLink = `<a href="javascript:deleteProcess('${data}', '${row.incomingNumber}')"
+                                                  type="button"
+                                                  class="ui tertiary icon button"
                                                   data-tooltip="Прекратяване">
                                                   <i class="times right icon"></i>
                                               </a>`;
-
                 result += deleteLink;
             }
             if (row.hasChange) {
@@ -135,22 +150,23 @@ function ProcessesColumns(addApplicant) {
                                 <i class="envelope open outline icon"></i>
                            </a>`;
             }
-            
+
             if (row.hasDeAssignUser) {
-                let deAssignUserLink = `<a href="javascript:deAssignUser('${data}', '${row.incomingNumber}')" 
-                                                  type="button" 
-                                                  class="ui tertiary icon button" 
+                let deAssignUserLink = `<a href="javascript:deAssignUser('${data}', '${row.incomingNumber}')"
+                                                  type="button"
+                                                  class="ui tertiary icon button"
                                                   data-tooltip="Връщане за обработка">
                                                   <i class="reply icon"></i>
                                               </a>`;
-
                 result += deAssignUserLink;
             }
             return result;
         }
     });
+
     return result;
 }
+
 function deleteProcess(id, incomingNumber) {
     $('#confirmActionText').text("Сигурни ли сте, че искате да прекратите заявена услуга с входящ номер " + incomingNumber);
     $('.confirm-action')

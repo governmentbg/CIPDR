@@ -50,6 +50,7 @@ message UserData {
 	repeated RoleData roles = 13;
 	optional bool receive_e_form_notification = 14;
 	optional string register_code = 15;
+	bool receive_email_on_error = 16;
 }
 
 message UpsertUserResponse {
@@ -108,6 +109,12 @@ message UserFilter {
 	common.DatatableRequest datatable_request = 5;
 	optional google.protobuf.BoolValue active_users = 6;
 	optional string register_code = 7;
+	google.protobuf.StringValue first_name = 8;
+	google.protobuf.StringValue middle_name = 9;
+	google.protobuf.StringValue last_name = 10;
+	google.protobuf.StringValue role_id = 11;
+	google.protobuf.StringValue email = 12;
+	optional bool receive_email_on_error = 16;
 }
 
 message UserListData {

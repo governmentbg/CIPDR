@@ -1,10 +1,4 @@
 ﻿using NodaTime;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Metadata;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace URegister.Infrastructure.Extensions
 {
@@ -34,7 +28,7 @@ namespace URegister.Infrastructure.Extensions
         }
         public static DateTime SetToUtc(this DateTime dt)
         {
-            return  DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+            return DateTime.SpecifyKind(dt, DateTimeKind.Utc);
         }
         public static DateTime ConvertUtcToBGTime(this DateTime dt)
         {
@@ -68,6 +62,16 @@ namespace URegister.Infrastructure.Extensions
             }
             else
                 return model;
+        }
+
+        public static DateTime ConvertBgTimeToUtc(this DateTime dt)
+        {
+            DateTimeZone zone = DateTimeZoneProviders.Tzdb["Europe/Sofia"];
+            var localtime = LocalDateTime.FromDateTime(dt);
+            var zonedtime = localtime.InZoneLeniently(zone);
+            dt = zonedtime.ToInstant().InZone(zone).ToDateTimeUtc();
+
+            return dt;
         }
     }
 }

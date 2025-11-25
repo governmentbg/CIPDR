@@ -1,0 +1,24 @@
+﻿@{
+    ViewData["Title"] = $"Списък на формули към форма '{ViewData["FormTitle"]}'";
+}
+
+<div class="ui grid">
+    <div class="column">
+        <div class="column">
+            <table id="field_formula"
+                class="ui celled striped very compact table" style="width:100%; padding:0px;"
+                   data-url="@Url.Action("GetList", "FieldFormula", new { formParentId = ViewData["FormParentId"] })"
+                   data-add-url="@Url.Action("Add", "FieldFormula", new { formParentId = ViewData["FormParentId"] })">
+             </table>
+        </div>
+    </div>
+</div>
+@await Html.PartialAsync("_BackButton", @Url.Action("FormIndex", "Catalog", new { area = "Admin" }))
+@{
+    await Html.RenderPartialAsync("_ConfirmAction");
+}
+
+@section Scripts
+{
+    <script src="~/js/admin/field_formula/formulaList.js" asp-append-version="true"></script>
+}

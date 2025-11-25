@@ -39,5 +39,9 @@ namespace URegister.Infrastructure.Constants
         [Description("Заличаване")] Delete = 91,      
         [Description("Самодопълващо се с категория")] AutocompleteWithCategory = 47,
         [Description("Компания с адрес")] CompanyWithAddress = 49,
+        [Description("Физическо или юридическо лице")] MPREntity = 104,
+        [Description("Българска валута")] BulgarianCurrency = 105,
+        [Description("Оторизиран служител")] authorizedOfficial = 99,//Умишлено с малка буква, така е в базата
+        [Description("Лице с длъжност")] namePosition = 97//Умишлено с малка буква, така е в базата
     }
 }

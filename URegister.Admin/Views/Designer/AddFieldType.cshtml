@@ -1,14 +1,24 @@
 ﻿@model URegister.Infrastructure.Model.RegisterForms.AddFieldTypeViewModel
 @{
-    ViewData["Title"] = "Добавяне на тип поле";
+    //ViewData["Title"] = "Добавяне на тип поле";
+    string readonlyClass = Model.Id > 0 ? "readonly=readonly" : string.Empty;
 }
 
 <form asp-action="AddFieldType" method="post" enctype="multipart/form-data" id="Add">
     @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.Id)
     <div class="ui form">
         <div class="fields">
             <div class="four wide field">@Html.EditorFor(m => m.Label, "StringProperty")</div>
-            <div class="four wide field">@Html.EditorFor(m => m.Type, "StringProperty")</div>
+            @if (Model.Id > 0)
+            {
+                <div class="four wide field" @readonlyClass>@Html.EditorFor(m => m.Type, "StringDisabled")</div>
+            }
+            else
+            {
+                <div class="four wide field" @readonlyClass>@Html.EditorFor(m => m.Type, "StringProperty")</div>
+            }
+            <div class="eight wide field">@Html.EditorFor(m => m.RegisterRestrictionCodes, "MultiselectString")</div>
         </div>
     </div>
     <div class="fields">

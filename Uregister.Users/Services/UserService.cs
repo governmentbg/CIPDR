@@ -77,15 +77,23 @@ namespace Uregister.Users.Services
             {
                 try
                 {
-                    var searchPrefix = request.DatatableRequest.Filter ?? string.Empty;
-                    var usersQuery = userManager.Users
-                        .Where(u => Guid.Empty == admId || u.AdministrationId == admId ||
-                            (u.Claims.Any(c => c.ClaimType == CustomClaimType.AvailableAdministration && c.ClaimValue == request.AdministrationId)))
-                        .TagWith(nameof(GetUserList))
+                    var usersQuery = userManager.Users.TagWith(nameof(GetUserList))
+                        .Where(u => (Guid.Empty == admId || 
+                                    u.AdministrationId == admId ||
+                                    (u.Claims.Any(c => c.ClaimType == CustomClaimType.AvailableAdministration && 
+                                                       c.ClaimValue == request.AdministrationId))) &&
+                                    (string.IsNullOrWhiteSpace(request.FirstName) || EF.Functions.ILike(u.FirstName, "%" + request.FirstName + "%")) &&
+                                    (string.IsNullOrWhiteSpace(request.MiddleName) || EF.Functions.ILike(u.MiddleName, "%" + request.MiddleName + "%")) &&
+                                    (string.IsNullOrWhiteSpace(request.LastName) || EF.Functions.ILike(u.LastName, "%" + request.LastName + "%")) &&
+                                    (string.IsNullOrWhiteSpace(request.Email) || (!string.IsNullOrWhiteSpace(u.Email) && EF.Functions.ILike(u.Email, "%" + request.Email + "%"))) &&
+                                    (string.IsNullOrWhiteSpace(request.RoleId) || u.UserRoles.Any(r => r.Role.Id.ToString() == request.RoleId)) &&
+                                    (!request.HasReceiveEmailOnError || u.ReceiveEmailOnError == request.ReceiveEmailOnError) &&  
+                                    (request.ActiveUsers != true || u.Enable)
+                                    )
                         .Select(u => new UserListData
                         {
                             Id = u.Id.ToString(),
-                            Email = u.Email,
+                            Email = u.Email ?? string.Empty,
                             FirstName = u.FirstName,
                             MiddleName = u.MiddleName,
                             LastName = u.LastName,
@@ -94,20 +102,7 @@ namespace Uregister.Users.Services
                         });
 
                     users.UserCount = await usersQuery.CountAsync();
-
-                    if (string.IsNullOrEmpty(searchPrefix) == false)
-                    {
-                        searchPrefix = $"%{searchPrefix}%";
-
-                        usersQuery = usersQuery.Where(q => EF.Functions.ILike(q.Email, searchPrefix) ||
-                                                 EF.Functions.ILike(q.Email, searchPrefix) ||
-                                                 EF.Functions.ILike(q.FirstName, searchPrefix) ||
-                                                 EF.Functions.ILike(q.MiddleName, searchPrefix) ||
-                                                 EF.Functions.ILike(q.LastName, searchPrefix));
-
-                        users.UserCount = await usersQuery.CountAsync();
-                    }
-
+                  
                     if (request.DatatableRequest.Length < 0)
                     {
                         usersQuery = usersQuery.OrderBy(request.DatatableRequest.OrderBy);
@@ -277,7 +272,8 @@ namespace Uregister.Users.Services
                             LastName = appUser.LastName,
                             AdministrationId = appUser.AdministrationId.ToString(),
                             Administration = appUser.Administration,
-                            UserName = appUser.UserName
+                            UserName = appUser.UserName,
+                            ReceiveEmailOnError = appUser.ReceiveEmailOnError,
                         };
 
                         var login = await userManager.GetLoginsAsync(appUser);

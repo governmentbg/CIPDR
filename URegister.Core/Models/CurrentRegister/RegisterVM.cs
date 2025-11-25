@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using URegister.Infrastructure.Constants;
 
 namespace URegister.Core.Models.CurrentRegister
@@ -66,5 +67,11 @@ namespace URegister.Core.Models.CurrentRegister
         [MaxLength(5, ErrorMessage = MessageConstant.StringMaxLengthValidation)]
         [Display(Name = "Начин на вписване")]
         public string TypeEntry { get; set; } = null!;
+
+        /// <summary>
+        /// Историята не е публична
+        /// </summary>
+        [DisplayName("Историята не е публична")]
+        public bool HistoryNotPublic { get; set; } = false;
     }
 }

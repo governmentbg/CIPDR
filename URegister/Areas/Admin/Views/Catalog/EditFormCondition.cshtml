@@ -1,0 +1,30 @@
+﻿@model URegister.Infrastructure.Model.RegisterForms.AddConditionViewModel
+
+<div class="ui green clearing segment">
+    <form asp-action="EditFormCondition" method="post" enctype="multipart/form-data" id="Add">
+        @Html.HiddenFor(model => model.Id)
+        @Html.HiddenFor(model => model.FormParentId)
+        @Html.AntiForgeryToken()
+        <div class="ui form">
+            <div class="fields">
+                <div class="eight wide field">@Html.EditorFor(m => m.TriggeringFieldName, "DropDown")</div>
+                <div class="eight wide field">@Html.EditorFor(m => m.TriggeringNomenclatureValue, "DropDown")</div>
+            </div>
+        </div>
+        <div class="ui form">
+            <div class="fields">
+                <div class="sixteen wide field">@Html.EditorFor(m => m.FieldsToHide, "MultiselectString")</div>
+            </div>
+        </div>
+        <div class="fields">
+            <button class="ui right floated primary button" type="submit">
+                <i class="save icon"></i>
+                Запис
+            </button>
+            <a href="@Url.Action("FormConditions", "Catalog", new { area = "Admin", formParentId = @Model.FormParentId })" class="ui right floated button"><i class="arrow left icon"></i> Назад</a>
+        </div>
+    </form>
+</div>
+@section Scripts {
+    <script src="~/js/admin/catalog/editFormCondition.js" asp-append-version="true"></script>
+}

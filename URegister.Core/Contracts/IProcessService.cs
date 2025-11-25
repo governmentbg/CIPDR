@@ -6,6 +6,7 @@ using URegister.Core.Data.Models.Common;
 using URegister.Core.Data.Models.Process;
 using URegister.Core.Models.Process;
 using URegister.Core.Services;
+using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Model.EDelivery;
 using URegister.Infrastructure.Model.RegisterForms;
 
@@ -81,7 +82,7 @@ namespace URegister.Core.Contracts
         Task<byte[]> GetCertificateFileSigned(Guid processId);
         Task<List<RegisterItem>> AddRegisterItems(Process process, List<FormField> formFields, Guid processStepId, int userTimeZoneOffsetInMinutes);
         Task SendMessageForProcess(Guid processId, byte[] filesAsBytes, int typeMessageId, string sourceId, string message);
-        (string?, string?, string?) GetMPRIData(int roleId, List<FormField> formFields);
+        (string?, string?, string?) GetMPRIData(PersonRole roleId, List<FormField> formFields);
 
         /// <summary>
         /// Връща историята на заявена услуга

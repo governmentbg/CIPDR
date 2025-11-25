@@ -1,30 +1,7 @@
 ﻿$(function () {
-    let administrationId = $('#administrationDropdown').dropdown('get value');
-    let administrationName = $('#administrationDropdown').dropdown('get text');
-    $('#administrationDropdown').dropdown({
-        onChange: function (value) {
-            administrationId = $('#administrationDropdown').dropdown('get value');
-            administrationName = $('#administrationDropdown').dropdown('get text');
-            LoadUsers(administrationId, administrationName);
-        }
-    });
-
-    LoadUsers(administrationId, administrationName);
+    openAccordionFilter()
+    loadUsers();
 });
-
-function openConfirmationModal() {
-    let administrationId = $('#administrationDropdown').dropdown('get value');
-    $('.ui.tiny.modal.confirm-modal')
-        .modal({
-            closable: false,
-        }).modal('show');
-    var url = $('#usersTable').data('add-url') + "?" + administrationId;
-    $('.ui.primary.button.confirm').attr('href', url);
-
-    $('.ui.tiny.modal.confirm-modal .cancel').on('click', function () {
-        $('.ui.tiny.modal.confirm-modal').modal('hide');
-    });
-}
 
 function openAdminRoleConfirmationModal(userId, url, isAssign) {
     let atagValue = '<i class="icon plus"></i>Добави роля'
@@ -69,23 +46,28 @@ function assignUnassignAdminRole(userId, url) {
     });
 }
 
-function LoadUsers(administrationId, administrationName) {
-    const tableId = '#usersTable';
-    if (administrationName === "Всички администрации") {
-        administrationId = null;
-    }
+function loadUsers() {
+    const tableId = '#usersTable';    
     if ($.fn.dataTable.isDataTable(tableId)) {
         $(tableId).DataTable().destroy();
     }
-
     let url = $(tableId).data('url');
     let dt = $(tableId).DataTable({
+        searching: false,
         ajax: {
             "url": url,
             "type": "POST",
             "datatype": "json",
             data: function (d) {
-                d.administrationId = administrationId;
+                d.filter = {
+                    administrationId: $('#AdministrationId').val(),
+                    firstName: $('#FirstName').val(),
+                    middleName: $('#MiddleName').val(),
+                    lastName: $('#LastName').val(),
+                    roleId: $('#RoleId').val(),
+                    email: $('#Email').val(),
+                    activeOnly: $('#ActiveOnly').prop("checked"),                                        
+                }                
                 d.__RequestVerificationToken = $('input[name="__RequestVerificationToken"]').val();
                 return d;
             },
@@ -160,13 +142,13 @@ function LoadUsers(administrationId, administrationName) {
                 render: function (data, type, row, metadata) {
                     var btns = `<a href="/User/UserDetails?userId=${row.id}" type='button' class='ui tertiary icon button' data-tooltip='Профил'><i class="users cog icon"></i></a>`
                     if (row.roleName.includes("Администратор МЕУ")) {
-                        btns += `<a href="javascript:void(0);" type="button" class="ui tertiary icon button"
+                        btns += `<a type="button" class="ui tertiary icon button"
                                    onclick="openAdminRoleConfirmationModal('${row.id}', '/User/UnassignGlobalAdminRole', ${false})" 
                                    data-tooltip='Отпиши от роля "Администратор МЕУ"'>
                                    <i class="user times icon"></i>
                                 </a>`;
                     } else {
-                        btns += `<a href="javascript:void(0);" type="button" class="ui tertiary icon button"
+                        btns += `<a type="button" class="ui tertiary icon button"
                                    onclick="openAdminRoleConfirmationModal('${row.id}', '/User/AssignGlobalAdminRole', ${true})" 
                                    data-tooltip='Добави роля "Администратор МЕУ"'>
                                    <i class="user ninja icon"></i>
@@ -177,13 +159,10 @@ function LoadUsers(administrationId, administrationName) {
                 }
             }
         ]
-    });
+    });      
 
-    dt.ready(function () {
-        if (administrationName === "Всички администрации") {
-            SetAddButtonWithTitle("openConfirmationModal", "Добави администратор", "openConfirmationModal();", '#usersTable_wrapper');
-        } else {
-            SetAddButton($(tableId).data('add-url') + "?administrationId=" + $('#administrationDropdown').dropdown('get value'));
-        }
+    dt.ready(function () {        
+        //SetAddButtonWithTitle("openConfirmationModal", "Добави администратор", "openConfirmationModal();", '#usersTable_wrapper');        
+        SetAddButton($(tableId).data('add-url'));
     });
 }

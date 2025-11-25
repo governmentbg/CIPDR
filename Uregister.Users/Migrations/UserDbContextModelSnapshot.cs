@@ -17,7 +17,7 @@ namespace Uregister.Users.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.10")
+                .HasAnnotation("ProductVersion", "8.0.19")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -242,6 +242,10 @@ namespace Uregister.Users.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("position");
+
+                    b.Property<bool>("ReceiveEmailOnError")
+                        .HasColumnType("boolean")
+                        .HasColumnName("receive_email_on_error");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text")

@@ -272,7 +272,7 @@ namespace URegister.Core.Tests.Services
                 ));
 
             _objectsCatalogMock
-                .Setup(x => x.GetFieldsListAsync(It.IsAny<Google.Protobuf.WellKnownTypes.Empty>(), null, null, It.IsAny<CancellationToken>()))
+                .Setup(x => x.GetFieldsListAsync(It.IsAny<CatalogFieldsListRequest>(), null, null, It.IsAny<CancellationToken>()))
                 .Returns(new AsyncUnaryCall<CatalogFieldsListReply>(
                     Task.FromResult(new CatalogFieldsListReply
                     {

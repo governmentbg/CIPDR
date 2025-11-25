@@ -3,7 +3,7 @@
 @model RegisterVM
 
 @{
-    ViewBag.Title = "Редакция на регистър";
+    ViewBag.Title = "Данни на регистъра";
     var htmlFieldPrefix = ViewData.TemplateInfo.HtmlFieldPrefix;
 }
 <div class="ui grid">
@@ -22,7 +22,7 @@
                     </div>
                     <div class="fields">
                         <div class="sixteen wide field">
-                            @Html.EditorFor(model => model.Description, "TextArea")
+                            @Html.EditorFor(model => model.Description, "TextAreaDisabled")
                         </div>
                     </div>
                     <div class="fields">
@@ -43,7 +43,7 @@
                     </div>
                 </div>
             </div>
-            @await Html.PartialAsync("_BackSubmitButton", @Url.Action("Index", "Home", new { area = "" }))
+            @* @await Html.PartialAsync("_BackSubmitButton", @Url.Action("Index", "Home", new { area = "" })) *@
         </div>
     </form>
 </div>

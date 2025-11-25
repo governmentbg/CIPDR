@@ -106,5 +106,10 @@ namespace URegister.RegistersCatalog.Contracts
         Task<CalendarDayItem> GetCalendarDay(int id);
         Task<DateTime> CalcWorkDays(DateTime dateFrom, int days);
         Task<RegisterStatusItem> GetRegisterStatus(Guid id);
+        Task<OpenDataParam> GetOpenDataParam(OpenDataParamRequest request);
+        Task SaveOpenDataRegister(OpenDataRegisterSaveRequest request);
+        Task SaveOpenDataAdministration(OpenDataAdministrationSaveRequest request);
+        Task SaveOpenDataRegisterAdministration(OpenDataRegisterAdministrationSaveRequest request);
+        Task SaveOpenDataRegisterAdministrationMeta(OpenDataRegisterAdministrationMetaSaveRequest request);
     }
 }

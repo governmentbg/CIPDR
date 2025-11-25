@@ -112,6 +112,13 @@ namespace URegister.Admin.Controllers
                 return RedirectToAction("Login", new { ReturnUrl = returnUrl });
             }
 
+            if (string.IsNullOrWhiteSpace(info.ProviderKey))
+            {
+                logger.LogError($"Липсва ProviderKey в {nameof(ExternalLoginCallback)}");
+
+                return RedirectToAction("Login", new { ReturnUrl = returnUrl });
+            }
+
             AppUser appUser = await appUserManager
                 .AuthorizeUserAsync(new AuthorizeUserData()
                 {

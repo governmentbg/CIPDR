@@ -13,7 +13,9 @@ var users = builder.AddProject<Projects.Uregister_Users>("uregister-users")
                    .WithReference(auditlog);
 var integrationsCatalog = builder.AddProject<Projects.URegister_IntegrationsCatalog>("uregister-integrationscatalog")
                                  .WithReference(registerscatalog)
-                                 .WithReference(nomenclaturescatalog);
+                                 .WithReference(nomenclaturescatalog)
+                                 .WithReference(users)
+                                 .WithReference(auditlog);
 
 builder.AddProject<Projects.URegister>("uregister")
    .WithReference(nomenclaturescatalog)

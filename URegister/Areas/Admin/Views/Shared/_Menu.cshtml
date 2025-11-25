@@ -99,10 +99,7 @@
             <div class="ui simple dropdown item">
                 <i class="list alternate outline icon"></i> Каталози <i class="dropdown icon"></i>
                 <div class="menu">
-                    @if (User.IsInRole(UserRoles.GlobalAdmin))
-                    {
-                        <a class="item" href="@Url.Action("FormIndex", "Catalog", new {area = "Admin"})"><i class="table icon"></i> Форми</a>
-                    }
+                    <a class="item" href="@Url.Action("FormIndex", "Catalog", new {area = "Admin"})"><i class="table icon"></i> Форми</a>
                     @if (User.IsInRole(UserRoles.Admin))
                     {
                         <a class ="item" href = "@Url.Action("Index", "Service", new {area = "Admin"})" ><i class ="handshake outline icon" ></i > Услуги </a>

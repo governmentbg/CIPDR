@@ -1,7 +1,6 @@
 ﻿using Google.Protobuf.WellKnownTypes;
 using iText.Kernel.Pdf;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Extensions.Primitives;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
@@ -38,6 +37,7 @@ namespace URegister.Areas.Public.Controllers
         private readonly IntegrationGrpcClient _integrationGrpcClient;
         private readonly IRegixReportService _regixReportService;
         private readonly RegistersCatalogGrpc.RegistersCatalogGrpcClient _registerGrpcClient;
+        private readonly IFieldFormulaCalculationService _fieldFormulaCalculationService;
 
         public ImportController(ILogger<ImportController> logger,
             IFormConfigurationPersistenceService formConfigurationPersistenceService,
@@ -49,7 +49,8 @@ namespace URegister.Areas.Public.Controllers
             IServiceService serviceService,
             IntegrationGrpcClient integrationGrpcClient,
             IRegixReportService regixReportService,
-            RegistersCatalogGrpc.RegistersCatalogGrpcClient registerGrpcClient)
+            RegistersCatalogGrpc.RegistersCatalogGrpcClient registerGrpcClient,
+            IFieldFormulaCalculationService fieldFormulaCalculationService)
         {
             _logger = logger;
             _formConfigurationPersistenceService = formConfigurationPersistenceService;
@@ -62,13 +63,14 @@ namespace URegister.Areas.Public.Controllers
             _integrationGrpcClient = integrationGrpcClient;
             _regixReportService = regixReportService;
             _registerGrpcClient = registerGrpcClient;
+            _fieldFormulaCalculationService = fieldFormulaCalculationService;
         }
 
         //TODO : Да се извиква от ImportApplication, когато е сигурно, че работи
         /// <summary>
         /// Импорт на данни за заявена услуга през json от .pdf файл
         /// </summary>
-        /// <param name="jsonFromFile">json данни на заявена услуга.</param>
+        /// <param name="model">json данни на заявена услуга.</param>
         [HttpPost("import-json")]
         [Display(Name = "Импорт на данни за заявена услуга от json")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ImportResultVM))]
@@ -123,6 +125,7 @@ namespace URegister.Areas.Public.Controllers
                 IFormCollection form = new FormCollection(formData);
 
                 _formFieldsLayoutService.DistributePostedFieldValuesToViewModel(form, viewModel);
+                await _formConfigurationPersistenceService.ApplyConditionTreeOnFormModel(viewModel);
                 bool isViewModelValidationSuccess = await _formValidationService.ValidateViewModel(
                     viewModel,
                     _nomenclatureGrpcClient,
@@ -136,6 +139,13 @@ namespace URegister.Areas.Public.Controllers
                     return BadRequest(formFieldErrors);
                 }
 
+                OperationResult calculationResult = await _fieldFormulaCalculationService.CalculateFormulas(viewModel);
+
+                if (!calculationResult.IsSuccess)
+                {
+                    return BadRequest(calculationResult.ErrorMessage);
+                }
+
                 var serviceStep = registerService.Steps.OrderBy(x => x.OrderNum).First();
                 var stepVM = await _processService.ToProcessStepVM(Guid.Empty, null, registerService.Id, serviceStep.Id,
                     serviceStep.OrderNum, null, null, viewModel, false);
@@ -146,7 +156,6 @@ namespace URegister.Areas.Public.Controllers
                     model.AdministrationUic,
                     Guid.Parse(formData["_referenceNumber"].ToString()));
                 await _processService.ImportApplicationEDeliveryFileSetProcess(addedStep.ProcessId, metaFiles);
-
 
                 return Ok(new ImportResultVM
                 {
@@ -160,7 +169,19 @@ namespace URegister.Areas.Public.Controllers
             catch (Exception e)
             {
                 _logger.LogError(e, $"Проблем при импорт на данни от е-форма в {nameof(ImportApplication)}");
-                return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+
+                var errorResponse = new
+                {
+                    error = "Проблем при импорт на данни от е-форма",
+                    message = e.Message,
+                    stackTrace = e.StackTrace,
+                    innerException = e.InnerException?.Message
+                };
+
+                return new ObjectResult(errorResponse)
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
             }
         }
 
@@ -275,6 +296,7 @@ namespace URegister.Areas.Public.Controllers
                 IFormCollection form = new FormCollection(formData);
 
                 _formFieldsLayoutService.DistributePostedFieldValuesToViewModel(form, viewModel);
+                await _formConfigurationPersistenceService.ApplyConditionTreeOnFormModel(viewModel);
                 bool isViewModelValidationSuccess = await _formValidationService.ValidateViewModel(
                     viewModel,
                     _nomenclatureGrpcClient,
@@ -285,6 +307,13 @@ namespace URegister.Areas.Public.Controllers
                     Dictionary<string, string> formFieldErrors =
                         await _formValidationService.GetValidatedFormFieldsErrors(viewModel);
                     return BadRequest(formFieldErrors);
+                }
+
+                OperationResult calculationResult = await _fieldFormulaCalculationService.CalculateFormulas(viewModel);
+
+                if (!calculationResult.IsSuccess)
+                {
+                    return BadRequest(calculationResult.ErrorMessage);
                 }
 
                 var serviceStep = registerService.Steps.Where(x => x.StatusId == (int)ProcessStatus.Registered).First();
@@ -329,7 +358,19 @@ namespace URegister.Areas.Public.Controllers
             catch (Exception e)
             {
                 _logger.LogError(e, $"Проблем при импорт на данни от е-форма в {nameof(ImportApplication)}");
-                return StatusCode(500, e.Message);
+
+                var errorResponse = new
+                {
+                    error = "Проблем при импорт на данни от е-форма",
+                    message = e.Message,
+                    stackTrace = e.StackTrace,
+                    innerException = e.InnerException?.Message
+                };
+
+                return new ObjectResult(errorResponse)
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
             }
         }
 
@@ -615,7 +656,6 @@ namespace URegister.Areas.Public.Controllers
         /// <summary>
         /// Извлича данни от е-формата по таговете в json.
         /// </summary>
-        /// <param name="jsonDocument"></param>
         /// <param name="formData"></param>
         /// <param name="nodeWithUsefulData"></param>
         /// <param name="formSubmitNameFieldDictionary"></param>
@@ -635,6 +675,7 @@ namespace URegister.Areas.Public.Controllers
 
                 tagsDictionary = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(tagsElement);
                 tagsDictionary = RefineTagsDictionaryWithRepeatingElements(tagsDictionary, formSubmitNameFieldDictionary);
+                _logger.LogInformation("Тагове в импортирания файл/tags in the imported file " + tagsElement);
             }
             catch (Exception e)
             {
@@ -689,6 +730,11 @@ namespace URegister.Areas.Public.Controllers
                     {
                         ImportPerson(formData, foundElement, formDataKey);
                     }
+                    else if (field.Type.ToLower() == SimpleFormFieldType.authorizedOfficial.ToString().ToLower())
+                    {
+                        ImportPerson(formData, foundElement, formDataKey);
+                        await ImportCompany(formData, foundElement, formDataKey);
+                    }
                     else if (field.Type == SimpleFormFieldType.Select.ToString() ||
                              field.Type == SimpleFormFieldType.Autocomplete.ToString() ||
                              field.Type == SimpleFormFieldType.AutocompleteWithCategory.ToString())
@@ -739,10 +785,26 @@ namespace URegister.Areas.Public.Controllers
                 }
             }
 
+            ApplyRepeatingFieldCantStartWithEmptyTempFix(formData);
             return problematicFields;
         }
 
-        public FormField GetFormFieldByNameOrCloneName(Dictionary<string, FormField> formSubmitNameFieldDictionary,
+        /// <summary>
+        /// Поради проблем в генерирането на PDF от е-форма, долният fix се налага за да замени "<непосочено>" с празен низ
+        /// </summary>
+        /// <param name="formData"></param>
+        private static void ApplyRepeatingFieldCantStartWithEmptyTempFix(Dictionary<string, StringValues> formData)
+        {
+            foreach (KeyValuePair<string, StringValues> keyValuePair in formData)
+            {
+                if (keyValuePair.Value == "<непосочено>")
+                {
+                    formData[keyValuePair.Key] = new StringValues(string.Empty);
+                }
+            }
+        }
+
+        private FormField GetFormFieldByNameOrCloneName(Dictionary<string, FormField> formSubmitNameFieldDictionary,
             string fieldName)
         {
             if (formSubmitNameFieldDictionary.ContainsKey(fieldName))
@@ -779,7 +841,7 @@ namespace URegister.Areas.Public.Controllers
                         }
                         else
                         {
-                            result.Add(InsertAfterFirstUnderscore(tagEntry.Key, "#" + index), jsonElement);
+                            result.Add(RepeatedFormFieldHelperService.InsertBeforeFirstUnderscore(tagEntry.Key, "#" + index), jsonElement);
                         }
 
                         index++;
@@ -803,7 +865,7 @@ namespace URegister.Areas.Public.Controllers
             {
                 if (repeatedFileIndex > 0)
                 {
-                    formDataKey = InsertAfterFirstUnderscore(formDataKey, "#" + repeatedFileIndex);
+                    formDataKey = RepeatedFormFieldHelperService.InsertBeforeFirstUnderscore(formDataKey, "#" + repeatedFileIndex);
                 }
 
                 if (attachedFileData.ContainsKey(fileName))
@@ -811,19 +873,6 @@ namespace URegister.Areas.Public.Controllers
                     formData[formDataKey] = attachedFileData[fileName];
                 }
             }
-        }
-
-        public static string InsertAfterFirstUnderscore(string original, string toInsert)
-        {
-            if (string.IsNullOrEmpty(original) || string.IsNullOrEmpty(toInsert))
-                return original;
-
-            int underscoreIndex = original.IndexOf('_');
-            if (underscoreIndex >= 0)
-            {
-                return original.Substring(0, underscoreIndex + 1) + toInsert + original.Substring(underscoreIndex + 1);
-            }
-            return original + toInsert;
         }
 
         private static bool TryGetNameProperty(JsonElement element, out string fileName)
@@ -1018,22 +1067,22 @@ namespace URegister.Areas.Public.Controllers
             {
                 if (property.Name.EndsWith("firstName", StringComparison.OrdinalIgnoreCase))
                 {
-                    formData[formDataKey + "_firstNameImmutable"] = property.Value.ToString();
+                    formData[formDataKey + "_" + ComplexFieldsNameConstants.FirstNameImmutable] = property.Value.ToString();
                 }
                 else if (property.Name.EndsWith("middleName", StringComparison.OrdinalIgnoreCase))
                 {
-                    formData[formDataKey + "_middleNameImmutable"] = property.Value.ToString();
+                    formData[formDataKey + "_" + ComplexFieldsNameConstants.MiddleNameImmutable] = property.Value.ToString();
                 }
                 else if (property.Name.EndsWith("familyName", StringComparison.OrdinalIgnoreCase))
                 {
-                    formData[formDataKey + "_lastNameImmutable"] = property.Value.ToString();
+                    formData[formDataKey + "_" + ComplexFieldsNameConstants.LastNameImmutable] = property.Value.ToString();
                 }
                 else if (property.Name.EndsWith("identifier", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (formData.ContainsKey(formDataKey + "_identifierImmutable"))
+                    if (formData.ContainsKey(formDataKey + "_" + ComplexFieldsNameConstants.IdentifierImmutable))
                     {
-                        formData[formDataKey + "_identifierImmutable"] =
-                            formData[formDataKey + "_identifierImmutable"] + ":" + property.Value;
+                        formData[formDataKey + "_" + ComplexFieldsNameConstants.IdentifierImmutable] =
+                            formData[formDataKey + "_" + ComplexFieldsNameConstants.IdentifierImmutable] + ":" + property.Value;
                     }
                     else
                     {
@@ -1044,14 +1093,14 @@ namespace URegister.Areas.Public.Controllers
                 {
                     int readIdentifierCode = EFormsIdentifierTypes[property.Value.ToString()];
 
-                    if (formData.ContainsKey(formDataKey + "_identifierImmutable"))
+                    if (formData.ContainsKey(formDataKey + "_" + ComplexFieldsNameConstants.IdentifierImmutable))
                     {
-                        formData[formDataKey + "_identifierImmutable"] =
-                            readIdentifierCode + ":" + formData[formDataKey + "_identifierImmutable"];
+                        formData[formDataKey + "_" + ComplexFieldsNameConstants.IdentifierImmutable] =
+                            readIdentifierCode + ":" + formData[formDataKey + "_" + ComplexFieldsNameConstants.IdentifierImmutable];
                     }
                     else
                     {
-                        formData[formDataKey + "_identifierImmutable"] = readIdentifierCode.ToString();
+                        formData[formDataKey + "_" + ComplexFieldsNameConstants.IdentifierImmutable] = readIdentifierCode.ToString();
                     }
                 }
             }
@@ -1078,17 +1127,9 @@ namespace URegister.Areas.Public.Controllers
         {
             foreach (var property in element.EnumerateObject())
             {
-                if (property.Name.Contains("name", StringComparison.OrdinalIgnoreCase))
+                if (property.Name.EndsWith("LegalName", StringComparison.OrdinalIgnoreCase))
                 {
-                    formData[formDataKey + "_companyNameImmutable"] = property.Value.ToString();
-
-                    foreach (var nestedProperty in element.EnumerateObject())
-                    {
-                        if (nestedProperty.Name.EndsWith("companyType", StringComparison.OrdinalIgnoreCase))
-                        {
-                            formData[formDataKey + "_companyNameImmutable"] = nestedProperty.Value + " " + formData[formDataKey + "_companyNameImmutable"];
-                        }
-                    }
+                    formData[formDataKey + "_" + ComplexFieldsNameConstants.CompanyNameImmutable] = property.Value.ToString();
                 }
                 else if (property.Name.Contains("Eik", StringComparison.OrdinalIgnoreCase) ||
                          property.Name.Contains("vatnumber", StringComparison.OrdinalIgnoreCase) ||
@@ -1103,15 +1144,15 @@ namespace URegister.Areas.Public.Controllers
                         throw new ArgumentException(companyData.ErrorMessage);
                     }
 
-                    formData[formDataKey + "_companyNumberImmutable"] = (int)companyData.AddedObjectId + ":" + property.Value;
+                    formData[formDataKey + "_" + ComplexFieldsNameConstants.CompanyNumberImmutable] = (int)companyData.AddedObjectId + ":" + property.Value;
 
                     if ((int)companyData.AddedObjectId == (int)CidTypes.BULSTAT)
                     {
-                        formData[formDataKey + "_legalFormBulstatImmutable"] = ((GetCompanyInfoResponse)companyData.CustomObject).LegalFormCode.ToString();
+                        formData[formDataKey + "_" + ComplexFieldsNameConstants.LegalFormBulstatImmutable] = ((GetCompanyInfoResponse)companyData.CustomObject).LegalFormCode.ToString();
                     }
                     else if ((int)companyData.AddedObjectId == (int)CidTypes.EIK)
                     {
-                        formData[formDataKey + "_legalFormEIKImmutable"] = ((GetCompanyInfoResponse)companyData.CustomObject).LegalFormCode.ToString();
+                        formData[formDataKey + "_" + ComplexFieldsNameConstants.LegalFormEIKImmutable] = ((GetCompanyInfoResponse)companyData.CustomObject).LegalFormCode.ToString();
                     }
                 }
             }

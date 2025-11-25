@@ -8,7 +8,8 @@ option csharp_namespace = "URegister.ObjectsCatalog";
 package object;
 
 service ObjectsCatalogGrpc {
-  rpc GetFieldsList(google.protobuf.Empty) returns (CatalogFieldsListReply);
+  rpc GetFieldsList(CatalogFieldsListRequest) returns (CatalogFieldsListReply);
+  rpc GetFieldType(CatalogFieldRequest) returns (CatalogFieldTypeReply);
   rpc GetField(CatalogFieldRequest) returns (CatalogGetFieldReply);
   rpc SetField(CatalogSerializedData) returns (CatalogSetFieldReply);
   rpc SetFieldType(CatalogFieldType) returns (common.ResultStatus);
@@ -38,6 +39,15 @@ message CatalogFieldType {
   bool isComplex = 3;
   string templateName = 4;
   int32 field_type_id = 5;
+  repeated google.protobuf.StringValue register_restriction_codes = 6;  
+}
+
+message CatalogFieldTypeReply {
+  common.ResultStatus status = 1;  
+  string type = 2;
+  string label = 3;
+  repeated google.protobuf.StringValue register_restriction_codes = 4;
+  int32 id = 5;
 }
 
 // Списък от полета дефинирани в каталога
@@ -155,7 +165,6 @@ message FieldTemplateContentMessage {
 	google.protobuf.StringValue content = 7;
 	google.protobuf.StringValue content_text = 8;
 	bool blank_if_no_value = 9;
-
 }
 
 message FieldTemplateRequest{
@@ -184,4 +193,8 @@ message FieldTemplateResponse {
 message FieldTemplateContentResponse {
     common.ResultStatus status = 1;
     FieldTemplateContentMessage field_template = 2;
+}
+
+message CatalogFieldsListRequest {
+  google.protobuf.StringValue registerCode = 1;
 }

@@ -65,7 +65,7 @@ message DatatableRequestWithAuditLogFilter{
 message AuditLogFilter{
     optional google.protobuf.Timestamp date_from = 1;
     optional google.protobuf.Timestamp date_to = 2;
-    optional string method = 3;
+    optional string action = 3;
     optional string ip_address = 4;
     optional string user_name = 5;
 }

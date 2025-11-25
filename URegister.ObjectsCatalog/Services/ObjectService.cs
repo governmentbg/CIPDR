@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Nodes;
 using URegister.Common;
 using URegister.Infrastructure.Extensions;
 using URegister.Infrastructure.Helper;
@@ -6,7 +8,6 @@ using URegister.Infrastructure.Model.RegisterForms;
 using URegister.ObjectsCatalog.Contracts;
 using URegister.ObjectsCatalog.Data;
 using URegister.ObjectsCatalog.Data.Models;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace URegister.ObjectsCatalog.Services
 {
@@ -51,15 +52,24 @@ namespace URegister.ObjectsCatalog.Services
         /// <summary>
         /// Вземане на списък на полетата
         /// </summary>
+        /// <param name="requestRegisterCode"></param>
         /// <returns></returns>
-        public async Task<ICollection<(string type, string label, bool isComplex, string template, int fieldTypeId)>> GetFieldTypesAsync()
+        public async
+            Task<ICollection<(string type, string label, bool isComplex, string template, int fieldTypeId, List<string>?
+                registerRestrictionCodes)>> GetFieldTypesAsync(string requestRegisterCode)
         {
+            var jsonValue = JsonSerializer.Serialize(new[] { requestRegisterCode });  // Serializes to ["value"] as JSON array snippet
+
             var types = await objectCatalogRepository.AllReadonly<FieldType>()
+                .Where(f => string.IsNullOrWhiteSpace(requestRegisterCode) || 
+                            f.RegisterRestrictionCodes == null || 
+                            !f.RegisterRestrictionCodes.Any() ||
+                            EF.Functions.JsonContains(f.RegisterRestrictionCodes, jsonValue))
                 .TagWith(nameof(GetFieldTypesAsync))
-                .Select(t => new { t.Name, t.Label, t.IsComplexField, t.Template, t.Id })
+                .Select(t => new { t.Name, t.Label, t.IsComplexField, t.Template, t.Id, t.RegisterRestrictionCodes })
                 .ToListAsync();
 
-            return types.Select(t => (t.Name, t.Label, t.IsComplexField, t.Template, t.Id)).ToList();
+            return types.Select(t => (t.Name, t.Label, t.IsComplexField, t.Template, t.Id, t.RegisterRestrictionCodes)).ToList();
         }
 
         /// <summary>
@@ -109,39 +119,51 @@ namespace URegister.ObjectsCatalog.Services
         }
 
         /// <summary>
-        /// Запис на нов тип поле
+        /// Запис или редактиране на тип поле
         /// </summary>
-        /// <param name="newType"></param>
-        /// <returns>Успешен ли е записът</returns>
+        /// <param name="newType">Тип поле за запис или редактиране</param>
+        /// <returns>Успешен ли е записът или редакцията</returns>
         public async Task<bool> SetFieldTypeAsync(CatalogFieldType newType)
         {
+            FieldType? existingFieldType = null;
             try
             {
-                await objectCatalogRepository.AddAsync(new FieldType
+                existingFieldType = await GetFieldTypeByName(newType.Type);                
+                if (existingFieldType != null)
+                {                   
+                    existingFieldType.Label = newType.Label;
+                    //existingFieldType.Name = newType.Type;                   
+                    existingFieldType.RegisterRestrictionCodes = newType.RegisterRestrictionCodes?.ToList();                 
+                }
+                else
                 {
-                    IsComplexField = newType.IsComplex,
-                    Label = newType.Label,
-                    Name = newType.Type,
-                    Template = newType.TemplateName
-                });
-
+                    await objectCatalogRepository.AddAsync(new FieldType
+                    {
+                        IsComplexField = newType.IsComplex,
+                        Label = newType.Label,
+                        Name = newType.Type,
+                        Template = newType.TemplateName,
+                        RegisterRestrictionCodes = newType.RegisterRestrictionCodes?.ToList()
+                    });
+                }
+                
                 int savedEntries = await objectCatalogRepository.SaveChangesAsync();
                 return savedEntries > 0;
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, $"Грешка на запис на тип поле {newType.Type} в {nameof(SetFieldTypeAsync)}");
+                logger.LogError(ex, $"Грешка при {(existingFieldType != null ? "редактиране" : "запис")} на тип поле {newType.Type} в {nameof(SetFieldTypeAsync)}");
                 return false;
             }
         }
 
         /// <summary>
-        /// 
+        /// Връща тип поле по име на тип
         /// </summary>
         /// <param name="typeName"></param>
         /// <returns></returns>
         /// <exception cref="ArgumentException"></exception>
-        private async Task<FieldType?> GetFieldTypeByName(string typeName)
+        public async Task<FieldType?> GetFieldTypeByName(string typeName)
         {
             FieldType? result = null;
 

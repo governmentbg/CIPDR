@@ -17,7 +17,7 @@ namespace URegister.RegistersCatalog.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.10")
+                .HasAnnotation("ProductVersion", "8.0.19")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -149,6 +149,11 @@ namespace URegister.RegistersCatalog.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("e_form_code")
                         .HasComment("Код за връзка с е-форми");
+
+                    b.Property<int>("FrequencyId")
+                        .HasColumnType("integer")
+                        .HasColumnName("frequency_id")
+                        .HasComment("Автоматично изпращане на данни към OpenData 1 ежедневно 2 седмично 3 месечно");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
@@ -432,6 +437,18 @@ namespace URegister.RegistersCatalog.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AppId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("app_id")
+                        .HasComment("AppId за Stampit");
+
+                    b.Property<string>("AppSecret")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("app_secret")
+                        .HasComment("AppSecret за Stampit");
+
                     b.Property<string>("BaseAddress")
                         .HasColumnType("text")
                         .HasColumnName("base_address")
@@ -449,6 +466,11 @@ namespace URegister.RegistersCatalog.Migrations
                         .HasColumnName("created_on")
                         .HasComment("Дата на създаване");
 
+                    b.Property<DateTime?>("DateDeploy")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_deploy")
+                        .HasComment("Дата на старт на deploy");
+
                     b.Property<DateTime?>("DeletedOn")
                         .HasColumnType("timestamptz")
                         .HasColumnName("deleted_on")
@@ -464,6 +486,11 @@ namespace URegister.RegistersCatalog.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("description")
                         .HasComment("Описание");
+
+                    b.Property<bool?>("HistoryNotPublic")
+                        .HasColumnType("boolean")
+                        .HasColumnName("history_not_public")
+                        .HasComment("Историята не е публична");
 
                     b.Property<string>("IdentitySecurityLevel")
                         .HasMaxLength(5)
@@ -571,6 +598,11 @@ namespace URegister.RegistersCatalog.Migrations
                         .HasColumnName("deleted_on")
                         .HasComment("Дата на изтриване");
 
+                    b.Property<int>("FrequencyId")
+                        .HasColumnType("integer")
+                        .HasColumnName("frequency_id")
+                        .HasComment("Автоматично изпращане на данни към OpenData 1 ежедневно 2 седмично 3 месечно");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active")
@@ -603,6 +635,12 @@ namespace URegister.RegistersCatalog.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("register_id")
                         .HasComment("Идентификатор на регистър");
+
+                    b.Property<string>("ResourceMetaId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("resource_meta_id")
+                        .HasComment("OpenData ResourceMetaId");
 
                     b.HasKey("Id")
                         .HasName("pk_register_administrations");

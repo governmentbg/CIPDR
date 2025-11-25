@@ -3,7 +3,6 @@ using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.ComponentModel.DataAnnotations;
-using Microsoft.EntityFrameworkCore;
 using URegister.Common;
 using URegister.Core.Contracts;
 using URegister.Core.Models.Register;
@@ -24,7 +23,7 @@ namespace URegister.Admin.Controllers
 
         [HttpGet]
         [Display(Name = "Зареждане на списък с потребители по администрация")]
-        public async Task<IActionResult> Index(string administrationId)
+        public async Task<IActionResult> Index()
         {
             AppAdministrations administrations = await registerClient.GetAllAdministrations();
 
@@ -34,21 +33,26 @@ namespace URegister.Admin.Controllers
                 Text = t.Name
             }).ToList();
 
-            if (string.IsNullOrEmpty(administrationId) && administrationList.Any())
+            administrationList.Insert(0, new SelectListItem(string.Empty, string.Empty));
+
+            if (administrationList.Any())
             {
-                administrationId = administrationList.First().Value;
+                var allAdmins = administrationList.FirstOrDefault(a => a.Text == "Всички администрации");
+                if (allAdmins != null)
+                {
+                    allAdmins.Text = "достъп до всички администрации";
+                }
             }
 
-            foreach (var item in administrationList)
-            {
-                item.Selected = item.Value == administrationId;
-            }
+            var model = new UserFilterViewModel();
 
-            var model = new AdministrationViewModel
-            {
-                SelectedAdministrationId = administrationId,
-                Administrations = administrationList
-            };
+            AppRoles roles = await appUserManagerClient.GetAllRolesAsync(new GetAllRolesRequest());
+
+            var rolesDdl = roles.Roles.Select(r => new SelectListItem(r.Label, r.RoleId)).ToList();
+            rolesDdl.Insert(0, new SelectListItem(string.Empty, string.Empty));
+
+            ViewBag.AdministrationId_ddl = administrationList;
+            ViewBag.RoleId_ddl = rolesDdl;
 
             return View(model);
         }
@@ -57,25 +61,31 @@ namespace URegister.Admin.Controllers
         /// Взема всички потребители в дадена администрация за показване в таблица
         /// </summary>
         /// <param name="request"></param>
-        /// <param name="administrationId"></param>
+        /// <param name="filter"></param>
         /// <returns></returns>
         [HttpPost]
         [Display(Name = "Извличане на списък с потребители в администрация")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> GetUsers(IDataTablesRequest request, string administrationId)
+        public async Task<IActionResult> GetUsers(IDataTablesRequest request, UserFilterViewModel filter)
         {
             try
             {
                 var protoRequest = request!.GetDataTablesRequestProto();
-                UserFilter filter = new UserFilter
+                UserFilter userFilter = new UserFilter
                 {
-                    AdministrationId = administrationId ?? string.Empty,
+                    AdministrationId = filter.AdministrationId ?? string.Empty,
                     Page = request.Start,
                     PageSize = request.Length,
-                    DatatableRequest = protoRequest
+                    DatatableRequest = protoRequest,
+                    FirstName = filter.FirstName,
+                    MiddleName = filter.MiddleName,
+                    LastName = filter.LastName,
+                    ActiveUsers = filter.ActiveOnly,
+                    Email = filter.Email,
+                    RoleId = filter.RoleId
                 };
 
-                UserList users = await appUserManagerClient.GetUserListAsync(filter);
+                UserList users = await appUserManagerClient.GetUserListAsync(userFilter);
                 foreach (var user in users.Users)
                 {
                     List<string> userRoles = await registerClient.FormatUserRoles(user);
@@ -125,7 +135,7 @@ namespace URegister.Admin.Controllers
                 model.Username = response.User.UserName;
                 model.AdministrationId = response.User.AdministrationId;
                 model.AdministrationName = response.User.Administration;
-
+                model.ReceiveEFormOnErrorNotification = response.User.ReceiveEmailOnError;
                 if (response.User.Roles.Any(r => r.Label.Equals("Администратор МЕУ")))
                 {
                     model.IsGlobalAdmin = true;
@@ -152,24 +162,26 @@ namespace URegister.Admin.Controllers
             var model = new UserViewModel();
             try
             {
-                GetAdministrationResponse administration = new GetAdministrationResponse();
-                if (string.IsNullOrEmpty(administrationId))
-                {
-                    administration = await registerClient.GetAdminAdministration();
-                }
-                else
-                {
-                    administration = await registerClient.GetAdministrationById(administrationId);
-                }
+                //GetAdministrationResponse administration = new GetAdministrationResponse();
+                //if (string.IsNullOrEmpty(administrationId))
+                //{
+                //    administration = await registerClient.GetAdminAdministration();
+                //}
+                //else
+                //{
+                //    administration = await registerClient.GetAdministrationById(administrationId);
+                //}
 
-                if (administration.Status.Code != ResultCodes.Ok)
-                {
-                    SetErrorMessage("Грешка при взимане на администрация.");
-                    return View(model);
-                }
-                administrationId = administration.Data.Id;
-                model.AdministrationId = administrationId;
-                model.AdministrationName = administration.Data.Name;
+                //if (administration.Status.Code != ResultCodes.Ok)
+                //{
+                //    SetErrorMessage("Грешка при взимане на администрация.");
+                //    return View(model);
+                //}
+                //administrationId = administration.Data.Id;
+                //model.AdministrationId = administrationId;
+                //model.AdministrationName = administration.Data.Name;
+
+                await SetAddUserViewBags();
             }
             catch (Exception ex)
             {
@@ -177,6 +189,20 @@ namespace URegister.Admin.Controllers
                 SetErrorMessage("Грешка при взимане на администрация.");
             }
             return View(model);
+        }
+
+        private async Task<List<SelectListItem>> SetAddUserViewBags()
+        {
+            AppAdministrations administrations = await registerClient.GetAllAdministrations();
+
+            var administrationList = administrations.Administrations.Select(t => new SelectListItem
+            {
+                Value = t.Id.ToString(),
+                Text = t.Name
+            }).ToList();
+
+            ViewBag.AdministrationId_ddl = administrationList;
+            return administrationList;
         }
 
         /// <summary>
@@ -189,6 +215,8 @@ namespace URegister.Admin.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Add(UserViewModel model)
         {
+            var administrationList = await SetAddUserViewBags();
+
             if (!ModelState.IsValid)
             {
                 return View(model);
@@ -205,7 +233,7 @@ namespace URegister.Admin.Controllers
                 var user = new UserData
                 {
                     AdministrationId = model.AdministrationId,
-                    Administration = model.AdministrationName,
+                    Administration = administrationList.Single(li => li.Value == model.AdministrationId).Text,
                     FirstName = model.FirstName,
                     MiddleName = model.MiddleName,
                     LastName = model.LastName,
@@ -213,7 +241,8 @@ namespace URegister.Admin.Controllers
                     PhoneNumber = model.PhoneNumber,
                     Position = model.Position,
                     Pid = model.Pid,
-                    UserName = model.Pid.Substring(0, 4) + model.LastName
+                    UserName = model.Pid.Substring(0, 4) + model.LastName,
+                    ReceiveEmailOnError = model.ReceiveEFormOnErrorNotification,
                 };
                 var response = await appUserManagerClient.UpsertUserAsync(user);
                 if (response.Status.Code == ResultCodes.Ok)
@@ -272,7 +301,8 @@ namespace URegister.Admin.Controllers
                     Pid = model.Pid,
                     Enabled = model.Enabled,
                     AdministrationId = model.AdministrationId,
-                    Administration = model.AdministrationName
+                    Administration = model.AdministrationName,
+                    ReceiveEmailOnError = model.ReceiveEFormOnErrorNotification,
                 };
 
                 var userRoleResponse = await appUserManagerClient.GetUserByIdAsync(new UserFilter { Id = model.Id });

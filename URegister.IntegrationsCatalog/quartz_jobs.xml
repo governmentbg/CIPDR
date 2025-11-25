@@ -47,7 +47,7 @@
 				<job-name>EMailSendJob</job-name>
 				<job-group>EMailSendJobGroup</job-group>
 				<misfire-instruction>SmartPolicy</misfire-instruction>
-				<cron-expression>0 0 12 15 * ?</cron-expression>
+				<cron-expression>0 0/1 * * * ?</cron-expression>
 				<time-zone>UTC</time-zone>
 			</cron>
 		</trigger>

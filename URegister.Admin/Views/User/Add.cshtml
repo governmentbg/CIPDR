@@ -10,12 +10,10 @@
                 <div class="ui form">
                     <div class="fields">
                         <div class='sixteen wide field'>
-                            <h3>Регистрация на потребител в "@Model.AdministrationName"</h3>
+                            <h3>Регистрация на потребител</h3>
                         </div>
                     </div>
                     @Html.AntiForgeryToken()
-                    @Html.HiddenFor(model => model.AdministrationId)
-                    @Html.HiddenFor(model => model.AdministrationName)
                     <div class="fields">
                        @*  <div class="four wide field">
                             @Html.EditorFor(model => model.Username, "String")
@@ -43,6 +41,9 @@
                         </div>
                         <div class="four wide field">
                             @Html.EditorFor(model => model.PhoneNumber, "String")
+                        </div> 
+                        <div class="four wide field">
+                            @Html.EditorFor(model => model.AdministrationId, "DropDown")
                         </div>
                     </div>
                 </div>

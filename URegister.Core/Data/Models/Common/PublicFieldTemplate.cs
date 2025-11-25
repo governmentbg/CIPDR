@@ -1,11 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Data.Common;
 
@@ -33,8 +28,9 @@ namespace URegister.Core.Data.Models.Common
         /// <summary>
         /// Наименование на публично поле
         /// </summary>
-        [Comment("Име напле в Json")]
+        [Comment("Име на поле в Json")]
         [Required]
+        [MaxLength(256)]
         public string FieldName { get; set; } = null!;
 
         /// <summary>
@@ -42,6 +38,7 @@ namespace URegister.Core.Data.Models.Common
         /// </summary>
         [Comment("Наименование на публично поле")]
         [Required]
+        [MaxLength(256)]
         public string Label { get; set; } = null!;
 
 
@@ -49,6 +46,7 @@ namespace URegister.Core.Data.Models.Common
         /// Съдържание на бланка
         /// </summary>
         [Comment("Съдържание на бланка")]
+        [MaxLength(1000)]
 
         public string? Content { get; set; }
 
@@ -64,6 +62,7 @@ namespace URegister.Core.Data.Models.Common
         /// Създадена от
         /// </summary>
         [Comment("Създадена от")]
+        [MaxLength(256)]
         public string? CreatedBy { get; set; }
     }
 }

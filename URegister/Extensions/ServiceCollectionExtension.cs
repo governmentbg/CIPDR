@@ -21,6 +21,7 @@ using URegister.Infrastructure.Contracts;
 using URegister.Infrastructure.Data.Common;
 using URegister.Infrastructure.Models;
 using URegister.Infrastructure.Services;
+using OpenDataClient.Extensions;
 namespace Microsoft.Extensions.DependencyInjection;
 
 public static class ServiceCollectionExtension
@@ -56,6 +57,7 @@ public static class ServiceCollectionExtension
         services.AddScoped<IReportService, ReportService>();
         services.AddScoped<IPublicFieldTemplateService, PublicFieldTemplateService>();
         services.AddScoped<IProcessTemplateService, ProcessTemplateService>();
+        services.AddScoped<IFieldFormulaCalculationService, FieldFormulaCalculationService>();
         services.AddIOHtmlToPdf(options =>
         {
             options.PdfCreatorUrl = config.GetValue<string>("PdfCreator:Url");
@@ -73,6 +75,7 @@ public static class ServiceCollectionExtension
             options.HashAlgorithm = System.Security.Cryptography.HashAlgorithmName.SHA256.Name;
             options.TimestampOptions = tsOptions;
         });
+        services.ConfigureOpenDataClient(config);
         return services;
     }
 

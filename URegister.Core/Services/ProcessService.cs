@@ -11,6 +11,7 @@ using System.Globalization;
 using System.Linq.Expressions;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore.Query;
+using OfficeOpenXml.Drawing.Chart;
 using URegister.Common;
 using URegister.Core.Contracts;
 using URegister.Core.Data;
@@ -23,6 +24,7 @@ using URegister.Infrastructure.Contracts;
 using URegister.Infrastructure.Extensions;
 using URegister.Infrastructure.Model.EDelivery;
 using URegister.Infrastructure.Model.RegisterForms;
+using URegister.Infrastucture.Extensions;
 using URegister.IntegrationsCatalog;
 using URegister.NomenclaturesCatalog;
 using URegister.NumberGenerator;
@@ -670,7 +672,7 @@ namespace URegister.Core.Services
             return await ToProcessStepVM(Guid.Empty, null, serviceId, serviceStep.Id, serviceStep.OrderNum, OldIncomingNumber, OldIncomingDate, formModel, false);
         }
 
-        private FormField? FindMasterPerson(List<FormField> formFields, int roleId)
+        private FormField? FindMasterPerson(List<FormField> formFields, PersonRole roleId)
         {
             foreach (var formField in formFields)
             {
@@ -693,8 +695,19 @@ namespace URegister.Core.Services
             }
             return null;
         }
+
         private string[] ParsePidFieldValue(string value)
         {
+            if (!value.Contains(':'))
+            {
+                string errorMessage =
+                    $"Стойността {value} на идентификатор не е в правилния формат 'тип:идентификатор'";
+                Logger.LogError(errorMessage);
+
+                //TODO : Позволяваме засега празна партида. Редно е да хвърляме грешка
+                return ":".Split(":");
+            }
+
             return value.Split(":");
         }
 
@@ -702,7 +715,10 @@ namespace URegister.Core.Services
         {
             if (index < values.Length)
                 return values[index];
-            return string.Empty;
+
+            Logger.LogError($"Грешни параметри в {nameof(GetPidFieldValue)}. Values: {string.Join(';', values)}, index: {index}");
+            throw new ArgumentException(
+                $"Грешни параметри в {nameof(GetPidFieldValue)}. Values: {string.Join(';', values)}, index: {index}");
         }
 
         /// <summary>
@@ -712,36 +728,137 @@ namespace URegister.Core.Services
         /// <param name="formFields"></param>
         /// <returns>Тип идентификатор, Идентификатор, Наименование</returns>
         /// <exception cref="Exception"></exception>
-        public (string?, string?, string?) GetMPRIData(int roleId, List<FormField> formFields)
+        public (string?, string?, string?) GetMPRIData(PersonRole roleId, List<FormField> formFields)
         {
+            //TODO: да се премахте след установяване на проблема
+            //Logger.LogInformation($"Състояние на полета преди извличане на партида за роля {roleId.GetDescription()}: " + JsonSerializer.Serialize(formFields));
+
             var field = FindMasterPerson(formFields, roleId);
             if (field == null)
-                throw new Exception("Не намирам Партида/Заявител");
+            {
+                Logger.LogError($"Не е намерено поле Партида/Заявител, за роля {roleId.GetDescription()}");
+                throw new Exception("Не е намерено поле Партида/Заявител");
+            }
+
+            //Logger.LogInformation($"Сложно поле на партида за роля {roleId.GetDescription()}: " + JsonSerializer.Serialize(field));
+
             var pidType = string.Empty;
             var pid = string.Empty;
             var name = string.Empty;
-            if (field.Type == SimpleFormFieldType.Company.ToString() || field.Type == SimpleFormFieldType.CompanyWithAddress.ToString())
+
+            bool mprEntityIsCompany = false;
+            bool mprEntityIsPerson = false;
+
+            if(field.Type is nameof(SimpleFormFieldType.MPREntity))
             {
-                var pidValues = ParsePidFieldValue(field.Fields!.Where(x => x.Name.EndsWith("companyNumberImmutable")).Select(x => x.Value).FirstOrDefault() ?? string.Empty);
-                pidType = GetPidFieldValue(pidValues, 0);
-                pid = GetPidFieldValue(pidValues, 1);
-                name = field.Fields!.Where(x => x.Name.EndsWith("companyNameImmutable")).Select(x => x.Value).FirstOrDefault();
+                var companyIpField = field.Fields!
+                    .FirstOrDefault(x => x.Name.EndsWith(ComplexFieldsNameConstants.CompanyNumberImmutable));
+
+                if (companyIpField != null && !string.IsNullOrWhiteSpace(companyIpField.Value))
+                {
+                    mprEntityIsCompany = true;
+                }
+                else
+                {
+                    //NOTE : позволяваме засега празни партиди
+                    mprEntityIsPerson = true;
+                }
             }
-            if (field.Type == SimpleFormFieldType.Person.ToString())
+
+            if ((field.Type is nameof(SimpleFormFieldType.Company) or nameof(SimpleFormFieldType.CompanyWithAddress)) ||
+                mprEntityIsCompany)
             {
-                var pidValues = ParsePidFieldValue(field.Fields!.Where(x => x.Type == "PersonIdentifier").Select(x => x.Value).FirstOrDefault() ?? string.Empty);
-                pidType = GetPidFieldValue(pidValues, 0);
-                pid = GetPidFieldValue(pidValues, 1);
-                var firstName = field.Fields!.Where(x => x.Name.EndsWith("firstNameImmutable")).Select(x => x.Value).FirstOrDefault();
-                var middleName = field.Fields!.Where(x => x.Name.EndsWith("middleNameImmutable")).Select(x => x.Value).FirstOrDefault();
-                var lastName = field.Fields!.Where(x => x.Name.EndsWith("lastNameImmutable")).Select(x => x.Value).FirstOrDefault();
-                name = firstName ?? string.Empty;
-                if (!string.IsNullOrEmpty(middleName))
-                    name += $" {middleName}";
-                if (!string.IsNullOrEmpty(lastName))
-                    name += $" {lastName}";
+                var simpleMPRField = field.Fields!
+                    .FirstOrDefault(x => x.Name.EndsWith(ComplexFieldsNameConstants.CompanyNumberImmutable));
+
+                if (simpleMPRField == null)
+                {
+                    Logger.LogError($"Не е намерено просто подполе за Партида/Заявител, за роля {roleId.GetDescription()}, с име завършващо на {ComplexFieldsNameConstants.CompanyNumberImmutable}");
+                }
+
+                //Logger.LogInformation($"Просто подполе на партида за роля {roleId.GetDescription()}: " + JsonSerializer.Serialize(simpleMPRField));
+                pidType = GetMPRIForCompany(simpleMPRField, field, out pid, out name);
             }
+            else if ((field.Type is nameof(SimpleFormFieldType.Person) or nameof(SimpleFormFieldType.namePosition)) 
+                     || mprEntityIsPerson)
+            {
+                var simpleMPRField = field.Fields!
+                    .FirstOrDefault(x => x.Type == nameof(SimpleFormFieldType.PersonIdentifier))!;
+
+                if (simpleMPRField == null)
+                {
+                    Logger.LogError($"Не е намерено просто подполе за Партида/Заявител, за роля {roleId.GetDescription()}, от тип {nameof(SimpleFormFieldType.PersonIdentifier)}");
+                }
+
+                //Logger.LogInformation($"Просто подполе на партида за роля {roleId.GetDescription()}: " + JsonSerializer.Serialize(simpleMPRField));
+                pidType = GetMPRIForPerson(simpleMPRField, field, out pid, out name);
+
+            }
+            else if (field.Type == nameof(SimpleFormFieldType.authorizedOfficial))
+            {
+                var simpleMPRField = field.Fields!
+                    .FirstOrDefault(x => x.Name.EndsWith(ComplexFieldsNameConstants.CompanyNumberImmutable));
+
+                if (simpleMPRField != null && string.IsNullOrWhiteSpace(simpleMPRField.Value))
+                {
+                    pidType = GetMPRIForCompany(simpleMPRField, field, out pid, out name);
+                }
+                else
+                {
+                    simpleMPRField = field.Fields!
+                        .FirstOrDefault(x => x.Type == nameof(SimpleFormFieldType.PersonIdentifier))!;
+
+                    if (simpleMPRField != null && string.IsNullOrWhiteSpace(simpleMPRField.Value))
+                    {
+                        pidType = GetMPRIForPerson(simpleMPRField, field, out pid, out name);
+                    }
+                    else
+                    {
+                        Logger.LogError($"Не е намерено просто подполе за Партида/Заявител, за роля {roleId.GetDescription()}, за поле на {field.Name}");
+                    }
+                }
+            }
+            else
+            {
+                Logger.LogError($"Не е извлечен Партида/Заявител от поле {field.Name} тип {field.Type}, за роля {roleId.GetDescription()}");
+            }
+                
             return (pidType, pid, name);
+        }
+
+        private string GetMPRIForPerson(FormField? simpleMPRField, FormField field, out string pid, out string name)
+        {
+            string pidType;
+            var pidValues = ParsePidFieldValue(simpleMPRField.Value);
+
+            //Logger.LogInformation($"Стойности на просто подполе на партида за роля {roleId.GetDescription()}: " + JsonSerializer.Serialize(pidValues));
+
+            pidType = GetPidFieldValue(pidValues, 0);
+            pid = GetPidFieldValue(pidValues, 1);
+            var firstName = field.Fields!.Where(x => x.Name.EndsWith(ComplexFieldsNameConstants.FirstNameImmutable)).Select(x => x.Value).FirstOrDefault();
+            var middleName = field.Fields!.Where(x => x.Name.EndsWith(ComplexFieldsNameConstants.MiddleNameImmutable)).Select(x => x.Value).FirstOrDefault();
+            var lastName = field.Fields!.Where(x => x.Name.EndsWith(ComplexFieldsNameConstants.LastNameImmutable)).Select(x => x.Value).FirstOrDefault();
+            name = firstName ?? string.Empty;
+            if (!string.IsNullOrEmpty(middleName))
+                name += $" {middleName}";
+            if (!string.IsNullOrEmpty(lastName))
+                name += $" {lastName}";
+            return pidType;
+        }
+
+        private string GetMPRIForCompany(FormField? simpleMPRField, FormField field, out string pid, out string? name)
+        {
+            string pidType;
+            var pidValues = ParsePidFieldValue(simpleMPRField.Value);
+
+            //Logger.LogInformation($"Стойности на просто подполе на партида за роля {roleId.GetDescription()}: " + JsonSerializer.Serialize(pidValues));
+
+            pidType = GetPidFieldValue(pidValues, 0);
+            pid = GetPidFieldValue(pidValues, 1);
+            name = field.Fields!.Where(x => x.Name.EndsWith(ComplexFieldsNameConstants.CompanyNameImmutable))
+                .Select(x => x.Value)
+                .FirstOrDefault();
+            return pidType;
         }
 
         /// <summary>
@@ -753,6 +870,15 @@ namespace URegister.Core.Services
         {
             try
             {
+                bool historyNotPublic = (await registerService.GetCurrentRegister()).HistoryNotPublic;
+
+                if (historyNotPublic)
+                {
+                    Logger.LogError($"Неоторизиран опит за достъп до не публична история в {nameof(GetProcessHistory)}");
+                    throw new AccessViolationException(
+                        $"Неоторизиран опит за достъп до не публична история в {nameof(GetProcessHistory)}");
+                }
+
                 var process = await Repo.AllReadonly<Process>()
                     .IgnoreQueryFilters()
                     .Where(x => x.Id == processId)
@@ -858,7 +984,7 @@ namespace URegister.Core.Services
             return char.ToLower(input[0]) + input.Substring(1);
         }
 
-        public async Task<Guid?> AddMPRI(int roleId, List<FormField> formFields)
+        public async Task<Guid?> AddMPRI(PersonRole roleId, List<FormField> formFields)
         {
             var register = await registerService.GetCurrentRegister();
             if (roleId == PersonRole.Applicant && register.TypeEntry != RegisterTypeEntry.Applicant)
@@ -872,9 +998,24 @@ namespace URegister.Core.Services
                 Pid = pid,
                 Name = name,
                 RegisterId = register.Id,
-                RoleId = roleId
+                RoleId = (int)roleId
             });
-            return Guid.Parse(responseMpriAdd.Id);
+
+            if (responseMpriAdd.Status.Code != ResultCodes.Ok)
+            {
+                Logger.LogError($"Проблем при запис на партида. Pid: {pid}, PidType {pidType}. {responseMpriAdd.Status.Message}");
+                throw new ArgumentException($"Проблем при запис на партида. Pid: {pid}, PidType {pidType}. {responseMpriAdd.Status.Message}");
+            }
+
+            if (Guid.TryParse(responseMpriAdd.Id, out Guid result))
+            {
+                return result;
+            }
+            else
+            {
+                Logger.LogError($"Не може да парсне GUID {responseMpriAdd.Id}, за индетификатор {pid}");
+                throw new ArgumentException($"Не може да парсне GUID {responseMpriAdd.Id}, за индетификатор {pid}");
+            }
         }
 
         /// <summary>
@@ -1002,7 +1143,8 @@ namespace URegister.Core.Services
         }
         public async Task<List<RegisterItem>> AddRegisterItems(Process process, List<FormField> formFields, Guid processStepId, int userTimeZoneOffsetInMinutes)
         {
-            var response = await objectsCatalogGrpcClient.GetFieldsListAsync(new Google.Protobuf.WellKnownTypes.Empty());
+            CatalogFieldsListRequest request = new CatalogFieldsListRequest();
+            var response = await objectsCatalogGrpcClient.GetFieldsListAsync(request);
             var fieldTypes = response.FieldTypes.ToList();
             var registerItems = new List<RegisterItem>();
             foreach (var formField in formFields)
@@ -1107,6 +1249,26 @@ namespace URegister.Core.Services
                 case SimpleFormFieldType.Number:
                     string numberWithDotSeparator = formField.Value.Replace(',', '.');
                     registerItem.DecimalValue = decimal.Parse(numberWithDotSeparator, CultureInfo.InvariantCulture);
+                    return;
+                case SimpleFormFieldType.BulgarianCurrency:
+                    //Записваме винаги в евро
+                    if (string.IsNullOrWhiteSpace(formField.Value))
+                    {
+                        return;
+                    }
+                    var valuesArray = formField.Value.Split(':');
+
+                    if (int.Parse(valuesArray[0]) == (int)Currency.EUR)
+                    {
+                        registerItem.DecimalValue = decimal.Parse(valuesArray[1], CultureInfo.InvariantCulture);
+                        return;
+                    }
+
+                    if (int.Parse(valuesArray[0]) == (int)Currency.BGN)
+                    {                    
+                        var parsedDecimalValue = decimal.Parse(valuesArray[1], CultureInfo.InvariantCulture);
+                        registerItem.DecimalValue = parsedDecimalValue / ValueConstants.EURInBGN;
+                    }
                     return;
                 case SimpleFormFieldType.Date:
                     DateTime parsedDate = DateTime.ParseExact(registerItem.Value!,
@@ -1254,7 +1416,8 @@ namespace URegister.Core.Services
                 Purpose = formModel.Purpose,
                 SelectedType = formModel.SelectedType,
                 OrderNum = orderNum,
-                ProcessInfo = new ProcessInfoVM()
+                ProcessInfo = new ProcessInfoVM(),
+                ConditionTree = formModel.ConditionTree
             };
             var serviceStep = await Repo.AllReadonly<ServiceStep>()
                                         .Where(x => x.Id == serviceStepId)
@@ -1296,7 +1459,7 @@ namespace URegister.Core.Services
             }
             if (!string.IsNullOrEmpty(process?.IncomingNumber))
             {
-                result.FormTitle += $" Вх. № {process.IncomingNumber} от {process.IncomingDate: dd.MM.yyyy hh:mm}";
+                result.FormTitle += $" Вх. № {process.IncomingNumber} от {process.IncomingDate.ConvertUtcToBGTime().ToString(FormattingConstant.DateTimeFormat)}";
             }
             if (process?.IncomingDate != null)
             {
@@ -1680,8 +1843,6 @@ namespace URegister.Core.Services
                                     .IgnoreQueryFilters()
                                     .Where(x => x.Id == processId)
                                     .FirstAsync();
-            if (process.PreferredResultDeliveryMethod != ChannelType.EDelivery)
-                return;
             var administration = await registerGrpcClient.GetAdministrationAsync(new GetAdministrationRequest { AdministrationId = _userContext.AdministrationId.ToString() });
             var register = await registerService.GetCurrentRegister();
             int fileSourceType = 0;
@@ -1784,6 +1945,9 @@ namespace URegister.Core.Services
                     FileUrl = fileUrl
                 });
             }
+            if (process.PreferredResultDeliveryMethod != ChannelType.EDelivery)
+                return;
+
             var response = await integrationGrpcClient.SendMessageAsync(outMessage);
             if (response.Status.Code != ResultCodes.Ok)
             {
@@ -1962,7 +2126,7 @@ namespace URegister.Core.Services
                         IsActive = true,
                         SourceId = instructionResponse.Id,
                         IntegrationFileId = edeliveryFile.Id,
-                        SourceType = (int)IntegrationSourceType.InstructionResponce,
+                        SourceType = (int)IntegrationSourceType.InstructionResponse,
                     };
                     await Repo.AddAsync(integrationFile);
                     var metaFile = new FileMetadata
@@ -2015,7 +2179,7 @@ namespace URegister.Core.Services
         public async Task<InstructionResponseVM> GetInstructionResponses(Guid instructionId)
         {
             var files = Repo.AllReadonly<IntegrationFile>()
-                            .Where(x => x.SourceType == (int)IntegrationSourceType.InstructionResponce);
+                            .Where(x => x.SourceType == (int)IntegrationSourceType.InstructionResponse);
             var result = await Repo.AllReadonly<Instruction>()
                              .Where(x => x.Id == instructionId)
                              .Select(x => new InstructionResponseVM
@@ -2031,7 +2195,7 @@ namespace URegister.Core.Services
         public async Task<InstructionResponseVM> GetInstructionResponsesOnProcess(Guid processId)
         {
             var files = Repo.AllReadonly<IntegrationFile>()
-                            .Where(x => x.SourceType == (int)IntegrationSourceType.InstructionResponce);
+                            .Where(x => x.SourceType == (int)IntegrationSourceType.InstructionResponse);
             var instructions = await Repo.AllReadonly<Instruction>()
                              .Where(x => x.ProcessId == processId)
                              .Select(x => new InstructionResponseVM
@@ -2053,7 +2217,7 @@ namespace URegister.Core.Services
         public async Task<BlanksTemplate?> GetBlankOnRegister(int formParentId)
         {
             return await Repo.AllReadonly<BlanksTemplate>()
-                             .Where(x => x.SourceType == (int)BlankSourceType.CerticicateOnRegister &&
+                             .Where(x => x.SourceType == (int)BlankSourceType.CertificateOnRegister &&
                                          x.FormParentId == formParentId)
                              .FirstOrDefaultAsync();
         }

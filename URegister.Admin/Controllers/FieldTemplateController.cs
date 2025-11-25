@@ -2,6 +2,7 @@
 using DataTables.AspNet.Core;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Org.BouncyCastle.Asn1.Ocsp;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -31,7 +32,7 @@ namespace URegister.Admin.Controllers
         [Display(Name = "Задаване на падащ списък с типове полета за шаблони")]
         public async Task SetViewBag()
         {
-            var response = await objectCatalogGrpcClient.GetFieldsListAsync(new Google.Protobuf.WellKnownTypes.Empty());
+            var response = await objectCatalogGrpcClient.GetFieldsListAsync(new CatalogFieldsListRequest());
             ViewBag.FieldTypeId_ddl = response.FieldTypes
                 .Where(x => x.IsComplex)
                 .Select(x => new SelectListItem { 

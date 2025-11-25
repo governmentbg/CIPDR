@@ -57,7 +57,7 @@ function LoadProcessProcessHistory(id) {
                 'rt>',
             buttons: ['io_colvis', 'io_excel', 'io_pdf', 'io_csv', 'io_print'],
             filter: false,
-            columns: ProcessesColumns()
+            columns: ProcessesColumns(false, true)
         });
     }
 }

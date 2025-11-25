@@ -6,7 +6,7 @@
         public ResourceName Name { get; set; }
         public int CategoryId { get; set; }
         public int? TermsOfUseId { get; set; }
-
+        public int? Visibility { get; set; }
     }
     internal class AddDatasetRequest : ApiRequestBase
     {

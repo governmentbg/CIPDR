@@ -1,5 +1,6 @@
 ﻿using URegister.Common;
 using URegister.Infrastructure.Model.RegisterForms;
+using URegister.ObjectsCatalog.Data.Models;
 
 namespace URegister.ObjectsCatalog.Contracts
 {
@@ -11,8 +12,10 @@ namespace URegister.ObjectsCatalog.Contracts
         /// <summary>
         /// Вземане на списък на полетата
         /// </summary>
+        /// <param name="requestRegisterCode"></param>
         /// <returns></returns>
-        Task<ICollection<(string type, string label, bool isComplex, string template, int fieldTypeId)>> GetFieldTypesAsync();
+        Task<ICollection<(string type, string label, bool isComplex, string template, int fieldTypeId, List<string>? registerRestrictionCodes)>>
+            GetFieldTypesAsync(string requestRegisterCode);
 
         /// <summary>
         /// Получаване на данни за поле
@@ -106,6 +109,14 @@ namespace URegister.ObjectsCatalog.Contracts
         /// <param name="stepId">Идентификатор на стъпка</param>
         /// <returns></returns>
         Task<ResultStatus> DeleteStep(int stepId);
+
+        /// <summary>
+        /// Връща тип поле по име на тип
+        /// </summary>
+        /// <param name="typeName"></param>
+        /// <returns></returns>       
+        public Task<FieldType?> GetFieldTypeByName(string typeName);
+
         Task<(List<FieldTemplateMessage>, int)> GetFieldTemplateList(DatatableRequest request);
         Task<FieldTemplateResponse> GetFieldTemplate(int id);
         Task<FieldTemplateContentResponse> GetFieldTemplateContent(int id);

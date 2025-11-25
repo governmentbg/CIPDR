@@ -58,9 +58,12 @@ function LoadAdministrations() {
                     width: "10%",
                     "render": function (data, type, row) {
                         return editButton(`/Register/EditAdministration?registerAdministrationId=${row.id}&registerId=${registerId}`) +
-                               `<a href = "/Register/indexPerson?registerAdministrationId=${row.id}&registerId=${registerId}" data-tooltip="Оторизирани лица" class="ui tertiary icon button" >
+                            `<a href = "/Register/indexPerson?registerAdministrationId=${row.id}&registerId=${registerId}" data-tooltip="Оторизирани лица" class="ui tertiary icon button" >
                                    <i class="tasks icon"></i>
                                 </a>` +
+                            `<a href="/Register/OpenDataAdministration?administrationId=${row.administrationId}&&registerId=${registerId}" data-tooltip="OpenData" class="ui tertiary icon button">
+                                 <i class="upload icon"></i>
+                            </a>` +
                             "<a href='javascript:actionWithConfirmation(\"/Register/DeleteRegisterAdministration\", \"" +
                             data + "\", \"Сигурни ли сте, че искате да изтриете " +
                             row.name +

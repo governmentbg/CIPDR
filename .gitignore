@@ -73,11 +73,6 @@ artifacts/
 # Certificates
 
 *.p12
-*.pfx
-*.crt
-*.cer
-*.key
-*.pem
 
 # Chutzpah Test files
 _Chutzpah*
@@ -293,3 +288,5 @@ __pycache__/
 /Адреси.txt
 /EDeliveryTest/appsettings.json
 /URegister.AppHost/Properties/launchSettings.json
+/EDeliveryTest/response.html
+/URegister.RegistersCatalog/stampit.bearer

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.11.35222.181
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11217.181 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "URegister", "URegister\URegister.csproj", "{19919DB7-9985-4AEA-AA55-5101FD1F80A8}"
 EndProject
@@ -43,7 +43,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CommonFiles", "CommonFiles"
 	ProjectSection(SolutionItems) = preProject
 		LICENSE = LICENSE
 		README.md = README.md
-		Адреси.txt = Адреси.txt
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "URegister.Core.Tests", "URegister.Core.Tests\URegister.Core.Tests.csproj", "{742FCC14-B0E8-4351-AB74-F1DBC54697BD}"
@@ -71,6 +70,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "URegister.AuditLog", "URegister.AuditLog\URegister.AuditLog.csproj", "{046E4CC4-D82F-BA00-A1DD-17F2798777AD}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EDelivery", "EDelivery\EDelivery.csproj", "{FDA4819B-AD39-4C43-9B9C-4FF55E2F2A67}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EDeliveryTest", "EDeliveryTest\EDeliveryTest.csproj", "{FF2F09A7-0AC7-4BD5-9B9B-EA27D5606734}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "URegister.AppHost.Tests", "URegister.AppHost.Tests\URegister.AppHost.Tests.csproj", "{9FCA1882-3CE9-49F2-BED5-9254AADBAC7E}"
 EndProject

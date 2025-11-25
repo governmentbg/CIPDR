@@ -1,8 +1,10 @@
 ﻿using DataTables.AspNet.Core;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.CSharp.RuntimeBinder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Globalization;
 using System.Linq.Expressions;
 using System.Text;
 using System.Text.Json;
@@ -95,6 +97,7 @@ namespace URegister.Core.Services
         /// <summary>
         /// Връща списък с формите в регистър
         /// </summary>
+        /// <param name="request">Заявка от datatable</param>
         /// <param name="registerId">Идентификатор на регистър</param>
         /// <param name="approvalStatus">Статус на одобрение</param>
         /// <returns></returns>
@@ -254,6 +257,8 @@ namespace URegister.Core.Services
                 RegisterVM register = await _registerService.GetCurrentRegister();
 
                 viewModel.IsSubmitterRequired = register.TypeEntry != RegisterTypeEntry.Officially;
+
+                viewModel.ConditionTree = JsonSerializer.Serialize(await this.GetConditionTreeForFormParentId(form.ParentId.Value));
 
                 return viewModel;
             }
@@ -563,15 +568,6 @@ namespace URegister.Core.Services
             {
                 var publicDataOnly = !mpris.Any() || !mpris.Contains((await Repo.GetByIdAsync<Process>(processId)).MpriId);
 
-                List<RegisterItem> fieldValues = await Repo.AllReadonly<RegisterItem>()
-                    .IgnoreQueryFilters()
-                    .Include(ri => ri.Process)
-                    .TagWith(nameof(GetFormModelForSavedData))
-                    .Where(ri => ri.ProcessId == processId)
-                    .Where(ri =>
-                        ri.ProcessStepId == ri.Process.ProcessSteps.OrderBy(s => s.OrderNum).LastOrDefault().Id)
-                    .ToListAsync();
-
                 var process = await Repo.AllReadonly<Process>()
                     .IgnoreQueryFilters()
                     .Include(ps => ps.Form)
@@ -584,6 +580,21 @@ namespace URegister.Core.Services
                     Logger.LogError($"Не е намерена стъпка с данни за заявена услуга с идентификатор {processId} в {nameof(GetFormModelForSavedData)}");
                     return null;
                 }
+
+                if (!process.IsActive && (await _registerService.GetCurrentRegister()).HistoryNotPublic)
+                {
+                    Logger.LogError($"Опит за достъп до история на заявление в регистър със забранен публичен достъп до история в {nameof(GetFormModelForSavedData)}");
+                    return null;
+                }
+
+                List<RegisterItem> fieldValues = await Repo.AllReadonly<RegisterItem>()
+                    .IgnoreQueryFilters()
+                    .Include(ri => ri.Process)
+                    .TagWith(nameof(GetFormModelForSavedData))
+                    .Where(ri => ri.ProcessId == processId)
+                    .Where(ri =>
+                        ri.ProcessStepId == ri.Process.ProcessSteps.OrderBy(s => s.OrderNum).LastOrDefault().Id)
+                    .ToListAsync();
 
                 FormViewModel viewModel = await GetFormViewModel(process.Form, publicDataOnly);
                 if (viewModel == null)
@@ -598,7 +609,7 @@ namespace URegister.Core.Services
                 var cachedNomenclatures = await CacheNomenclaturesForValuesOfInterest(allPublicFields);
 
                 DistributeRegisterItemValuesToFormViewModel(fieldValues, viewModel);
-                await ResolveFormFieldsValues(viewModel.FormFields, cachedNomenclatures);
+                await ResolveFormFieldsValues(viewModel.FormFields, cachedNomenclatures, true);
                 return viewModel;
             }
             catch (Exception ex)
@@ -609,9 +620,9 @@ namespace URegister.Core.Services
         }
 
         /// <summary>
-        /// Заменя номенклатурните стойности във FormViewModel с актуалните им текстови стойности
+        /// Заменя номенклатурните стойности във полета от FormViewModel с актуалните им текстови стойности
         /// </summary>
-        /// <param name="viewModel">Модел със заредени стойности</param>
+        /// <param name="formModelFields">Полета от модел със заредени стойности</param>
         /// <returns></returns>
         public async Task ResolveFormFieldsViewModelValues(IEnumerable<FormField> formModelFields)
         {
@@ -621,7 +632,7 @@ namespace URegister.Core.Services
 
             var cachedNomenclatures = await CacheNomenclaturesForValuesOfInterest(allPublicFields);
 
-            await ResolveFormFieldsValues(formModelFields, cachedNomenclatures);
+            await ResolveFormFieldsValues(formModelFields, cachedNomenclatures, false);
         }
 
         /// <summary>
@@ -785,6 +796,8 @@ namespace URegister.Core.Services
         {            
             try
             {
+                bool historyNotPublic = (await _registerService.GetCurrentRegister()).HistoryNotPublic;
+
                 int? processFormParentId = (await Repo.AllReadonly<Service>()
                 .TagWith(nameof(GetRegistrationProcessListWhereSubfieldsAreColumns))
                     .Where(p => p.ServiceTypeId == (int)ServiceTypes.Register)
@@ -856,12 +869,20 @@ namespace URegister.Core.Services
                     .Take(take);
 
                 var fieldValues = await processesForPage
-                    .SelectMany(p => p.RegisterItems.Select(ri => new { ri.Value, ri.Name, ri.ProcessId, ri.Process.IncomingDate }))
+                    .SelectMany(p => p.RegisterItems.Select(ri => new ProcessFieldValue
+                    {
+                        Value = ri.Value,
+                        Name = ri.Name,
+                        ProcessId = ri.ProcessId,
+                        IncomingDate = ri.Process.IncomingDate,
+                        RegisterNumber = ri.Process.RegisterNumber,
+                        ModifiedOn = ri.Process.ModifiedOn
+                    }))
                     .Where(ri => valuesOfInterest.Keys.Contains(ri.Name))
                     .GroupBy(ri => ri.ProcessId)
                     .ToListAsync();
 
-                var result = await ResolveRegisterItemValues(fieldValues, valuesOfInterest, cachedNomenclatures);
+                var result = await ResolveRegisterItemValues(fieldValues, valuesOfInterest, cachedNomenclatures, true);
 
                 result = result.OrderByDescending(d => (DateTime)d[nameof(Process.IncomingDate)]).ToList();
 
@@ -875,6 +896,7 @@ namespace URegister.Core.Services
                         totalRecordsFiltered = await processesOfInterest.CountAsync(), 
                         pageNumber = pageNumber,
                         perPage = perPage,
+                        historyNotPublic
                     }
                 };
 
@@ -906,13 +928,23 @@ namespace URegister.Core.Services
         /// <param name="searchPattern"></param>
         /// <param name="toDate">До дата на вписване, включително</param>
         /// <param name="fromDate">От дата на вписване, включително</param>
+        /// <param name="searchToDate">До дата за търсене по критерии от тип дата</param>
+        /// <param name="searchFromDate">От дата за търсене по критерии от тип дата</param>
         /// <returns></returns>
-        public async Task<JsonResult> GetRegistrationProcessListWhereSubfieldsAreConcatenated(Guid administrationId, int skip,
-            int take, string searchKey,
-            string searchPattern, DateTime? toDate, DateTime? fromDate)
+        public async Task<(JsonResult, List<Dictionary<string, object>>, Dictionary<string, FormField>)> GetRegistrationProcessListWhereSubfieldsAreConcatenated(Guid administrationId, 
+            int skip,
+            int take, 
+            string searchKey,
+            string searchPattern, 
+            DateTime? toDate, 
+            DateTime? fromDate,
+            DateTime? searchToDate,
+            DateTime? searchFromDate)
         {
             try
             {
+                bool historyNotPublic = (await _registerService.GetCurrentRegister()).HistoryNotPublic;
+
                 int? processFormParentId = (await Repo.AllReadonly<Service>()
                 .TagWith(nameof(GetRegistrationProcessListWhereSubfieldsAreConcatenated))
                     .Where(p => p.ServiceTypeId == (int)ServiceTypes.Register)
@@ -921,7 +953,7 @@ namespace URegister.Core.Services
                 if (processFormParentId == null)
                 {
                     Logger.LogError($"Не намерена форма в {nameof(GetRegistrationProcessListWhereSubfieldsAreConcatenated)} за администрация с идентификатор {administrationId}");
-                    return new JsonResult(new List<object>());
+                    return (new JsonResult(new List<object>()), new List<Dictionary<string, object>>(), new Dictionary<string, FormField>());
                 }
 
                 FormViewModel formModel = await GetFormViewModel(processFormParentId.Value);
@@ -943,20 +975,22 @@ namespace URegister.Core.Services
 
                 var columnData = valuesOfInterestFinal
                     .Select(v => new { label = v.Value.Label, fieldName = v.Key }).ToList();
-
                 var searchOptions = valuesOfInterest
-                    .Select(v => new { label = v.Value.Label, fieldName = v.Key }).ToArray();
+                    .Select(v => new { label = v.Value.Label, fieldName = v.Key, type = v.Value.Type }).ToArray();
 
-                columnData.Add(new { label = "Дата на вписване", fieldName = "IncomingDate" });
-                //columnData.Add(new { label = "Идентификатор на процес", fieldName = "ProcessId" });
-
+                columnData.Insert(0, new { label = "Дата на последна промяна", fieldName = "ModifiedOn" });
+                columnData.Insert(0, new { label = "Номер на вписване", fieldName = "RegisterNumber" });
+               
                 var cachedNomenclatures = await CacheNomenclaturesForValuesOfInterest(valuesOfInterest);
 
-                bool isSearchPatternValid = TryDetermineSearchPattern(searchKey,
-                    searchPattern,
-                    valuesOfInterest,
-                    cachedNomenclatures,
-                    out List<string> searchPatterns);
+                List<string> searchPatterns = null;
+
+                bool isSearchPatternValid = (string.IsNullOrWhiteSpace(searchKey) && (searchFromDate != null || searchToDate != null)) || 
+                                            TryDetermineSearchPattern(searchKey,
+                                            searchPattern,
+                                            valuesOfInterest,
+                                            cachedNomenclatures,
+                                            out searchPatterns);
 
                 if (!isSearchPatternValid)
                 {
@@ -968,14 +1002,24 @@ namespace URegister.Core.Services
                         metadata = new { totalRecordsFiltered = 0 }
                     };
 
-                    return new JsonResult(emptyData);
+                    return (new JsonResult(emptyData), new List<Dictionary<string, object>>(), valuesOfInterest);
                 }
 
-                DateTime? toDateUTC = toDate.HasValue ? toDate.Value.ToUniversalTime().AddDays(1) : null;
-                DateTime? fromDateUTC = fromDate.HasValue ? fromDate.Value.ToUniversalTime() : null;
+                DateTime? toDateUTC = toDate?.ToUniversalTime().AddDays(1);
+                DateTime? fromDateUTC = fromDate?.ToUniversalTime();
+                
+                DateTime? searchToDateUTC = searchToDate?.ToUniversalTime().AddDays(1);
+                DateTime? searchFromDateUTC = searchFromDate?.ToUniversalTime();
 
                 var processesOfInterest =
-                    GetRegistrationProcessListQuery(administrationId, searchKey, toDateUTC, fromDateUTC, valuesOfInterest, searchPatterns);
+                    GetRegistrationProcessListQuery(administrationId, 
+                        searchKey, 
+                        toDateUTC, 
+                        fromDateUTC, 
+                        valuesOfInterest, 
+                        searchPatterns,
+                        searchToDateUTC,
+                        searchFromDateUTC);
 
                 int pageNumber;
                 int perPage;
@@ -996,14 +1040,20 @@ namespace URegister.Core.Services
                     .Take(take);
 
                 var fieldValues = await processesForPage
-                    .SelectMany(p => p.RegisterItems.Select(ri => new { ri.Value, ri.Name, ri.ProcessId, ri.Process.IncomingDate }))
+                    .SelectMany(p => p.RegisterItems
+                        .Select(ri => new ProcessFieldValue { 
+                            Value = ri.Value, 
+                            Name = ri.Name, 
+                            ProcessId = ri.ProcessId, 
+                            RegisterNumber = ri.Process.RegisterNumber, 
+                            ModifiedOn = ri.Process.ModifiedOn.ConvertUtcToBGTime() }))
                     .Where(ri => valuesOfInterest.Keys.Contains(ri.Name))
                     .GroupBy(ri => ri.ProcessId)
                     .ToListAsync();
 
-                var result = await ResolveRegisterItemValues(fieldValues, valuesOfInterest, cachedNomenclatures);
+                var result = await ResolveRegisterItemValues(fieldValues, valuesOfInterest, cachedNomenclatures, true);
 
-                result = result.OrderByDescending(d => (DateTime)d[nameof(Process.IncomingDate)]).ToList();
+                result = result.OrderByDescending(d => (DateTime)d[nameof(Process.ModifiedOn)]).ToList();
 
                 List<Dictionary<string, object>> concatenatedResult = new List<Dictionary<string, object>>();
                 foreach (Dictionary<string, object> dictionary in result)
@@ -1031,7 +1081,8 @@ namespace URegister.Core.Services
                     }
 
                     entry.Add(nameof(RegisterItem.ProcessId), dictionary[nameof(RegisterItem.ProcessId)]);
-                    entry.Add(nameof(RegisterItem.Process.IncomingDate), dictionary[nameof(RegisterItem.Process.IncomingDate)]);
+                    entry.Add(nameof(RegisterItem.Process.RegisterNumber), dictionary[nameof(RegisterItem.Process.RegisterNumber)]);
+                    entry.Add(nameof(RegisterItem.Process.ModifiedOn), dictionary[nameof(RegisterItem.Process.ModifiedOn)]);
                 }
 
                 var combinedData = new
@@ -1044,10 +1095,11 @@ namespace URegister.Core.Services
                         totalRecordsFiltered = await processesOfInterest.CountAsync(),
                         pageNumber = pageNumber,
                         perPage = perPage,
+                        historyNotPublic
                     }
                 };
 
-                return new JsonResult(combinedData);
+                return (new JsonResult(combinedData), concatenatedResult, valuesOfInterestFinal);
             }
             catch (Exception ex)
             {
@@ -1060,7 +1112,7 @@ namespace URegister.Core.Services
                     metadata = new { totalRecordsFiltered = 0 }
                 };
 
-                return new JsonResult(combinedData);
+                return (new JsonResult(combinedData), new List<Dictionary<string, object>>(), new Dictionary<string, FormField>());
             }
         }
 
@@ -1087,8 +1139,8 @@ namespace URegister.Core.Services
                     string currentName = enumerator.Current.Key ?? string.Empty;
 
                     // Use space as separator if previous label ends with "firstNameImmutable" and current label ends with "lastNameImmutable"
-                    string effectiveSeparator = (previousFieldName.EndsWith("firstNameImmutable", StringComparison.OrdinalIgnoreCase)
-                                                 && currentName.EndsWith("lastNameImmutable", StringComparison.OrdinalIgnoreCase))
+                    string effectiveSeparator = (previousFieldName.EndsWith(ComplexFieldsNameConstants.FirstNameImmutable, StringComparison.OrdinalIgnoreCase)
+                                                 && currentName.EndsWith(ComplexFieldsNameConstants.LastNameImmutable, StringComparison.OrdinalIgnoreCase))
                         ? " "
                         : separator;
 
@@ -1101,23 +1153,46 @@ namespace URegister.Core.Services
             }
         }
 
-        private IOrderedQueryable<Process> GetRegistrationProcessListQuery(Guid administrationId, string searchKey, DateTime? toDateUTC,
-            DateTime? fromDateUTC, Dictionary<string, FormField> valuesOfInterest, List<string> searchPatterns)
+        private IOrderedQueryable<Process> GetRegistrationProcessListQuery(Guid administrationId, 
+            string searchKey, 
+            DateTime? toDateUTC,
+            DateTime? fromDateUTC, 
+            Dictionary<string, FormField> valuesOfInterest, 
+            List<string> searchPatterns,
+            DateTime? searchToDateUTC = null,
+            DateTime? searchFromDateUTC = null)
         {
-            var processesOfInterest = Repo.AllReadonly<Process>()
+
+            var query = Repo.AllReadonly<Process>()
                 .TagWith(nameof(GetRegistrationProcessListWhereSubfieldsAreColumns))
                 .Where(p => p.StatusId == (int)ProcessStatus.Registered)
                 .Where(p => p.TenantId == administrationId)
-                .Where(p => !toDateUTC.HasValue || p.IncomingDate < toDateUTC)
-                .Where(p => !fromDateUTC.HasValue || p.IncomingDate >= fromDateUTC)
-                .Where(p => p.RegisterItems.Any(
-                    ri => valuesOfInterest.Keys.Contains(ri.Name) &&
-                          ri.ProcessStepId == ri.Process.ProcessSteps.OrderBy(s => s.OrderNum).LastOrDefault().Id
-                          && (!searchPatterns.Any() || searchPatterns.Any(sp =>
-                              ri.Name == searchKey && EF.Functions.ILike(ri.Value, sp)
-                          ))
-                ))
-                .OrderByDescending(p => p.IncomingDate);
+                .Where(p => !toDateUTC.HasValue || p.ModifiedOn < toDateUTC)
+                .Where(p => !fromDateUTC.HasValue || p.ModifiedOn >= fromDateUTC);
+
+            if (searchToDateUTC != null || searchFromDateUTC != null)
+            {
+                query = query.Where(p => p.RegisterItems.Any(ri => valuesOfInterest.Keys.Contains(ri.Name) &&
+                                                                   ri.ProcessStepId == ri.Process.ProcessSteps
+                                                                       .OrderBy(s => s.OrderNum).LastOrDefault().Id
+                                                                   && (searchToDateUTC == null || ri.DateTimeValue < searchToDateUTC)
+                                                                   && (searchFromDateUTC == null || ri.DateTimeValue >= searchFromDateUTC)
+                ));
+            }
+            else // searchPatterns != null
+            {
+                query = query.Where(p => p.RegisterItems.Any(ri => valuesOfInterest.Keys.Contains(ri.Name) &&
+                                                                   ri.ProcessStepId == ri.Process.ProcessSteps
+                                                                       .OrderBy(s => s.OrderNum).LastOrDefault().Id
+                                                                   && (!searchPatterns.Any() || searchPatterns.Any(sp =>
+                                                                       ri.Name == searchKey &&
+                                                                       EF.Functions.ILike(ri.Value, sp)
+                                                                   ))
+                ));
+            }
+
+            var processesOfInterest = query
+                .OrderByDescending(p => p.ModifiedOn);
             return processesOfInterest;
         }
 
@@ -1450,7 +1525,7 @@ namespace URegister.Core.Services
                 }
 
                 var processesOfInterest = Repo.AllReadonly<Process>()
-                    .TagWith(nameof(GetDataForPublicTable))
+                    .TagWith(nameof(GetTableDataForService))
                     .Where(p => p.StatusId == (int)ProcessStatus.Registered)
                     .Where(p => isCurrentUserGlobalAdmin || p.TenantId == _userContext.AdministrationId)
                     .Where(p => serviceId == 0 || p.ServiceId == serviceId)
@@ -1474,14 +1549,22 @@ namespace URegister.Core.Services
                     .Take(request.Length);
 
                 var fieldValues = await processesForPage
-                    .SelectMany(p => p.RegisterItems.Select(ri => new { ri.Value, ri.Name, ri.ProcessId, ri.Process.IncomingDate }))
-                    .Where(ri => valuesOfInterest.Keys.Contains(ri.Name))
+                    .SelectMany(p => p.RegisterItems.Select(ri => new ProcessFieldValue()
+                    {
+                        Value = ri.Value, 
+                        Name = ri.Name, 
+                        ProcessId = ri.ProcessId, 
+                        ModifiedOn = ri.Process.ModifiedOn
+                    }))
+                    .Where(ri => valuesOfInterest.Keys.Contains(ri.Name) 
+                                 || valuesOfInterest.Keys.Any(k => ri.Name.StartsWith(k + "_") 
+                                                                   || valuesOfInterest.Keys.Any(k => ri.Name.StartsWith(k + "#"))))
                     .GroupBy(ri => ri.ProcessId)
                     .ToListAsync();
 
-                var result = await ResolveRegisterItemValues(fieldValues, valuesOfInterest, cachedNomenclatures);
+                var result = await ResolveRegisterItemValues(fieldValues, valuesOfInterest, cachedNomenclatures, false);
 
-                result = result.OrderByDescending(d => (DateTime)d[nameof(Process.IncomingDate)]).ToList();
+                result = result.OrderByDescending(d => (DateTime)d[nameof(Process.ModifiedOn)]).ToList();
 
                 return request.GetResponseServerPaging(result, await processesOfInterest.CountAsync());
             }
@@ -1496,7 +1579,7 @@ namespace URegister.Core.Services
         {
             foreach (FormField formModelFormField in formModelFormFields)
             {
-                if (selectedColumns.Contains( formModelFormField.Name))
+                if (selectedColumns.Contains(formModelFormField.Name))
                 {
                     valuesOfInterest.Add(formModelFormField.Name, formModelFormField);
                 }
@@ -1506,124 +1589,82 @@ namespace URegister.Core.Services
             }
         }
 
-        private async Task<List<Dictionary<string, object>>> ResolveRegisterItemValues(IEnumerable<dynamic> fieldValues, Dictionary<string, FormField> valuesOfInterest, Dictionary<string, Dictionary<string, string>> cachedNomenclatures)
+        private async Task<List<Dictionary<string, object>>> ResolveRegisterItemValues(
+            List<IGrouping<Guid, ProcessFieldValue>> fieldValues, 
+            Dictionary<string, FormField> valuesOfInterest, 
+            Dictionary<string, Dictionary<string, string>> cachedNomenclatures,
+            bool censorSensitiveData)
         {
+            bool lookForRegistryNumber = true;
+            bool lookForModifiedOn = true;
+
             List<Dictionary<string, object>> result = new List<Dictionary<string, object>>();
             foreach (var registerItems in fieldValues)
             {
                 Dictionary<string, object> jsonFields = 
                     valuesOfInterest.Keys.ToDictionary(k => k, k => (object)string.Empty);
 
-                foreach (var registerItem in registerItems)
+                foreach (var valueOfInterestPair in valuesOfInterest)
                 {
-                    //булева
-                    if (valuesOfInterest[registerItem.Name].Type == SimpleFormFieldType.Boolean.ToString())
+                    FormField currentField = valueOfInterestPair.Value;
+                    var registerItem = registerItems.FirstOrDefault(ri => ri.Name == currentField.Name);
+                    if (registerItem == null)
                     {
-                        jsonFields[valuesOfInterest[registerItem.Name].Name] =
-                            bool.Parse((string)registerItem.Value) ? "да" : "не";
+                        continue;
                     }
-                    //файл
-                    else if (valuesOfInterest[registerItem.Name].Type == SimpleFormFieldType.File.ToString())
+
+                    if (currentField.Fields != null && currentField.Fields.Any())
                     {
-                        try
-                        {
-                            string link = await _objectStoreService.GetPresignedUrl(registerItem.Value);
-                            jsonFields[valuesOfInterest[registerItem.Name].Name] = link;
-                        }
-                        catch (Exception e)
-                        {
-                            Logger.LogError(e, $"Грешка при създаване на линк в {nameof(GetTableDataForService)}");
-                            jsonFields[valuesOfInterest[registerItem.Name].Name] = registerItem.Value;
-                        }
-                    }
-                    //номенклатура
-                    else if (!string.IsNullOrWhiteSpace(valuesOfInterest[registerItem.Name].NomenclatureType) ||
-                             valuesOfInterest[registerItem.Name].Type == SimpleFormFieldType.City.ToString())
-                    {
-                        if (!string.IsNullOrWhiteSpace(registerItem.Value))
-                        {
-                            Dictionary<string, string> nomenclature;
-                            if (valuesOfInterest[registerItem.Name].Type == SimpleFormFieldType.City.ToString())
-                            {
-                                nomenclature = cachedNomenclatures[NomenclatureTypes.Ekatte];
-                            }
-                            else
-                            {
-                                nomenclature =
-                                    cachedNomenclatures[valuesOfInterest[registerItem.Name].NomenclatureType];
-                            }
+                        StringBuilder displayValue = new StringBuilder(
+                            await ResolveComplexField(cachedNomenclatures, censorSensitiveData, currentField,
+                                registerItems));
 
-                            if (valuesOfInterest[registerItem.Name].Type == SimpleFormFieldType.MultiSelect.ToString())
-                            {
-                                List<string> resolvedMultiselectValues = new List<string>();
-                                foreach (string multiselectValue in registerItem.Value.Split(','))
-                                {
-                                    if (!nomenclature.TryGetValue(multiselectValue, out string resolvedValue))
-                                    {
-                                        Logger.LogError(
-                                            $"Не е намерена стойност {multiselectValue} на номенклатура {valuesOfInterest[registerItem.Name].Type} в {nameof(ResolveRegisterItemValues)}");
+                        if (currentField.CanBeRepeated)
+                        {
+                            int i = 1;
+                            var registerItemClone = registerItems.FirstOrDefault(ri => ri.Name == RepeatedFormFieldHelperService.InsertBeforeFirstUnderscore(currentField.Name, "#" + i));
 
-                                        resolvedMultiselectValues.Add(multiselectValue);
-                                    }
-                                    else
-                                    {
-                                        resolvedMultiselectValues.Add(resolvedValue);
-                                    }
+                            while (registerItemClone != null)
+                            {
+                                var complexFieldValue = await ResolveComplexField(cachedNomenclatures,
+                                    censorSensitiveData, currentField, registerItems, i);
+                                displayValue.Append(Environment.NewLine);
+                                displayValue.Append(complexFieldValue);
+                                i++;
 
-                                    jsonFields[valuesOfInterest[registerItem.Name].Name] = string.Join(", ", resolvedMultiselectValues);
-                                }
-                            }
-                            else if (!nomenclature.TryGetValue(registerItem.Value, out string value))
-                            {
-                                value = registerItem.Value;
-                                Logger.LogError(
-                                    $"Не е намерена стойност {registerItem.Value} на номенклатура {valuesOfInterest[registerItem.Name].Type} в {nameof(ResolveRegisterItemValues)}");
-                            }
-                            else
-                            {
-                                jsonFields[valuesOfInterest[registerItem.Name].Name] = value;
+                                registerItemClone =
+                                    registerItems.FirstOrDefault(ri =>
+                                        ri.Name == RepeatedFormFieldHelperService.InsertBeforeFirstUnderscore(
+                                            currentField.Name, "#" + i));
                             }
                         }
-                        else
-                        {
-                            jsonFields[valuesOfInterest[registerItem.Name].Name] = string.Empty;
-                        }
-                    }
-                    //Pid
-                    else if(valuesOfInterest[registerItem.Name].Type == SimpleFormFieldType.PersonIdentifier.ToString())
-                    {
-                        if (string.IsNullOrWhiteSpace(registerItem.Value))
-                        {
-                            jsonFields[valuesOfInterest[registerItem.Name].Name] = registerItem.Value;
-                        }
-                        else
-                        {
-                            var splitValue = registerItem.Value
-                                .Split(':', StringSplitOptions.RemoveEmptyEntries);
 
-                            jsonFields[valuesOfInterest[registerItem.Name].Name] =
-                                ((PidTypes)int.Parse((string)splitValue[0])).GetDescription() + ":" + Enumerable.Last<string>(splitValue);
-                        }
-                    }
-                    //Cid
-                    else if (valuesOfInterest[registerItem.Name].Type == SimpleFormFieldType.CompanyIdentifier.ToString())
-                    {
-                        if (string.IsNullOrWhiteSpace(registerItem.Value))
-                        {
-                            jsonFields[valuesOfInterest[registerItem.Name].Name] = registerItem.Value;
-                        }
-                        else
-                        {
-                            var splitValue = registerItem.Value
-                                .Split(':', StringSplitOptions.RemoveEmptyEntries);
-
-                            jsonFields[valuesOfInterest[registerItem.Name].Name] =
-                                ((CidTypes)int.Parse((string)splitValue[0])).GetDescription() + ":" + Enumerable.Last<string>(splitValue);
-                        }
+                        jsonFields[currentField.Name] = displayValue.ToString();
                     }
                     else
                     {
-                        jsonFields[valuesOfInterest[registerItem.Name].Name] = registerItem.Value;
+                        string resolvedValue = await ResolveRegisterItemValue(
+                            currentField, cachedNomenclatures, censorSensitiveData, registerItem);
+                        StringBuilder displayValue =
+                            new StringBuilder(string.IsNullOrWhiteSpace(resolvedValue) ? string.Empty : resolvedValue);
+
+                        if (currentField.CanBeRepeated)
+                        {
+                            int i = 1;
+                            var registerItemClone = registerItems.FirstOrDefault(ri => ri.Name == RepeatedFormFieldHelperService.InsertBeforeFirstUnderscore(currentField.Name, "#" + i));
+
+                            while (registerItemClone != null)
+                            {
+                                resolvedValue = await ResolveRegisterItemValue(currentField, cachedNomenclatures, censorSensitiveData, registerItemClone);
+                                displayValue.Append(Environment.NewLine);
+                                displayValue.Append(resolvedValue);
+                                i++;
+                                registerItemClone = 
+                                    registerItems.FirstOrDefault(ri => ri.Name == RepeatedFormFieldHelperService.InsertBeforeFirstUnderscore(currentField.Name, "#" + i));
+                            }
+                        }
+
+                        jsonFields[currentField.Name] = displayValue.ToString();
                     }
 
                     if (!jsonFields.ContainsKey(nameof(registerItem.ProcessId)))
@@ -1631,10 +1672,36 @@ namespace URegister.Core.Services
                         jsonFields.Add(nameof(registerItem.ProcessId), registerItem.ProcessId.ToString());
                     }
 
-                    if (!jsonFields.ContainsKey(nameof(registerItem.IncomingDate)))
+                    if (lookForRegistryNumber)
                     {
-                        jsonFields.Add(nameof(registerItem.IncomingDate),
-                            registerItem.IncomingDate);
+                        try
+                        {
+                            if (!jsonFields.ContainsKey(nameof(registerItem.RegisterNumber)))
+                            {
+                                jsonFields.Add(nameof(registerItem.RegisterNumber),
+                                    registerItem.RegisterNumber);
+                            }
+                        }
+                        catch (RuntimeBinderException)
+                        {
+                            lookForRegistryNumber = false;
+                        }
+                    }
+
+                    if (lookForModifiedOn)
+                    {
+                        try
+                        {
+                            if (!jsonFields.ContainsKey(nameof(registerItem.ModifiedOn)))
+                            {
+                                jsonFields.Add(nameof(registerItem.ModifiedOn),
+                                    registerItem.ModifiedOn);
+                            }
+                        }
+                        catch (RuntimeBinderException)
+                        {
+                            lookForModifiedOn = false;
+                        }
                     }
                 }
 
@@ -1644,20 +1711,207 @@ namespace URegister.Core.Services
             return result;
         }
 
+        private async Task<string> ResolveComplexField(Dictionary<string, Dictionary<string, string>> cachedNomenclatures, bool censorSensitiveData, FormField currentField,
+            IGrouping<Guid, ProcessFieldValue> registerItems, int repetitionIndex = 0)
+        {
+            StringBuilder complexFieldValue = new StringBuilder();
+            foreach (FormField subField in currentField.Fields)
+            {
+                var registerSubItem = repetitionIndex == 0 ? 
+                    registerItems.FirstOrDefault(ri => ri.Name == subField.Name) :
+                    registerItems.FirstOrDefault(ri => ri.Name == RepeatedFormFieldHelperService.InsertBeforeFirstUnderscore(subField.Name, "#" + repetitionIndex));
+                if (registerSubItem != null)
+                {
+                    var resolvedValue = await ResolveRegisterItemValue(subField, cachedNomenclatures,
+                        censorSensitiveData, registerSubItem);
+
+                    if (!string.IsNullOrWhiteSpace(resolvedValue))
+                    {
+                        complexFieldValue.Append(subField.Label + ": ");
+                        complexFieldValue.Append(resolvedValue);
+                        complexFieldValue.Append("; ");
+                    }
+                }
+            }
+
+            return complexFieldValue.ToString();
+        }
+
+        private async Task<string> ResolveRegisterItemValue(FormField formField, Dictionary<string, Dictionary<string, string>> cachedNomenclatures,
+            bool censorSensitiveData, ProcessFieldValue registerItem)
+        {
+            //булева
+            if (formField.Type == nameof(SimpleFormFieldType.Boolean))
+            {
+                return bool.Parse(registerItem.Value) ? "да" : "не";
+            }
+            //файл
+            if (formField.Type == nameof(SimpleFormFieldType.File))
+            {
+                try
+                {
+                    string link = await _objectStoreService.GetPresignedUrl(registerItem.Value);
+                    return link;
+                }
+                catch (Exception e)
+                {
+                    Logger.LogError(e, $"Грешка при създаване на линк в {nameof(GetTableDataForService)}");
+                    return registerItem.Value;
+                }
+            }
+            //номенклатура
+            if (!string.IsNullOrWhiteSpace(formField.NomenclatureType) ||
+                formField.Type == nameof(SimpleFormFieldType.City))
+            {
+                if (!string.IsNullOrWhiteSpace(registerItem.Value))
+                {
+                    Dictionary<string, string> nomenclature;
+                    if (formField.Type == nameof(SimpleFormFieldType.City))
+                    {
+                        nomenclature = cachedNomenclatures[NomenclatureTypes.Ekatte];
+                    }
+                    else
+                    {
+                        nomenclature =
+                            cachedNomenclatures[formField.NomenclatureType];
+                    }
+
+                    if (formField.Type == nameof(SimpleFormFieldType.MultiSelect))
+                    {
+                        List<string> resolvedMultiselectValues = new List<string>();
+                        foreach (string multiselectValue in registerItem.Value.Split(','))
+                        {
+                            if (!nomenclature.TryGetValue(multiselectValue, out string resolvedValue))
+                            {
+                                Logger.LogError(
+                                    $"Не е намерена стойност {multiselectValue} на номенклатура {formField.Type} в {nameof(ResolveRegisterItemValues)}");
+
+                                resolvedMultiselectValues.Add(multiselectValue);
+                            }
+                            else
+                            {
+                                resolvedMultiselectValues.Add(resolvedValue);
+                            }
+                        }
+
+                        return string.Join(", ", resolvedMultiselectValues);
+                    }
+
+                    if (!nomenclature.TryGetValue(registerItem.Value, out string value))
+                    {
+                        Logger.LogError(
+                            $"Не е намерена стойност {registerItem.Value} на номенклатура {formField.Type} в {nameof(ResolveRegisterItemValues)}");
+                        return registerItem.Value;
+                    }
+
+                    return value;
+                }
+
+                return string.Empty;
+            }
+
+            //Pid
+            if(formField.Type == nameof(SimpleFormFieldType.PersonIdentifier))
+            {
+                if (string.IsNullOrWhiteSpace(registerItem.Value))
+                {
+                    return registerItem.Value;
+                }
+
+                var splitValue = registerItem.Value
+                    .Split(':', StringSplitOptions.RemoveEmptyEntries);
+
+                string pidResult = ((PidTypes)int.Parse((string)splitValue[0])).GetDescription() + ":" + Enumerable.Last<string>(splitValue);
+
+                if(censorSensitiveData)
+                {
+                    pidResult = FormFieldsLayoutService.MaskAfterColonKeepingFirstTwo(pidResult);//#401315
+                }
+
+                return pidResult;
+            }
+
+            //Cid
+            if (formField.Type == nameof(SimpleFormFieldType.CompanyIdentifier))
+            {
+                if (string.IsNullOrWhiteSpace(registerItem.Value))
+                {
+                    return registerItem.Value;
+                }
+
+                var splitValue = registerItem.Value
+                    .Split(':', StringSplitOptions.RemoveEmptyEntries);
+
+                return ((CidTypes)int.Parse((string)splitValue[0])).GetDescription() + ":" + Enumerable.Last<string>(splitValue);
+            }
+
+            //Bulgarian currency
+            if (formField.Type == nameof(SimpleFormFieldType.BulgarianCurrency))
+            {
+                if (string.IsNullOrWhiteSpace(registerItem.Value))
+                {
+                    return registerItem.Value;                            
+                }
+
+                return BGCurrencyService.RegistryItemValueToPublicText(registerItem.Value);
+            }
+
+            //Number
+            if (formField.Type == nameof(SimpleFormFieldType.Number))
+            {
+                if (string.IsNullOrWhiteSpace(registerItem.Value))
+                {
+                    return registerItem.Value;
+                }
+
+                return FormatInvariantToBg(registerItem.Value);
+            }
+
+            return registerItem.Value;
+        }
+
+        public static string FormatInvariantToBg(string invariantNumber)
+        {
+            // Step 1: Parse using InvariantCulture (accepts "12345.678" or "12345,678")
+            if (!decimal.TryParse(invariantNumber, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal value))
+                throw new FormatException($"Cannot parse '{invariantNumber}' as a number.");
+
+            // Step 2: Count how many digits were after the decimal point in the original string
+            int decimalPlaces = 0;
+            int dotPos = invariantNumber.IndexOf('.');
+            if (dotPos >= 0 && dotPos < invariantNumber.Length - 1)
+            {
+                // Count digits after the dot (ignore trailing zeros only if you want, here we keep them all)
+                decimalPlaces = invariantNumber.Length - dotPos - 1;
+            }
+            // If the source used comma as decimal separator (some invariant strings do), handle it too
+            else
+            {
+                int commaPos = invariantNumber.IndexOf(',');
+                if (commaPos >= 0 && commaPos < invariantNumber.Length - 1)
+                    decimalPlaces = invariantNumber.Length - commaPos - 1;
+            }
+
+            // Step 3: Format with Bulgarian culture using exactly that many decimal places
+            string format = "N" + decimalPlaces;               // N0, N1, N2, N3, ...
+            return value.ToString(format, new CultureInfo("bg-BG"));
+        }
+
         private async Task ResolveFormFieldsValues(
             IEnumerable<FormField> fields, 
-            Dictionary<string, Dictionary<string, string>> cachedNomenclatures)
+            Dictionary<string, Dictionary<string, string>> cachedNomenclatures,
+            bool censorSensitiveData)
         {
             foreach (var field in fields)
             {
                 if (field.Fields.Any())
                 {
-                    await ResolveFormFieldsValues(field.Fields, cachedNomenclatures);
+                    await ResolveFormFieldsValues(field.Fields, cachedNomenclatures, censorSensitiveData);
                 }
 
                 if (field.Repetitions.Any())
                 {
-                    await ResolveFormFieldsValues(field.Repetitions, cachedNomenclatures);
+                    await ResolveFormFieldsValues(field.Repetitions, cachedNomenclatures, censorSensitiveData);
                 }
 
                 if (string.IsNullOrWhiteSpace(field.Value))
@@ -1774,8 +2028,11 @@ namespace URegister.Core.Services
                         var splitValue = field.Value
                             .Split(':', StringSplitOptions.RemoveEmptyEntries);
 
-                        field.Value =
-                            ((PidTypes)int.Parse((string)splitValue[0])).GetDescription() + ":" + Enumerable.Last<string>(splitValue);
+                        string pidValue = ((PidTypes)int.Parse((string)splitValue[0])).GetDescription() + ":" + Enumerable.Last<string>(splitValue);
+
+                        pidValue = FormFieldsLayoutService.MaskAfterColonKeepingFirstTwo(pidValue);
+
+                        field.Value = pidValue;
                     }
 
                     continue;
@@ -1790,6 +2047,16 @@ namespace URegister.Core.Services
 
                         field.Value =
                             ((CidTypes)int.Parse((string)splitValue[0])).GetDescription() + ":" + Enumerable.Last<string>(splitValue);
+                    }
+
+                    continue;
+                }
+                //Bulgarian currency
+                if (field.Type == SimpleFormFieldType.BulgarianCurrency.ToString())
+                {
+                    if (!string.IsNullOrWhiteSpace(field.Value))
+                    {
+                        field.Value = BGCurrencyService.RegistryItemValueToPublicText(field.Value);
                     }
 
                     continue;
@@ -1832,7 +2099,7 @@ namespace URegister.Core.Services
                 return false;
             }
 
-            if (field.Type == SimpleFormFieldType.City.ToString())
+            if (field.Type == nameof(SimpleFormFieldType.City))
             {
                 result = cachedNomenclatures[NomenclatureTypes.Ekatte]
                     .Where(n => 
@@ -1840,6 +2107,12 @@ namespace URegister.Core.Services
                     .Select(v => v.Key).ToList();
 
                 return result.Any();
+            }
+
+            if (field.Type is nameof(SimpleFormFieldType.Number) or nameof(SimpleFormFieldType.BulgarianCurrency))
+            {
+                result = new List<string> { searchPattern.Replace(" ", String.Empty).Replace(",", ".") };
+                return true;
             }
 
             if (!string.IsNullOrWhiteSpace(field.NomenclatureType))
@@ -1940,43 +2213,18 @@ namespace URegister.Core.Services
 
             foreach (var field in valuesOfInterest)
             {
-                if (!string.IsNullOrWhiteSpace(field.Value.NomenclatureType) &&
-                    !getNomenclaturesRequest.NomenclatureTypes.Contains(field.Value.NomenclatureType))
+                if (field.Value.Fields.Any())
                 {
-                    getNomenclaturesRequest.NomenclatureTypes.Add(field.Value.NomenclatureType);
+                    foreach (FormField subField in field.Value.Fields)
+                    {
+                        await AddNomenclatureForCache(detailedEkatte, subField, getNomenclaturesRequest,
+                            settlementDictionary);
+                    }
                 }
-
-                if (field.Value.Type == SimpleFormFieldType.City.ToString() &&
-                    !getNomenclaturesRequest.NomenclatureTypes.Contains(NomenclatureTypes.Ekatte))
+                else
                 {
-                    if (!detailedEkatte)
-                    {
-                        getNomenclaturesRequest.NomenclatureTypes.Add(NomenclatureTypes.Ekatte);
-                    }
-                    else
-                    {
-                        if (settlementDictionary.Any())
-                        {
-                            continue;
-                        }
-
-                        EkattePublicResponse ekatteResponse = await _nomenclatureClient.GetEkattePublicAsync(new EkattePublicRequest() { RegisterId = 0 });
-                        if (ekatteResponse.ResultStatus.Code != ResultCodes.Ok)
-                        {
-                            Logger.LogError($"Не може да зареди ЕКАТТЕ номенклатура в {nameof(CacheNomenclaturesForValuesOfInterest)} {ekatteResponse.ResultStatus.Message}");
-                        }
-                        else
-                        {
-                            foreach (EkatteItemPublic ekatteResponseCategory in ekatteResponse.Categories)
-                            {
-                                foreach (var city in ekatteResponseCategory.Cities)
-                                {
-                                    settlementDictionary.Add(city.Code,
-                                            ekatteResponseCategory.Category + " " + city.Name);
-                                }
-                            }
-                        }
-                    }
+                    await AddNomenclatureForCache(detailedEkatte, field.Value, getNomenclaturesRequest,
+                        settlementDictionary);
                 }
             }
 
@@ -1998,6 +2246,49 @@ namespace URegister.Core.Services
             }
 
             return result;
+        }
+
+        private async Task AddNomenclatureForCache(bool detailedEkatte, FormField field,
+            NomenclaturePublicRequest getNomenclaturesRequest, Dictionary<string, string> settlementDictionary)
+        {
+            if (!string.IsNullOrWhiteSpace(field.NomenclatureType) &&
+                !getNomenclaturesRequest.NomenclatureTypes.Contains(field.NomenclatureType))
+            {
+                getNomenclaturesRequest.NomenclatureTypes.Add(field.NomenclatureType);
+            }
+
+            if (field.Type == SimpleFormFieldType.City.ToString() &&
+                !getNomenclaturesRequest.NomenclatureTypes.Contains(NomenclatureTypes.Ekatte))
+            {
+                if (!detailedEkatte)
+                {
+                    getNomenclaturesRequest.NomenclatureTypes.Add(NomenclatureTypes.Ekatte);
+                }
+                else
+                {
+                    if (settlementDictionary.Any())
+                    {
+                        return;
+                    }
+
+                    EkattePublicResponse ekatteResponse = await _nomenclatureClient.GetEkattePublicAsync(new EkattePublicRequest() { RegisterId = 0 });
+                    if (ekatteResponse.ResultStatus.Code != ResultCodes.Ok)
+                    {
+                        Logger.LogError($"Не може да зареди ЕКАТТЕ номенклатура в {nameof(CacheNomenclaturesForValuesOfInterest)} {ekatteResponse.ResultStatus.Message}");
+                    }
+                    else
+                    {
+                        foreach (EkatteItemPublic ekatteResponseCategory in ekatteResponse.Categories)
+                        {
+                            foreach (var city in ekatteResponseCategory.Cities)
+                            {
+                                settlementDictionary.Add(city.Code,
+                                    ekatteResponseCategory.Category + " " + city.Name);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -2039,8 +2330,9 @@ namespace URegister.Core.Services
         /// Връща колекция от имената на полета като ключ за дадена форма
         /// </summary>
         /// <param name="formParentId">Идентификатор на форма родител</param>
+        /// <param name="includeComplexFields">Дали да включва сложните полета в списъка</param>
         /// <returns></returns>
-        public async Task<Dictionary<string, string>> GetFormFieldNamesInFlatListByParentId(int formParentId)
+        public async Task<Dictionary<string, string>> GetFormFieldNamesInFlatListByParentId(int formParentId, bool includeComplexFields = false)
         {
             try
             {
@@ -2050,13 +2342,16 @@ namespace URegister.Core.Services
 
                 foreach (FormField field in formModel.FormFields)
                 {
-                    if (field.Fields?.Any() != true)
+                    if (field.Fields?.Any() != true || includeComplexFields)
                     {
                         result.Add(field.Name, field.Label);
                     }
-                    foreach (FormField subField in field.Fields)
+                    if(!includeComplexFields || !field.CanBeRepeated)//Първото условие гарантира, че е за "Справки"
                     {
-                        result.Add(subField.Name, $"{field.Label}/{subField.Label}");
+                        foreach (FormField subField in field.Fields)
+                        {
+                            result.Add(subField.Name, $"{field.Label}/{subField.Label}");
+                        }
                     }
                 }
 
@@ -2232,7 +2527,7 @@ namespace URegister.Core.Services
                     
                 if (processFormParentId.HasValue)
                 {
-                    return await GetFormFieldNamesInFlatListByParentId(processFormParentId.Value);
+                    return await GetFormFieldNamesInFlatListByParentId(processFormParentId.Value, true);
                 }
                 else
                 {
@@ -2272,7 +2567,7 @@ namespace URegister.Core.Services
             }
             catch (Exception e)
             {
-                Logger.LogError(e, $"Проблем при извличанее на {nameof(CustomView)} с id {id} в {nameof(GetCustomViewViewModel)}");
+                Logger.LogError(e, $"Проблем при извличане на {nameof(CustomView)} с id {id} в {nameof(GetCustomViewViewModel)}");
                 return null;
             }
         }
@@ -2307,5 +2602,283 @@ namespace URegister.Core.Services
                 return new OperationResult("Проблем при изтриване на потребителската справка");
             }
         }
+
+        /// <summary>
+        /// Извличане на условия към форма
+        /// </summary>
+        /// <param name="formParentId">Идентификатор на родителска форма</param>
+        /// <returns></returns>
+        public async Task<List<FormCondition>> GetFormConditions(int formParentId)
+        {
+            try
+            {
+                return await Repo.AllReadonly<FormCondition>()
+                    .TagWith(nameof(GetFormConditions))
+                    .Where(f => f.FormParentId == formParentId)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, $"Проблем при извличане на условия към форма с formParentId {formParentId}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Връща модел на условие към форма по родителски идентификатор на форма
+        /// </summary>
+        /// <param name="formConditionId"></param>
+        /// <returns></returns>
+        public async Task<AddConditionViewModel> GetFormConditionViewModel(int formConditionId)
+        {
+            try
+            {
+                FormCondition condition = await Repo.GetByIdAsync<FormCondition>(formConditionId);
+
+                if (condition == null)
+                {
+                    Logger.LogError($"Не е намерен {nameof(FormCondition)} с id {formConditionId} в {nameof(GetFormViewModel)}");
+                    return null;
+                }
+
+                AddConditionViewModel result = new AddConditionViewModel()
+                {
+                    Id = condition.Id,
+                    FormParentId = condition.FormParentId!.Value,
+                    FieldsToHide = condition.FieldsToHide.Split(';').ToList(),
+                    TriggeringFieldName = condition.TriggeringFieldName,
+                    TriggeringNomenclatureValue = condition.TriggeringNomenclatureValue,
+                };
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, $"Проблем при изтриване на потребителска справка с id {formConditionId}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Записва условие за форма
+        /// </summary>
+        /// <param name="model">Модел на условие за форма</param>
+        /// <returns></returns>
+        public async Task<SaveOperationResult> SaveFormCondition(AddConditionViewModel model)
+        {
+            try
+            {
+
+                if (model.Id == 0)
+                {
+                    FormCondition conditionToSave = new FormCondition()
+                    {
+                        FormParentId = model.FormParentId,
+                        TriggeringFieldName = model.TriggeringFieldName,
+                        TriggeringNomenclatureValue = model.TriggeringNomenclatureValue,
+                        FieldsToHide = string.Join(';', model.FieldsToHide),
+                        ModifiedByUserId = _userContext.UserId,
+                        ModifiedOn = DateTime.UtcNow
+                    };
+
+                    await Repo.AddAsync(conditionToSave);
+                    await Repo.SaveChangesAsync();
+                    return new SaveOperationResult(true, conditionToSave.Id);
+                }
+                else
+                {
+                    FormCondition savedCondition = await Repo.GetByIdAsync<FormCondition>(model.Id);
+
+                    if (savedCondition == null)
+                    {
+                        return new SaveOperationResult("Не е намерено условие с идентификатор " + model.Id);
+                    }
+
+                    savedCondition.TriggeringFieldName = model.TriggeringFieldName;
+                    savedCondition.TriggeringNomenclatureValue = model.TriggeringNomenclatureValue;
+                    savedCondition.FieldsToHide = string.Join(';', model.FieldsToHide);
+                    savedCondition.ModifiedByUserId = _userContext.UserId;
+                    savedCondition.ModifiedOn = DateTime.UtcNow;
+
+                    await Repo.SaveChangesAsync();
+                    return new SaveOperationResult(true, savedCondition.Id);
+                }
+            }
+            catch (Exception e)
+            {
+                return new SaveOperationResult(e.Message);
+            }
+        }
+
+        /// <summary>
+        /// Записва условие за форма
+        /// </summary>
+        /// <param name="formParentId">Модел на условие за форма</param>
+        /// <returns></returns>
+        public async Task<Dictionary<string, FieldConditions>> GetConditionTreeForFormParentId(int formParentId)
+        {
+            List<FormCondition> formConditions = await Repo.AllReadonly<FormCondition>()
+                .TagWith(nameof(GetConditionTreeForFormParentId))
+                .Where(c => c.FormParentId == formParentId)
+                .ToListAsync();
+
+        Dictionary<string, FieldConditions> tree = formConditions
+            .GroupBy(fc => fc.TriggeringFieldName)
+            .ToDictionary(
+                group => group.Key,
+                group => new FieldConditions
+                {
+                    FieldsToShow = new List<string>(),
+                    Conditions = group
+                        .GroupBy(fc => fc.TriggeringNomenclatureValue)
+                        .ToDictionary(
+                            innerGroup => innerGroup.Key,
+                            innerGroup => new ConditionDetails
+                            {
+                                FieldsToHide = innerGroup
+                                    .Select(fc => fc.FieldsToHide.Split(';', StringSplitOptions.RemoveEmptyEntries)
+                                        .Select(field => field.Trim())
+                                        .ToList())
+                                    .FirstOrDefault() ?? new List<string>()
+                            }
+                        )
+                }
+            );
+
+            //Полетата за показване са комбинацция от всички полета, които някое услови крие
+            foreach (var triggeringFieldPair in tree)
+            {
+                var fieldsToShow = triggeringFieldPair.Value.Conditions
+                    .SelectMany(v => v.Value.FieldsToHide).Distinct();
+
+                triggeringFieldPair.Value.FieldsToShow = fieldsToShow.ToList();
+            }
+
+            return tree;
+        }
+
+        /// <summary>
+        /// Прилава условията върху модел на форма
+        /// </summary>
+        /// <param name="model">Модела на формата</param>
+        /// <returns></returns>
+        public async Task ApplyConditionTreeOnFormModel(FormViewModel model)
+        {
+            var conditionTree = await GetConditionTreeForFormParentId(model.FormParentId);
+
+            foreach (var pair in conditionTree)
+            {
+                var triggeringField = model.FormFields.SingleOrDefault(f => f.Name == pair.Key);
+                if (triggeringField != null)
+                {
+                    foreach (var condition in pair.Value.Conditions)
+                    {
+                        if (condition.Key == triggeringField.Value)
+                        {
+                            foreach (var fieldToHideName in condition.Value.FieldsToHide)
+                            {
+                                var fieldToHide = model.FormFields.SingleOrDefault(f => f.Name == fieldToHideName);
+                                if (fieldToHide != null)
+                                {
+                                    fieldToHide.Value = null;
+                                    fieldToHide.IsRequired = false;
+                                    foreach (var subField in fieldToHide.Fields)
+                                    {
+                                        subField.Value = null;
+                                    }
+                                    foreach (var clonedField in fieldToHide.Repetitions)
+                                    {
+                                        clonedField.Value = null;
+                                        foreach (var subField in clonedField.Fields)
+                                        {
+                                            subField.Value = null;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Извличане на условие по идентификатор
+        /// </summary>
+        /// <param name="id">Идентификатор на условие</param>
+        /// <returns></returns>
+        public async Task<FormCondition> GetFormConditionById(int id)
+        {
+            try
+            {
+                FormCondition formCondition = await Repo.All<FormCondition>()
+                .TagWith(nameof(GetFormConditionById))
+                .IgnoreQueryFilters()
+                .SingleOrDefaultAsync(fc => fc.Id == id);
+
+                return formCondition;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, $"Проблем при извличане на условие с идентификатор: {id} в {nameof(GetFormConditionById)}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Изтриване на условие по идентификатор
+        /// </summary>
+        /// <param name="id">Идентификатор на условие</param>
+        /// <returns></returns>
+        public async Task<OperationResult> DeleteFormCondition(int id)
+        {
+            if (id <= 0)
+            {
+                return new OperationResult($"Невалиден идентификатор на условие: {id}");
+            }
+
+            try
+            {
+                FormCondition formCondition = await Repo.All<FormCondition>()
+                    .TagWith(nameof(DeleteFormCondition))
+                    .IgnoreQueryFilters()
+                    .SingleOrDefaultAsync(fc => fc.Id == id);
+
+                if (formCondition == null)
+                {
+                    return new OperationResult($"Условие с идентификатор {id} не е открито");
+                }
+               
+                await Repo.DeleteAsync<FormCondition>(id);
+                await Repo.SaveChangesAsync();
+                return new OperationResult();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, $"Грешка при изтриване на условие с id {id} в {nameof(DeleteFormCondition)}");
+                return new OperationResult("Възникна грешка при изтриване на условието");
+            }
+        }
+
+        public class ConditionDetails
+        {
+            public List<string> FieldsToHide { get; set; } = new List<string>();
+        }
+
+        public class FieldConditions
+        {
+            public List<string> FieldsToShow { get; set; } = new List<string>();
+            public Dictionary<string, ConditionDetails> Conditions { get; set; } = new Dictionary<string, ConditionDetails>();
+        }
+
+        public class ProcessFieldValue
+{
+    public string Value { get; set; }
+    public string Name { get; set; }
+    public Guid ProcessId { get; set; }
+    public DateTime IncomingDate { get; set; }
+    public string RegisterNumber { get; set; }
+    public DateTime? ModifiedOn { get; set; }
+}
     }
 }

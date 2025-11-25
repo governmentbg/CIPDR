@@ -102,6 +102,13 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddScoped<IEMailService, EMailService>();
             services.AddObjectStore(config);
 
+            services.AddScoped<IAuditLogServiceClient, AuditLogServiceClient>();
+            services.AddScoped<IAuditInfo>(x => new AuditInfo()
+            {
+                TypeAuditTask = TypeAuditTask.GrpcClient,
+                ProjectName = "IntegrationsCatalog"
+            });
+
             return services;
         }
     }

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Primitives;
 using System.ComponentModel.DataAnnotations;
 using URegister.Core.Contracts;
 using URegister.Core.Models.Process;
+using URegister.Core.Services;
 using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Model.RegisterForms;
 using URegister.NomenclaturesCatalog;
@@ -23,7 +24,8 @@ namespace URegister.Areas.Admin.Controllers
        NomenclatureGrpc.NomenclatureGrpcClient nomenclatureGrpcClient,
        IRegisterService registerService,
        IProcessService processService,
-       ILogger<ImportController> logger
+       ILogger<ImportController> logger,
+       IFieldFormulaCalculationService fieldFormulaCalculationService
     ) : BaseController
     {
 
@@ -61,7 +63,7 @@ namespace URegister.Areas.Admin.Controllers
                 SetErrorMessage("Проблем при запис на файл");
                 return View(nameof(ImportFile), model);
             }
-            return RedirectToAction("ImportFileSave", "Process", new { area = "Admin", fileId = model.FileId, serviceId = model.ServiceId });
+            return RedirectToAction("ImportFileSave", "Import", new { area = "Admin", fileId = model.FileId, serviceId = model.ServiceId });
         }
 
         [HttpGet]
@@ -107,11 +109,21 @@ namespace URegister.Areas.Admin.Controllers
                 FormViewModel viewModel = await formConfigurationPersistenceService.GetFormViewModel(aService.FormParentId);
                 var processId = Guid.Empty;
                 formFieldsLayoutService.DistributePostedFieldValuesToViewModel(formImport, viewModel);
+                await formConfigurationPersistenceService.ApplyConditionTreeOnFormModel(viewModel);
                 bool isViewModelValidationSuccess = await formValidationService.ValidateViewModel(
                     viewModel,
                     nomenclatureGrpcClient,
                     await registerService.GetCurrentRegisterId());
                 var errors = await formValidationService.GetValidatedFormFieldsErrors(viewModel);
+
+                OperationResult calculationsResult = await fieldFormulaCalculationService.CalculateFormulas(viewModel);
+
+                if (!calculationsResult.IsSuccess)
+                {
+                    logger.LogError($"Изчисленията при импорт в {nameof(GetImportDataList)} не минаха успешно. {calculationsResult.ErrorMessage}");
+                    //TODO : да се върне в резултата?
+                }
+
                 var row = new List<ImportItemVM>();
                 foreach (var field in fields)
                 {
@@ -167,11 +179,21 @@ namespace URegister.Areas.Admin.Controllers
                     Guid? fromProcessId = null;
                     var serviceStep = serviceVM.Steps.Where(x => x.StatusId == (int)ProcessStatus.Registered).First();
                     var serviceId = model.ServiceId;
+                    await formConfigurationPersistenceService.ApplyConditionTreeOnFormModel(viewModel);
                     formFieldsLayoutService.DistributePostedFieldValuesToViewModel(formImport, viewModel);
                     bool isViewModelValidationSuccess = await formValidationService.ValidateViewModel(
                         viewModel,
                         nomenclatureGrpcClient,
                         await registerService.GetCurrentRegisterId());
+
+                    OperationResult calculationsResult = await fieldFormulaCalculationService.CalculateFormulas(viewModel);
+
+                    if (!calculationsResult.IsSuccess)
+                    {
+                        logger.LogError($"Изчисленията при импорт в {nameof(ImportFileSave)} не минаха успешно. {calculationsResult.ErrorMessage}");
+                        //TODO : да се върне в резултата?
+                    }
+
                     var processStep = await processService.ToProcessStepVM(processId, fromProcessId, serviceId ?? 0, serviceStep.Id, serviceStep.OrderNum, null, null, viewModel, false);
                     await processService.AddStep(processStep);
 

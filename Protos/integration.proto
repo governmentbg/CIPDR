@@ -109,6 +109,7 @@ message EDeliveryProtoMessage {
 	optional google.protobuf.StringValue public_service_name = 5;
 	optional google.protobuf.StringValue public_service_identifier = 6;
 	optional google.protobuf.StringValue register_name = 7;
+	int32 message_id = 8;
 }
 
 message EDeliveryMessagesListReply {
