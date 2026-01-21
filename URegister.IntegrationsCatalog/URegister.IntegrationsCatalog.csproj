@@ -42,9 +42,6 @@
 		<Protobuf Include="..\protos\user.proto" GrpcServices="Client" />
 	</ItemGroup>
 	<ItemGroup>
-	  <None Update="credentials">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </None>
 	  <None Update="quartz_jobs.xml">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </None>

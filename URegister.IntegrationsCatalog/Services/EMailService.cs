@@ -120,6 +120,7 @@ namespace URegister.IntegrationsCatalog.Services
             }
             var messages = await repo.All<EMailMessage>()
                                      .Where(x => x.StatusId == (int)EMailStatus.New)
+                                  //   .Where(x => x.EMail == "a.stoyanov@is-bg.net")
                                      .ToListAsync();
             var errLimit = configuration.GetValue<int>("Email:MaxFailAttempts");
             foreach (var message in messages)

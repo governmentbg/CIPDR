@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.11.35222.181
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11217.181 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "URegister", "URegister\URegister.csproj", "{19919DB7-9985-4AEA-AA55-5101FD1F80A8}"
 EndProject
@@ -43,7 +43,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CommonFiles", "CommonFiles"
 	ProjectSection(SolutionItems) = preProject
 		LICENSE = LICENSE
 		README.md = README.md
-		Адреси.txt = Адреси.txt
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "URegister.Core.Tests", "URegister.Core.Tests\URegister.Core.Tests.csproj", "{742FCC14-B0E8-4351-AB74-F1DBC54697BD}"

@@ -871,7 +871,14 @@ namespace URegister.Core.Services
                 DateTime? fromDateUTC = fromDate.HasValue ? fromDate.Value.ToUniversalTime() : null;
 
                 var processesOfInterest =
-                    GetRegistrationProcessListQuery(administrationId, searchKey, toDateUTC, fromDateUTC, valuesOfInterest, searchPatterns);
+                    GetRegistrationProcessListQuery(administrationId, 
+                        searchKey, 
+                        toDateUTC, 
+                        fromDateUTC, 
+                        valuesOfInterest, 
+                        searchPatterns,
+                        searchToDateUTC,
+                        searchFromDateUTC);
 
                 int pageNumber;
                 int perPage;
@@ -907,7 +914,7 @@ namespace URegister.Core.Services
 
                 var result = await ResolveRegisterItemValues(fieldValues, valuesOfInterest, cachedNomenclatures, true);
 
-                result = result.OrderByDescending(d => (DateTime)d[nameof(Process.IncomingDate)]).ToList();
+                result = result.OrderByDescending(d => (DateTime)d[nameof(Process.ModifiedOn)]).ToList();
 
                 var combinedData = new
                 {

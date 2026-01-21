@@ -942,4 +942,28 @@ namespace URegister.Infrastructure.Constants
         [Description("Седмично")]
         Month = 3,
     }
+
+    public enum Currency
+    {
+        [Description("Български лев")]
+        BGN = 1,
+        [Description("Евро")]
+        EUR = 2,
+    }
+
+    public enum OpenDataPeriod
+    {
+        [Description("Не се изпраща")]
+        Not = -1,
+
+        [Description("Като администрацията")]
+        Administration = 0,
+
+        [Description("Ежедневно")]
+        Day = 1,
+        [Description("Седмично")]
+        Week = 2,
+        [Description("Седмично")]
+        Month = 3,
+    }
 }
