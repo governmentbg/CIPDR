@@ -24,7 +24,8 @@ namespace URegister.AuditLog.Services
             IPAddress ipAddress = IPAddress.None;
             IPAddress.TryParse(request.Audit.IpAddress, out ipAddress);
             var auditId = Guid.Parse(request.AuditId);
-            if (request.Audit.IsInitialized()) {
+            if (request.Audit.IsInitialized())
+            {
                 var audit = new Audit
                 {
                     Id = auditId,
@@ -81,18 +82,20 @@ namespace URegister.AuditLog.Services
                 if (request.Filter.DateFrom != null)
                 {
                     var dateFrom = request.Filter.DateFrom.ToDateTime();
+                    logger.LogInformation($"AuditLogInfoService {nameof(GetAuditLogRecordsList)} в {nameof(AuditLogInfoService)} Дата от:  {dateFrom}");
                     query = query.Where(x => x.Created >= dateFrom);
                 }
 
                 if (request.Filter.DateTo != null)
                 {
                     var dateTo = request.Filter.DateTo.ToDateTime().AddDays(1);
+                    logger.LogInformation($"AuditLogInfoService {nameof(GetAuditLogRecordsList)} в {nameof(AuditLogInfoService)} Дата до:  {dateTo}");
                     query = query.Where(x => x.Created <= dateTo);
                 }
 
-                if (!string.IsNullOrEmpty(request.Filter.Method))
+                if (!string.IsNullOrEmpty(request.Filter.Action))
                 {
-                    query = query.Where(x => EF.Functions.ILike(x.Method, request.Filter.Method));                
+                    query = query.Where(x => EF.Functions.ILike(x.Action, $"%{request.Filter.Action}%"));
                 }
 
                 //if (!string.IsNullOrEmpty(request.Filter.IpAddress) && IPAddress.TryParse(request.Filter.IpAddress, out var parsedIp))
@@ -116,12 +119,12 @@ namespace URegister.AuditLog.Services
                                         .Select(term => $"%{term}%")
                                         .ToArray();
                     query = query.Where(x => searchTerms.All(pattern => EF.Functions.ILike(x.UserFullName, pattern)));
-                }                
+                }
             }
 
             var list = new List<AuditMessage>();
             var countAll = 0;
-          
+
             (query, countAll) = await request.Request.GetFilteredData(query);
             var data = query.Select(x => new AuditMessage
             {
@@ -132,7 +135,7 @@ namespace URegister.AuditLog.Services
                 Action = x.Action,
                 Method = x.Method,
                 IpAddress = x.IpAddress != null ? x.IpAddress.ToString() : string.Empty,
-                CreatedDate = x.Created.ToUniversalTime().ToTimestamp(),
+                CreatedDate = x.Created.ToTimestamp(),
                 Parameters = x.Parameters,
                 UserFullName = x.UserFullName
             }).ToList();
@@ -247,7 +250,7 @@ namespace URegister.AuditLog.Services
             }
 
             var result = auditEntities.Select(ae => new AuditEntityMessage
-            {               
+            {
                 PrimaryKey = FormatPrimaryKey(ae.PrimaryKey),
                 OldValues = FormatJson(ae.OldValues),
                 NewValues = FormatJson(ae.NewValues)
@@ -256,5 +259,5 @@ namespace URegister.AuditLog.Services
             return result;
         }
 
-        }
+    }
 }

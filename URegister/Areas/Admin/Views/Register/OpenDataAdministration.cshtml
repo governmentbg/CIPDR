@@ -1,0 +1,51 @@
+﻿@using URegister.Core.Models.OpenData
+@using URegister.Infrastructure.Constants
+@model OpenDataAdministrationVM
+
+@{
+    ViewBag.Title = "Въвеждане на OpenData параметри";
+}
+<div class="ui grid">
+    @if (Model.OrganizationId > 0)
+    {
+        <div class="ui buttons right floated">
+            <a href="@Url.Action("GetProcessListOpenData", "Process", new { area = "Public", administrationId = Model.AdministrationId, redirect = true })" class="ui button">
+                <i class="upload icon"></i>
+                Публикуване в OpenData
+            </a>
+        </div>
+    }
+    <form class="ui sixteen wide column" method="post" enctype="multipart/form-data">
+        <div class="content">
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            <h3>@Model.AdministrationName</h3>
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.OrganizationId, "DropDownIntDisabled")
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.FrequencyAdministrationId, "DropDownIntDisabled", new { Ddl = ViewData[$"{InternalNomenclatureTypes.OpenDataPeriod}_ddl"] })
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.FrequencyId, "DropDownInt", new { Ddl = ViewData[$"{InternalNomenclatureTypes.OpenDataPeriod}_ddl"] })
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @await Html.PartialAsync("_BackSubmitButton", @Url.Action("IndexAdministration", "Register", new { area = "Admin" }))
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

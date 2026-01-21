@@ -15,7 +15,6 @@ using URegister.Infrastructure.Extensions;
 using URegister.NomenclaturesCatalog;
 using URegister.RegistersCatalog;
 using URegister.Users;
-using static FastExpressionCompiler.ExpressionCompiler;
 using static URegister.Users.AppUserManager;
 
 namespace URegister.Core.Services
@@ -38,6 +37,7 @@ namespace URegister.Core.Services
                 Type = register.Type,
                 EntryType = register.TypeEntry,
                 IdentitySecurityLevel = register.IdentitySecurityLevel,
+                HistoryNotPublic = register.HistoryNotPublic
             };
             var administration = new AdministrationItem
             {
@@ -119,6 +119,7 @@ namespace URegister.Core.Services
                 Type = register.Type,
                 EntryType = register.TypeEntry,
                 IdentitySecurityLevel = register.IdentitySecurityLevel,
+                HistoryNotPublic = register.HistoryNotPublic
             };
             request.RegisterFiles.AddRange(RegisterFilesToItem(register));
             var result = await registerGrpcClient.AddRegisterAsync(request);
@@ -296,6 +297,7 @@ namespace URegister.Core.Services
                 TypeEntry = registerItem.EntryType,
                 IdentitySecurityLevel = registerItem.IdentitySecurityLevel,
                 StatusId = registerItem.StatusId,
+                HistoryNotPublic = registerItem.HistoryNotPublic
             };
             result.RegisterFiles.Files.AddRange(RegisterFilesToVmList(registerItem, (int)RegisterFileSourceType.Register));
             result.AdministrationFiles.Files.AddRange(RegisterFilesToVmList(registerItem, (int)RegisterFileSourceType.Administration));

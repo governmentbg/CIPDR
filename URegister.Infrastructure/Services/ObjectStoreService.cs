@@ -64,28 +64,40 @@ namespace URegister.Infrastructure.Services
                 var metadataResponse = await S3Client.GetObjectMetadataAsync(bucketName ?? defaultBucketName, objectKey);
 
                 string fileName;
-                const string metaKeyFileName = "x-amz-meta-original-filename";
-                const string metaKeyContentType = "Content-Type";
 
-                if (metadataResponse.Metadata.Keys.Contains(metaKeyFileName, StringComparer.OrdinalIgnoreCase))
+                try
                 {
-                    var key = metadataResponse.Metadata.Keys.Single(k =>
-                        k.Equals(metaKeyFileName, StringComparison.InvariantCultureIgnoreCase));
-                    var base64 = metadataResponse.Metadata[key];
-                    byte[] data = Convert.FromBase64String(base64);
-                    fileName = Encoding.UTF8.GetString(data);
+
+                    const string metaKeyFileName = "x-amz-meta-original-filename";
+                    const string metaKeyContentType = "Content-Type";
+
+                    if (metadataResponse.Metadata.Keys.Contains(metaKeyFileName, StringComparer.OrdinalIgnoreCase))
+                    {
+                        var key = metadataResponse.Metadata.Keys.Single(k =>
+                            k.Equals(metaKeyFileName, StringComparison.InvariantCultureIgnoreCase));
+                        var base64 = metadataResponse.Metadata[key];
+                        byte[] data = Convert.FromBase64String(base64);
+                        fileName = Encoding.UTF8.GetString(data);
+                    }
+                    else
+                    {
+                        fileName = Path.GetFileName(objectKey);
+                        logger.LogWarning(
+                            $"Не са извлечени метаданни за сваляне на файл {fileName} в {nameof(GetPresignedUrl)}");
+                    }
+
+                    if (metadataResponse.Metadata.Keys.Contains(metaKeyContentType, StringComparer.OrdinalIgnoreCase))
+                    {
+                        var key = metadataResponse.Metadata.Keys.Single(k =>
+                            k.Equals(metaKeyContentType, StringComparison.InvariantCultureIgnoreCase));
+                        contentType = metadataResponse.Metadata[key];
+                    }
                 }
-                else
+                catch (AmazonS3Exception ex)
                 {
                     fileName = Path.GetFileName(objectKey);
-                    logger.LogWarning($"Не са извлечени метаданни за сваляне на файл {fileName} в {nameof(GetPresignedUrl)}");
-                }
-
-                if (metadataResponse.Metadata.Keys.Contains(metaKeyContentType, StringComparer.OrdinalIgnoreCase))
-                {
-                    var key = metadataResponse.Metadata.Keys.Single(k =>
-                        k.Equals(metaKeyContentType, StringComparison.InvariantCultureIgnoreCase));
-                    contentType = metadataResponse.Metadata[key];
+                    logger.LogError(ex,
+                        $"Грешка при извличане на метаданни за файл {fileName} в {nameof(GetPresignedUrl)}");
                 }
 
                 GetPreSignedUrlRequest request = new GetPreSignedUrlRequest

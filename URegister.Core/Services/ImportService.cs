@@ -45,13 +45,23 @@ namespace URegister.Core.Services
                 }
                 colCode += (char)(((int)'A') + i - prefix * lenght);
                 var val = sheet.Cells[$"{colCode}1"].Value?.ToString();
-                result.Add(val ?? string.Empty, $"{colCode}");
+                try
+                {
+                    result.Add(val ?? string.Empty, $"{colCode}");
+                }
+                catch (Exception)
+                {
+
+                    throw new Exception($"Повтаряща се колона {val} {i} : {colCode}");
+                }
+                
             }
             return result;
         }
 
         public async Task<List<Dictionary<string, string>>> GetImportData(string? fileId)
         {
+            ExcelPackage.License.SetNonCommercialPersonal("ISCIPR");
             var data = new List<Dictionary<string, string>>();
             (var bytes, _) = await objectStoreService.GetObject(fileId);
             using (var ms = new MemoryStream(bytes))

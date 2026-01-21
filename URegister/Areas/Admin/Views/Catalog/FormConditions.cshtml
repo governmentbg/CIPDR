@@ -1,0 +1,16 @@
+﻿@{   
+    ViewData["Title"] = $"Списък на условия към форма '{ViewData["FormTitle"]}'";
+}
+
+<table id="formConditions" class="ui celled striped very compact table" style="width:100%; padding:0px;"
+       data-url="@Url.Action("GetFormConditions", "Catalog")"
+       data-add-url="@Url.Action("EditFormCondition", "Catalog", new { formParentId = ViewData["FormParentId"] })"
+       data-form-parent-id="@ViewData["FormParentId"]">
+</table>
+@await Html.PartialAsync("_BackButton", @Url.Action("FormIndex", "Catalog", new { area = "Admin" }))
+@{
+    await Html.RenderPartialAsync("_ConfirmAction");
+}
+@section Scripts {
+    <script src="~/js/admin/catalog/formConditionsList.js" asp-append-version="true"></script>
+}

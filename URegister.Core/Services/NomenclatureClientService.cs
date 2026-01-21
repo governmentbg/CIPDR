@@ -90,7 +90,7 @@ namespace URegister.Core.Services
                 NomenclatureTypes.Status,
                 InternalNomenclatureTypes.ChannelType,
                 InternalNomenclatureTypes.DeadlineType,
-                InternalNomenclatureTypes.CooordinationStatusType
+                InternalNomenclatureTypes.CoordinationStatusType
             };
             await SetViewBag(viewData, types, 0);
         }
@@ -323,7 +323,7 @@ namespace URegister.Core.Services
             return await nomenclatureGrpcClient.UpdateCodeableConceptStatusAsync(request);
         }
 
-        public async  Task<List<NomenclatureTypePublicResponse>> GetNomenclaturePublic(int registerId, string[] types)
+        public async Task<List<NomenclatureTypePublicResponse>> GetNomenclaturePublic(int registerId, string[] types)
         {
             var nomenclatureRequest = new NomenclaturePublicRequest
             {
@@ -348,6 +348,40 @@ namespace URegister.Core.Services
             return nomenclatureType?.CodeableConcepts.Where(x => x.Code == code)
                                                      .Select(x => x.Value)
                                                      .FirstOrDefault() ?? string.Empty;
+        }
+
+        public async Task SetViewBagOpenDataAdministration(ViewDataDictionary viewData, bool isAdmin)
+        {
+            var request = new NomenclaturePublicRequest
+            {
+                RegisterId = 0,
+            };
+            request.NomenclatureTypes.Add(InternalNomenclatureTypes.OpenDataPeriod);
+
+            var result = await nomenclatureGrpcClient.GetNomenclaturePublicAsync(request);
+            var nType = result.NomenclatureTypes.First();
+            var ddl = nType.CodeableConcepts.Select(x => new SelectListItem
+            {
+                Value = x.Code,
+                Text = x.Value
+            })
+            .ToList();
+            ddl.Insert(0,
+               new SelectListItem
+               {
+                   Value = "0",
+                   Text = "Не се изпращат данни към OpenData",
+               });
+            if (!isAdmin)
+            {
+                ddl.Insert(0,
+                   new SelectListItem
+                   {
+                       Value = "-1",
+                       Text = "Както администрацията",
+                   });
+            }
+            viewData[$"{nType.Type}_ddl"] = ddl;
         }
 
     }

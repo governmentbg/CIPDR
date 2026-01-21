@@ -1,13 +1,15 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using DataTables.AspNet.Core;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using System.ComponentModel.DataAnnotations;
+using System.Text.RegularExpressions;
+using URegister.Common;
 using URegister.Core.Contracts;
 using URegister.Core.Services;
 using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Model.RegisterForms;
-using DataTables.AspNet.Core;
-using System.ComponentModel.DataAnnotations;
+using URegister.NomenclaturesCatalog;
 
 namespace URegister.Areas.Admin.Controllers
 {
@@ -17,14 +19,17 @@ namespace URegister.Areas.Admin.Controllers
     public class CatalogController : BaseController
     {
         private readonly IFormConfigurationPersistenceService _formService;
+        private readonly NomenclatureGrpc.NomenclatureGrpcClient _nomenclatureGrpcClient;
         private readonly ILogger<CatalogController> _logger;
         private readonly IRegisterService _registerService;
 
-        public CatalogController(IFormConfigurationPersistenceService formService, 
+        public CatalogController(IFormConfigurationPersistenceService formService,
+            NomenclatureGrpc.NomenclatureGrpcClient nomenclatureGrpcClient,
             ILogger<CatalogController> logger,
             IRegisterService registerService)
         {
             _formService = formService;
+            _nomenclatureGrpcClient = nomenclatureGrpcClient;
             _logger = logger;
             _registerService = registerService;
         }
@@ -34,7 +39,7 @@ namespace URegister.Areas.Admin.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet]
-        [Authorize(Roles = $"{UserRoles.GlobalAdmin}")]
+        [Authorize(Roles = $"{UserRoles.Admin},{UserRoles.GlobalAdmin}")]
         [Display(Name = "Зареждане на списък с формите в регистъра")]
         public IActionResult FormIndex()
         {
@@ -174,6 +179,7 @@ namespace URegister.Areas.Admin.Controllers
         [HttpPost]
         [Display(Name = "Изтриване на форма от регистъра")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = UserRoles.GlobalAdmin)]
         public async Task<IActionResult> DeleteForm(int id)
         {
             var form = await _formService.GetFormById(id);
@@ -310,6 +316,309 @@ namespace URegister.Areas.Admin.Controllers
             if (result.IsSuccess)
             {
                 SetSuccessMessage("Потребителската справка е изтрита успешно");
+            }
+            else
+            {
+                SetErrorMessage(result.ErrorMessage);
+            }
+
+            return Json(null);
+        }
+       
+        /// <summary>
+        /// Зареждане на условия към форма
+        /// </summary>
+        /// <param name="formParentId">Идентификатор на родителска форма</param>
+        /// <returns>JSON response with resolved form conditions</returns>
+        [Display(Name = "Извличане на списък с условия към форма")]
+        public async Task<IActionResult> GetFormConditions(int formParentId)
+        {
+            // Fetch form conditions and form view model
+            var formConditionsFromDb = await _formService.GetFormConditions(formParentId);
+            FormViewModel dbForm = await _formService.GetFormViewModel(formParentId, true);
+
+            // Exit early if no conditions or form fields are found
+            if (!formConditionsFromDb.Any() || dbForm?.FormFields == null)
+            {
+                _logger.LogWarning($"Не са намерени условия или полета към форма с formParentId {formParentId} в {nameof(GetFormConditions)}");
+                return Json(new { data = formConditionsFromDb });
+            }
+
+            // Cache form fields for efficient lookup
+            var formFieldDict = dbForm.FormFields.ToDictionary(f => f.Name, f => f);
+
+            // Collect unique nomenclature types
+            var nomenclatureTypes = new HashSet<string>();
+            foreach (var formCondition in formConditionsFromDb)
+            {
+                if (formFieldDict.TryGetValue(formCondition.TriggeringFieldName, out var triggeringField))
+                {                                   
+                    if (!string.IsNullOrEmpty(triggeringField.NomenclatureType))
+                    {
+                        nomenclatureTypes.Add(triggeringField.NomenclatureType);
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning($"Полето активиращо условие {formCondition.TriggeringFieldName} не е намерено към форма с formParentId {formParentId}");
+                }
+            }
+
+            // Fetch nomenclature data if there are nomenclature types to resolve
+            NomenclaturePublicResponse nomenclatureResult = null;
+            if (nomenclatureTypes.Any())
+            {
+                var getNomenclaturesRequest = new NomenclaturePublicRequest
+                {
+                    RegisterId = 0
+                };
+                getNomenclaturesRequest.NomenclatureTypes.AddRange(nomenclatureTypes);
+
+                try
+                {
+                    nomenclatureResult = await _nomenclatureGrpcClient.GetNomenclaturePublicAsync(getNomenclaturesRequest);
+                    if (nomenclatureResult.ResultStatus.Code != ResultCodes.Ok)
+                    {
+                        _logger.LogError($"Неуспех на GetNomenclaturePublicAsync в {nameof(GetFormConditions)}: {nomenclatureResult.ResultStatus.Message}");
+                        return StatusCode(500, new { error = "Неуспешно извличане на данни за номенклатури" });
+                    }
+
+                    if (!nomenclatureResult.NomenclatureTypes.Any())
+                    {
+                        _logger.LogWarning($"Няма резултати за номенклатурни типове: {string.Join(", ", nomenclatureTypes)} в {nameof(GetFormConditions)}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Грешка при извличане на данни за номенклатури в {nameof(GetFormConditions)}");
+                    return StatusCode(500, new { error = "Грешка при извличане на данни за номенклатури" });
+                }
+            }
+
+            // Resolve nomenclature values, fields to hide and triggering field name
+            foreach (var formCondition in formConditionsFromDb)
+            {
+                if (formFieldDict.TryGetValue(formCondition.TriggeringFieldName, out var triggeringField))
+                {
+                    // Resolve nomenclature value if applicable
+                    if (nomenclatureResult != null && !string.IsNullOrEmpty(triggeringField.NomenclatureType))
+                    {
+                        var nomenclatureType = nomenclatureResult.NomenclatureTypes
+                            .FirstOrDefault(nt => nt.Type == triggeringField.NomenclatureType);
+                        if (nomenclatureType != null)
+                        {
+                            var concept = nomenclatureType.CodeableConcepts
+                                .FirstOrDefault(c => c.Code == formCondition.TriggeringNomenclatureValue);
+                            formCondition.TriggeringNomenclatureValue = concept?.Value ?? formCondition.TriggeringNomenclatureValue; // Fallback to original value if not found
+                        }
+                    }
+                    formCondition.TriggeringFieldName = triggeringField.Label;
+                }
+                else
+                {
+                    _logger.LogWarning($"Полето активиращо условие {formCondition.TriggeringFieldName} не е намерено към форма с formParentId {formParentId}");
+                }
+
+                // Resolve FieldsToHide
+                var fieldsToHideArr = formCondition.FieldsToHide?.Split(';', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+                var resolvedFieldsToHideNamesArr = new List<string>();
+                foreach (var fieldToHide in fieldsToHideArr)
+                {
+                    if (formFieldDict.TryGetValue(fieldToHide, out var resolvedFieldToHide))
+                    {
+                        resolvedFieldsToHideNamesArr.Add(resolvedFieldToHide.Label);
+                    }
+                    else
+                    {
+                        resolvedFieldsToHideNamesArr.Add(fieldToHide);
+                        _logger.LogWarning($"Полето за криене {fieldToHide} не е намерено към форма с formParentId {formParentId}");
+                    }
+                }
+                formCondition.FieldsToHide = string.Join("; ", resolvedFieldsToHideNamesArr);
+            }
+
+            return Json(new { data = formConditionsFromDb });
+        }
+
+        /// <summary>
+        /// Зареждане на списък с условия към форма
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet]
+        [Display(Name = "Зареждане на списък с условия към форма")]
+        public async Task<IActionResult> FormConditions(int formParentId)
+        {
+            FormViewModel dbForm = await _formService.GetFormViewModel(formParentId, true);
+            ViewData["FormParentId"] = formParentId;
+            ViewData["FormTitle"] = dbForm.FormTitle;
+            return View();
+        }
+
+        /// <summary>
+        /// Редакция или добавяне на форма от регистър
+        /// </summary>
+        /// <param name="formParentId">Идентификатор на първата версия на формата</param>
+        /// <param name="conditionId">Идентификатор на условие към форма. 0 при добавяне на ново</param>
+        /// <returns></returns>
+        [HttpGet]
+        [Display(Name = "Зареждане на форма за добавяне или редакция на форма")]
+        public async Task<IActionResult> EditFormCondition(int formParentId, int conditionId = 0)
+        {
+            AddConditionViewModel model;
+            FormViewModel dbForm = await _formService.GetFormViewModel(formParentId, true);
+
+            SetEditConditionViewBag(dbForm);
+
+            if (conditionId > 0)
+            {
+                model = await _formService.GetFormConditionViewModel(conditionId);
+
+                if (model == null)
+                {
+                    SetErrorMessage("Проблем при зареждане на условие");
+                    model = new AddConditionViewModel();
+                }
+
+                ViewData["Title"] = $"Редакция на условие към '{dbForm.FormTitle}'";
+
+                CodeableConceptListRequest request = new CodeableConceptListRequest
+                {
+                    DataTableRequest = new DatatableRequest { Length = -1 },
+                    Type = dbForm.FormFields.SingleOrDefault(f => f.Name == model.TriggeringFieldName)?.NomenclatureType
+                };
+                try
+                {
+                    CodeableConceptListResponse response =
+                        await _nomenclatureGrpcClient.GetCodeableConceptListAsync(request);
+
+                    if (response.ResultStatus.Code != ResultCodes.Ok)
+                    {
+                        _logger.LogError($"Проблемен статус ({response.ResultStatus.Code}) на заявка в {nameof(CatalogController)}->{nameof(EditFormCondition)}");
+                    }
+
+                    ViewBag.TriggeringNomenclatureValue_ddl = response.Data.Select(c => new SelectListItem(c.Value, c.Code)).ToList();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Грешка в {nameof(CatalogController)}->{nameof(EditFormCondition)}");
+                    return new JsonResult(null);
+                }
+            }
+            else
+            {
+                ViewData["Title"] = $"Добавяне на условие към '{dbForm.FormTitle}'";
+                model = new AddConditionViewModel {FormParentId = formParentId};
+            }
+
+            return View(model);
+        }
+
+        /// <summary>
+        /// Редакция или добавяне на форма от регистър
+        /// </summary>
+        /// <param name="formParentId">Идентификатор на първата версия на формата</param>
+        /// <param name="triggeringValue">Името на полето източник на събитие</param>
+        /// <returns></returns>
+        [HttpGet]
+        [Display(Name = "Зареждане на номенклатурните стойсноти за избраното поле източник на събитие")]
+        public async Task<IActionResult> GetNomenclatureValuesForTriggeringValue(int formParentId, string triggeringValue)
+        {
+            AddConditionViewModel model;
+            FormViewModel dbForm = await _formService.GetFormViewModel(formParentId, true);
+
+
+            CodeableConceptListRequest request = new CodeableConceptListRequest
+            {
+                DataTableRequest = new DatatableRequest { Length = -1 },
+                Type = dbForm.FormFields.SingleOrDefault(f => f.Name == triggeringValue)?.NomenclatureType
+            };
+            try
+            {
+                CodeableConceptListResponse response =
+                    await _nomenclatureGrpcClient.GetCodeableConceptListAsync(request);
+
+                if (response.ResultStatus.Code != ResultCodes.Ok)
+                {
+                    _logger.LogError($"Проблемен статус ({response.ResultStatus.Code}) на заявка в {nameof(CatalogController)}->{nameof(GetNomenclatureValuesForTriggeringValue)}");
+                }
+
+                return new JsonResult(response.Data.Select(c => new SelectListItem(c.Value, c.Code)));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Грешка в {nameof(CatalogController)}->{nameof(GetNomenclatureValuesForTriggeringValue)}");
+                return new JsonResult(null);
+            }
+        }
+
+        private void SetEditConditionViewBag(FormViewModel model)
+        {
+            var placeholder = new SelectListItem("Изберете", "");
+
+            var triggeringFieldNameDdl = model.FormFields.Where(f => f.Type == nameof(SimpleFormFieldType.Select))
+                .Select(f => new SelectListItem(f.Label, f.Name)).ToList();
+
+            triggeringFieldNameDdl.Insert(0, placeholder);
+
+            ViewBag.TriggeringFieldName_ddl = triggeringFieldNameDdl;
+
+            var fieldsDdl = model.FormFields.Select(f => new SelectListItem(f.Label, f.Name)).ToList();
+            fieldsDdl.Insert(0, placeholder);
+
+            ViewBag.FieldsToHide_ddl = fieldsDdl;
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Display(Name = "Промяна на условие към форма")]
+        public async Task<IActionResult> EditFormCondition(AddConditionViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                SetErrorMessage("Невалидни стойности");
+                return View(model);
+            }
+
+            SaveOperationResult result = await _formService.SaveFormCondition(model);
+
+            if (result.IsSuccess)
+            {
+                SetSuccessMessage("Записът е успешен");
+                return RedirectToAction(nameof(FormConditions), new { formParentId = model.FormParentId });
+            }
+
+            SetErrorMessage(result.ErrorMessage);
+            return View(model);
+        }
+
+        //[HttpGet]
+        //public async Task<IActionResult> GetConditionTreeForFormParentId(int formParentId)
+        //{
+        //    JsonResult formConditionTree = await _formService.GetConditionTreeForFormParentId(formParentId);
+        //    return formConditionTree;
+        //}
+
+        /// <summary>
+        /// Изтриване на условие към форма
+        /// </summary>
+        /// <param name="id">Идентификатор на условие</param>
+        /// <returns></returns>
+        [HttpPost]
+        [Display(Name = "Изтриване на условие към форма")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteFormCondition(int id)
+        {
+            if (id <= 0)
+            {
+                SetErrorMessage("Невалиден идентификатор на условие.");
+                return StatusCode(400, new { success = false, message = "Невалиден идентификатор на условие." });
+            }
+
+            OperationResult result = await _formService.DeleteFormCondition(id);
+
+            if (result.IsSuccess)
+            {
+                SetSuccessMessage("Условието е изтрито успешно.");
             }
             else
             {

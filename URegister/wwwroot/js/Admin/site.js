@@ -259,30 +259,17 @@ function actionWithConfirmation(actionUrl, id, confirmDeleteText = "Сигурн
         .modal('show');
 };
 
-function fileActionWithConfirmation(actionUrl, data, confirmDeleteText = "Сигурни ли сте, че искате да изтриете елемента?", callback = null) {
+function fileActionWithConfirmation(confirmDeleteText = "Сигурни ли сте, че искате да изтриете елемента?", callback = null) {
     $('#confirmActionText').text(confirmDeleteText);
     $('.confirm-action')
         .modal({
             centered: true,
             closable: false,
             onApprove: function () {
-                let url = actionUrl;
-                post_async(url, data)
-                    .then((result) => {                       
-                        if (result.success) {
-                            if (callback !== null) {
-                                callback();
-                            }
-                            showToast('success', 'Файлът е премахнат успешно.');                           
-                        }
-                        else {
-                            showToast('error', 'Проблем при премахване на файла.');
-                            console.error(result.error);
-                        }
-                    })
-                    .catch((error) => {
-                        console.error('Грешка при URL ' + actionUrl + " : " + error.statusText);
-                    });
+                if (callback !== null) {
+                    callback();
+                }
+                showToast('success', 'Файлът е премахнат успешно.');
             }
         })
         .modal('show');

@@ -19,7 +19,7 @@ namespace URegister.Core.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.10")
+                .HasAnnotation("ProductVersion", "8.0.19")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -298,7 +298,8 @@ namespace URegister.Core.Migrations
 
                     b.Property<string>("DayTypeId")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)")
                         .HasColumnName("day_type_id")
                         .HasComment("Работни/календарни дни");
 
@@ -309,7 +310,8 @@ namespace URegister.Core.Migrations
 
                     b.Property<string>("DeadlineTypeId")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)")
                         .HasColumnName("deadline_type_id")
                         .HasComment("Вид срок за изпълнение на услуга");
 
@@ -351,6 +353,67 @@ namespace URegister.Core.Migrations
                         {
                             t.HasComment("Срокове за изпълнение на услуга");
                         });
+                });
+
+            modelBuilder.Entity("URegister.Core.Data.Models.Common.FieldFormula", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id")
+                        .HasComment("Идентификатор");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_on")
+                        .HasComment("Дата на изтриване");
+
+                    b.Property<int?>("FormParentId")
+                        .IsRequired()
+                        .HasColumnType("integer")
+                        .HasColumnName("form_parent_id")
+                        .HasComment("Идентификатор на първата версия на формата");
+
+                    b.Property<string>("Formula")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("formula")
+                        .HasComment("Формула");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active")
+                        .HasComment("Дали записът е активен");
+
+                    b.Property<Guid>("ModifiedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by_user_id")
+                        .HasComment("Идентификатор на потребителят променил последно записа");
+
+                    b.Property<DateTime>("ModifiedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("modified_on")
+                        .HasComment("Дата на последна промяна");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer")
+                        .HasColumnName("priority")
+                        .HasComment("Поредност");
+
+                    b.Property<string>("TargetField")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("target_field")
+                        .HasComment("Идентификатор");
+
+                    b.HasKey("Id")
+                        .HasName("pk_field_formulas");
+
+                    b.ToTable("field_formulas", (string)null);
                 });
 
             modelBuilder.Entity("URegister.Core.Data.Models.Common.FileMetadata", b =>
@@ -524,6 +587,69 @@ namespace URegister.Core.Migrations
                         });
                 });
 
+            modelBuilder.Entity("URegister.Core.Data.Models.Common.FormCondition", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id")
+                        .HasComment("Индентификатор");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_on")
+                        .HasComment("Дата на изтриване");
+
+                    b.Property<string>("FieldsToHide")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("fields_to_hide")
+                        .HasComment("Полета за скриване");
+
+                    b.Property<int?>("FormParentId")
+                        .IsRequired()
+                        .HasColumnType("integer")
+                        .HasColumnName("form_parent_id")
+                        .HasComment("Идентификатор на първата версия на формата");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active")
+                        .HasComment("Дали записът е активен");
+
+                    b.Property<Guid>("ModifiedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by_user_id")
+                        .HasComment("Идентификатор на потребителят променил последно записа");
+
+                    b.Property<DateTime>("ModifiedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("modified_on")
+                        .HasComment("Дата на последна промяна");
+
+                    b.Property<string>("TriggeringFieldName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("triggering_field_name")
+                        .HasComment("Име на полето активиращо условие");
+
+                    b.Property<string>("TriggeringNomenclatureValue")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("triggering_nomenclature_value")
+                        .HasComment("Код на номенклатура активираща условие");
+
+                    b.HasKey("Id")
+                        .HasName("pk_form_conditions");
+
+                    b.ToTable("form_conditions", (string)null);
+                });
+
             modelBuilder.Entity("URegister.Core.Data.Models.Common.ProcessDelivery", b =>
                 {
                     b.Property<Guid>("Id")
@@ -609,12 +735,14 @@ namespace URegister.Core.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Content")
-                        .HasColumnType("text")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
                         .HasColumnName("content")
                         .HasComment("Съдържание на бланка");
 
                     b.Property<string>("CreatedBy")
-                        .HasColumnType("text")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
                         .HasColumnName("created_by")
                         .HasComment("Създадена от");
 
@@ -630,9 +758,10 @@ namespace URegister.Core.Migrations
 
                     b.Property<string>("FieldName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
                         .HasColumnName("field_name")
-                        .HasComment("Име напле в Json");
+                        .HasComment("Име на поле в Json");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
@@ -641,7 +770,8 @@ namespace URegister.Core.Migrations
 
                     b.Property<string>("Label")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
                         .HasColumnName("label")
                         .HasComment("Наименование на публично поле");
 
@@ -1503,6 +1633,10 @@ namespace URegister.Core.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("description")
                         .HasComment("Описание");
+
+                    b.Property<bool?>("HistoryNotPublic")
+                        .HasColumnType("boolean")
+                        .HasColumnName("history_not_public");
 
                     b.Property<string>("IdentitySecurityLevel")
                         .IsRequired()

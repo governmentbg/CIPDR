@@ -38,8 +38,12 @@ namespace URegister.Tests.Areas.Admin.Controllers
                         nameof(AccountController.ExternalLogin) or
                         nameof(URegister.Areas.Public.Controllers.ImportController.ImportApplication) or
                         nameof(URegister.Areas.Public.Controllers.ImportController.ImportJson) or 
-                        nameof(OldDataController.ImportExcelFileForR00001) or 
-                        nameof(URegister.Areas.Public.Controllers.ImportController.ImportEDeliveryFile))
+                        //nameof(OldDataController.ImportExcelFileForR00001) or 
+                        nameof(URegister.Areas.Public.Controllers.ImportController.ImportEDeliveryFile) or 
+                        nameof(OldDataController.ImportExcelFileForNewTobaccoProducts) or
+                        nameof(OldDataController.ImportExcelFileForZZNNR0036) or
+                        nameof(OldDataController.ImportExcelFileForUnlawfulAid) or
+                        nameof(OldDataController.ImportExcelFileForECigarettes))
                     {
                         continue;
                     }

@@ -17,6 +17,19 @@
             subField.IsRequired = false;
         }
     }
+    else
+    {
+        //#391449 Експериментално за полетата с адрес
+        foreach (FormField subField in Model.Fields)
+        {
+            if (subField.Name.EndsWith("settlementImmutable") ||
+                subField.Name.EndsWith("streetImmutable") ||
+                subField.Name.EndsWith("countryImmutable"))
+            {
+                subField.IsRequired = true;
+            }
+        }
+    }
 }
 <div class="ui form">
     <div class="field">

@@ -1,26 +1,64 @@
 ﻿@using URegister.Core.Models.User
-@model AdministrationViewModel
+@model UserFilterViewModel
 @{
     ViewData["Title"] = "Списък потребители";
 }
 @Html.AntiForgeryToken()
 <div class="ui form">
-    <div class="field">
-        <label for="administration">Администрация</label>
-        <div class="ui fluid search selection dropdown" id="administrationDropdown">
-            <input id="administration" type="hidden" name="Id" value="@Model.SelectedAdministrationId">
-            <i class="dropdown icon"></i>
-            <div class="default text"></div>
-            <div class="menu">
-                @foreach (var item in Model.Administrations)
-                {
-                    <div class="item" data-value="@item.Value" @(item.Selected ? "class='selected active'" : "")>
-                        @item.Text
+    <div class="ui grid">
+        <div class="column">
+            <div class="ui fluid container basic clearing">
+                <div class="ui accordion">
+                    <div class="active title">
+                        <i class="dropdown icon"></i>
+                        Филтър
                     </div>
-                }
+                    <div class="content">
+                        <div class="column ui segment green">
+                            <div class="ui form">
+                                <div class="fields">
+                                    <div class="seven wide field">
+                                        @Html.EditorFor(model => model.AdministrationId, "DropDown")
+                                    </div>
+                                    <div class="three wide field">
+                                        @Html.EditorFor(model => model.FirstName, "String")
+                                    </div>
+                                    <div class="three wide field">
+                                        @Html.EditorFor(model => model.MiddleName, "String")
+                                    </div>
+                                    <div class="three wide field">
+                                        @Html.EditorFor(model => model.LastName, "String")
+                                    </div>
+                                </div>
+                                <div class="fields">
+                                    <div class="three wide field">
+                                        @Html.EditorFor(model => model.Email, "String")
+                                    </div>
+                                    <div class="four wide field">
+                                        @Html.EditorFor(model => model.RoleId, "DropDown")
+                                    </div>
+                                    <div class="seven wide field">
+                                        @Html.EditorFor(model => model.ActiveOnly, "CheckBoxBoolean")
+                                    </div>
+                                    <div class="ui two wide right aligned field custom buttons">
+                                        <div class="ui fluid container basic clearing">
+                                            <a href="javascript:loadUsers()" class="ui primary button" style="margin-top:1.5rem">
+                                                <i class="icon search"></i>
+                                                Търси
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
+            <table id="auditLogRecords"
+                   class="ui celled striped very compact table" style="width:100%; padding:0px;"
+                   data-url="@Url.Action("GetAuditLogRecordsList", "AuditLog")">
+            </table>
         </div>
-        <span for="type" class="validation-error" tabindex="-1"></span>
     </div>
 </div>
 <div class="ui grid">
@@ -52,7 +90,6 @@
         </div>
     </div>
 </div>
-
 <div class="ui tiny modal confirm-admin-role-modal">
     <div class="header">Потвърждение</div>
     <div class="content">
@@ -65,13 +102,11 @@
                 Отказ
             </button>
             <a href="javascript:void(0);" class="ui primary button admin-role-confirm confirm">
-                
+
             </a>
         </div>
     </div>
 </div>
-
-
 @section Scripts {
     <script src="~/js/user/index.js" asp-append-version="true"></script>
     @await Html.PartialAsync("_ValidationScriptsPartial")

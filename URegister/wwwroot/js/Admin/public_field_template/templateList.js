@@ -28,14 +28,14 @@ function LoadServiceTypes() {
                 {
                     name: 'fieldName',
                     data: 'fieldName',
-                    title: 'FieldName',
+                    title: 'Поле',
                     sortable: false,
                     searchable: true
                 },
                 {
                     name: 'label',
                     data: 'label',
-                    title: 'Наименование на поле',
+                    title: 'Наименование при визуализиране',
                     sortable: false,
                     searchable: true
                 },
@@ -68,7 +68,7 @@ function LoadServiceTypes() {
         });
 
         dt.ready(function () {
-            SetAddButton($(tableId).data('add-url'));
+            SetAddButtonPublicTemplate($(tableId).data('add-url'));
         });
     }
 }
@@ -81,4 +81,26 @@ async function orderNumUp(id){
 async function orderNumDown(id){
    await post_fetch_string_async(`/Admin/PublicFieldTemplate/OrderNumDown/${id}`, {});
    refreshTable('#field_template');
+}
+
+function SetAddButtonPublicTemplate(href) {
+    if (href) {
+        var markup = `<div class="ui fluid container basic clearing">
+                    <a href="${href}" class="ui primary button right floated">
+                        <i class="icon plus"></i>
+                        Добави
+                    </a>
+                    <a href="/Admin/Register/OpenDataRegister" class="ui primary button right floated">
+                        <i class="icon archive"></i>
+                        OpenData
+                    </a>
+                  </div>`;
+
+        $('.custom.buttons.dtBtnContainer').html(markup);
+        $('.no-add-button').hide()
+    }
+    else {
+        $('.no-add-button').show()
+        $('.custom.buttons.dtBtnContainer').hide();
+    }
 }

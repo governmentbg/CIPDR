@@ -1,6 +1,6 @@
 ﻿namespace OpenDataClient.Models
 {
-    internal class AddResourceDataResponse : ApiResponseBase
+    public class AddResourceDataResponse : ApiResponseBase
     {
     }
 }

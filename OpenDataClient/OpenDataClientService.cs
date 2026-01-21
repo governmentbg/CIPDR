@@ -31,7 +31,7 @@
         /// <returns>If it's successful</returns>
         public async Task<bool> AddResourceAsync(string dataSetUri, string nameBG, string nameEN, IEnumerable<IEnumerable<string>> data)
         {
-            var resourceMetadataResponse = await AddResourceMetadataInternalAsync(dataSetUri, nameBG, nameEN);
+            var resourceMetadataResponse = await AddResourceMetadataAsync(dataSetUri, nameBG, nameEN);
             var resourceDataResponse = await AddResourceDataAsync(resourceMetadataResponse.Data.Uri, data);
             return resourceDataResponse.Success;
         }
@@ -51,6 +51,7 @@
                     },
                     CategoryId = categoryId,
                     TermsOfUseId = termsOfUseId,
+                    Visibility = 1 // Публичен
                 },
             };
             var endpoint = "addDataset";
@@ -58,7 +59,7 @@
             return responseData.Uri;
         }
 
-        private async Task<AddResourceMetadataResponse> AddResourceMetadataInternalAsync(string datasetUri, string nameBG, string nameEN)
+       public async Task<AddResourceMetadataResponse> AddResourceMetadataAsync(string datasetUri, string nameBG, string nameEN)
         {
             var requestData = new AddResourceMetadataRequest()
             {
@@ -80,7 +81,7 @@
             return responseData;
         }
 
-        private async Task<AddResourceDataResponse> AddResourceDataAsync(string resourceUri, IEnumerable<IEnumerable<string>> data)
+        public async Task<AddResourceDataResponse> AddResourceDataAsync(string resourceUri, IEnumerable<IEnumerable<string>> data)
         {
             var requestData = new AddResourceDataRequest()
             {
@@ -94,6 +95,20 @@
             return responseData;
         }
 
+        public async Task<AddResourceDataResponse> UpdateResourceDataAsync(string resourceUri, IEnumerable<IEnumerable<string>> data)
+        {
+            var requestData = new AddResourceDataRequest()
+            {
+                ApiKey = options.Value.ApiKey,
+                ResourceUri = resourceUri,
+                ExtensionFormat = "csv",
+                Data = data,
+            };
+            var endpoint = "updateResourceData";
+            var responseData = await PostAsync<AddResourceDataResponse, AddResourceDataRequest>(endpoint, requestData);
+            return responseData;
+        }
+
         private async Task<TResponse> PostAsync<TResponse, TRequest>(string requestUri, TRequest requestData)
         {
             var httpClient = clientFactory.CreateClient("openDataClient");
@@ -102,13 +117,14 @@
             var response = await httpClient.PostAsync(uri, data);
             if (response.StatusCode != HttpStatusCode.OK)
             {
-                var responseString = await response.Content.ReadAsStringAsync();
+                //var responseString = await response.Content.ReadAsStringAsync();
 
                 // this is done because part of the response is escaped UTF-16 sequence...
                 //responseString = JToken
                 //    .Parse(responseString)
                 //    .ToString();
-                throw new Exception("There could be difference between the API and client implementation."  + responseString);
+                var byteArray = await response.Content.ReadAsByteArrayAsync();
+                throw new Exception("There could be difference between the API and client implementation."  + Encoding.UTF8.GetString(byteArray ));
             }
 
             return await ParseResponseAsync<TResponse>(response);
@@ -133,6 +149,28 @@
         {
             var jsonString = await response.Content.ReadAsStringAsync();
             return JsonSerializer.Deserialize<T>(jsonString, DefaultSerilizeOptions());
+        }
+
+        public async Task<List<ListDataCategoriesResponseData>> ListDataCategoriesAsync()
+        {
+            var requestData = new ListDataCategoriesRequest()
+            {
+                ApiKey = options.Value.ApiKey,
+            };
+            var endpoint = "listDataCategories";
+            var responseData = await PostAsync<ListDataCategoriesResponse, ListDataCategoriesRequest>(endpoint, requestData);
+            return responseData.Success ? responseData.Categories: new List<ListDataCategoriesResponseData>();
+        }
+
+        public async Task<List<GetUserOrganisationsResponseData>> GetUserOrganisationsAsync()
+        {
+            var requestData = new GetUserOrganisationsRequest()
+            {
+                ApiKey = options.Value.ApiKey,
+            };
+            var endpoint = "getUserOrganisations";
+            var responseData = await PostAsync<GetUserOrganisationsResponse, GetUserOrganisationsRequest>(endpoint, requestData);
+            return responseData.Success ? responseData.Organisations : new List<GetUserOrganisationsResponseData>();
         }
     }
 }

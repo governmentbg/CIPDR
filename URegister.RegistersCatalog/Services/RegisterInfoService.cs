@@ -29,6 +29,7 @@ namespace URegister.RegistersCatalog.Services
        IHttpRequester httpRequester,
        IConfiguration configuration,
        IAuditInfo auditInfo,
+       IHttpClientFactory clientFactory,
        ILogger<RegisterInfoService> logger) : IRegisterInfoService
     {
 
@@ -46,7 +47,8 @@ namespace URegister.RegistersCatalog.Services
                 IdentitySecurityLevel = r.IdentitySecurityLevel,
                 BaseAddress = r.BaseAddress,
                 Deployed = r.Deployed,
-                StatusId = r.StatusId
+                StatusId = r.StatusId,
+                HistoryNotPublic = r.HistoryNotPublic ?? false
             };
         }
 
@@ -99,7 +101,7 @@ namespace URegister.RegistersCatalog.Services
         {
             return await repo.AllReadonly<Administration>().FirstOrDefaultAsync(x => x.Uic == "000000000");
         }
-        
+
         public async Task<ICollection<RegisterItem>> GetAdministrationRegistries(Guid administrationId)
         {
             var globalAdminAdministration =
@@ -126,8 +128,8 @@ namespace URegister.RegistersCatalog.Services
                      Code = x.Register.Code,
                      Name = x.Register.Name
                  })
-                 .GroupBy(x=> x.Id)
-                 .Select(g=>g.First())
+                 .GroupBy(x => x.Id)
+                 .Select(g => g.First())
                  .ToListAsync();
 
             return administrationRegistries;
@@ -152,7 +154,7 @@ namespace URegister.RegistersCatalog.Services
             var query = repo.AllReadonly<Register>()
                 .TagWith(nameof(GetRegisterFullList))
                 .IgnoreQueryFilters();
-                            
+
 
             if (!string.IsNullOrEmpty(request.Code))
             {
@@ -181,7 +183,7 @@ namespace URegister.RegistersCatalog.Services
             if (!string.IsNullOrEmpty(request.AdministrationId))
             {
                 Guid firlterAdministationIdGuid = new Guid(request.AdministrationId);
-                query = query.Where(x => x.RegisterAdministrations.Any(a => a.AdministrationId == firlterAdministationIdGuid));
+                query = query.Where(x => x.RegisterAdministrations.Any(a => a.IsActive && a.AdministrationId == firlterAdministationIdGuid));
             }
             if (!string.IsNullOrEmpty(request.IdentitySecurityLevel))
             {
@@ -215,10 +217,10 @@ namespace URegister.RegistersCatalog.Services
                 BaseAddress = x.BaseAddress,
                 Status = x.StatusId.ToString(),
                 Deployed = x.Deployed,
-                SoleAdministrationId = x.RegisterAdministrations.Count != 1 ? 
-                    null : x.RegisterAdministrations.Single().AdministrationId.ToString(),
-                SoleAdministrationName = x.RegisterAdministrations.Count != 1 ?
-                null : x.RegisterAdministrations.Single().Administration.Name
+                SoleAdministrationId = x.RegisterAdministrations.Count(r => r.IsActive) != 1 ?
+                    null : x.RegisterAdministrations.Single(r => r.IsActive).AdministrationId.ToString(),
+                SoleAdministrationName = x.RegisterAdministrations.Count(r => r.IsActive) != 1 ?
+                null : x.RegisterAdministrations.Single(r => r.IsActive).Administration.Name
             });
 
             var countAll = 0;
@@ -270,6 +272,7 @@ namespace URegister.RegistersCatalog.Services
             );
             register.ModifiedOn = DateTime.UtcNow;
             register.ModifiedByUserId = auditInfo?.UserId ?? Guid.Empty;
+            register.HistoryNotPublic = request.HistoryNotPublic;
             await repo.SaveChangesAsync();
         }
 
@@ -365,6 +368,7 @@ namespace URegister.RegistersCatalog.Services
             register.IdentitySecurityLevel = request.IdentitySecurityLevel;
             register.ModifiedOn = DateTime.UtcNow;
             register.ModifiedByUserId = auditInfo?.UserId ?? Guid.Empty;
+            register.HistoryNotPublic = request.HistoryNotPublic;
 
             if (administration == null)
             {
@@ -573,7 +577,7 @@ namespace URegister.RegistersCatalog.Services
         public async Task<RegisterItem> GetRegister(int registerId)
         {
             var register = await repo.AllReadonly<Register>()
-                             .IgnoreQueryFilters() 
+                             .IgnoreQueryFilters()
                              .Include(x => x.RegisterAdministrations)
                              .ThenInclude(x => x.Administration)
                              .ThenInclude(x => x.People.Where(p => p.RegisterId == registerId))
@@ -613,11 +617,18 @@ namespace URegister.RegistersCatalog.Services
                     .Select(RegisterToItem())
                     .FirstOrDefaultAsync(r => r.Code == request.RegisterCode);
         }
-       
+
         public async Task<string> AddMasterPersonRecordIndex(MasterPersonRecordIndexAddMessage request)
         {
+            //NOTE : решено е като временно решение да се позволяват празни PID
+            //if (string.IsNullOrWhiteSpace(request.Pid))
+            //{
+            //    throw new ArgumentException("Празен идентификатор в заявката");
+            //}
+
             var result = string.Empty;
             var mpri = await repo.All<MasterPersonRecordsIndex>()
+                                 .IgnoreQueryFilters()
                                  .Include(x => x.RegisterPersonRecords)
                                  .Where(x => x.Pid == request.Pid &&
                                              x.PidType == request.PidType)
@@ -636,7 +647,20 @@ namespace URegister.RegistersCatalog.Services
             }
             else
             {
-                mpri.Name = request.Name;
+                if (string.IsNullOrWhiteSpace(request.Pid))
+                {
+                    //При празен PID не записваме име
+                    mpri.Name = String.Empty;
+                }
+                else
+                {
+                    mpri.Name = request.Name;
+                }
+
+                if (!mpri.IsActive)
+                {
+                    mpri.IsActive = true;
+                }
             }
 
             if (!mpri.RegisterPersonRecords.Any(x => x.RegisterId == request.RegisterId && x.RoleId == request.RoleId))
@@ -650,7 +674,17 @@ namespace URegister.RegistersCatalog.Services
                     }
                 );
             }
-            await repo.SaveChangesAsync();
+
+            try
+            {
+                await repo.SaveChangesAsync();
+            }
+            catch (Exception)
+            {
+                logger.LogError($"Проблем при запис в {nameof(AddMasterPersonRecordIndex)}. Pid от заявка: {request.Pid}, тип от заявка: {request.PidType}");
+                throw;
+            }
+
             result = mpri.Id.ToString();
             return result;
         }
@@ -734,7 +768,7 @@ namespace URegister.RegistersCatalog.Services
             }
 
             var administrations = await repo.AllReadonly<Administration>()
-                .Where(x => parsedIds.Contains(x.Id) && 
+                .Where(x => parsedIds.Contains(x.Id) &&
                             x.RegisterAdministrations.Any(ra => ra.RegisterId == registerId))
                 .Select(x => new
                 {
@@ -764,7 +798,7 @@ namespace URegister.RegistersCatalog.Services
                 ModifiedByUserId = auditInfo?.UserId ?? Guid.Empty,
             });
             var register = await repo.All<Register>()
-                                     .Where(x => x.Id == request.RegisterId) 
+                                     .Where(x => x.Id == request.RegisterId)
                                      .IgnoreQueryFilters()
                                      .FirstAsync();
             register.StatusId = request.StatusId;
@@ -782,6 +816,7 @@ namespace URegister.RegistersCatalog.Services
             if (request.StatusId == (int)RegisterStatusType.Register && !register.Deployed)
             {
                 await CreateRegister(register);
+                await repo.SaveChangesAsync();
             }
         }
 
@@ -803,11 +838,92 @@ namespace URegister.RegistersCatalog.Services
             await repo.SaveChangesAsync();
             return fileMetadata.Id;
         }
+
+        private string GetStampitFieldValue(string field, string page)
+        {
+            var fieldName = $@"name=""{field}""";
+            var valueName = @"value=""";
+            var pos = page.IndexOf(fieldName);
+            if (pos < 0)
+            {
+                return string.Empty;
+            }
+            pos += fieldName.Length;
+            pos = page.IndexOf(valueName, pos);
+            pos += valueName.Length;
+            var posEnd = page.IndexOf(@"""", pos);
+            return page.Substring(pos, posEnd - pos);
+        }
+
+        private async Task InitStampit(Register register)
+        {
+            if (!string.IsNullOrEmpty(register.AppId))
+            {
+                return;
+            }
+            var registerCode = register.Code;
+            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") != EnvironmentNames.Production)
+            {
+                registerCode = $"Test{registerCode}";
+            }
+
+            var client = clientFactory.CreateClient("stampit");
+            var request = new HttpRequestMessage(HttpMethod.Post, $"manage/apps/create");
+            List<KeyValuePair<string, string>> reqParams = new ();
+            reqParams.Add(new("name", registerCode));
+            reqParams.Add(new("description", register.Name));
+            reqParams.Add(new("redirect", $"{register.BaseAddress?.ToLower()}/signin-stampit"));
+            reqParams.Add(new("redirect_to_id", "1"));
+            reqParams.Add(new("_roots[]", "eidas"));
+            var content = new FormUrlEncodedContent(reqParams);
+            request.Content = content;
+            
+            var bearerSource = client.DefaultRequestHeaders?.Authorization?.ToString();
+            var bearer = (bearerSource?.Length ?? 0) > 50 ? $"{bearerSource?.Length} {bearerSource?.Substring(0, 50)}" : bearerSource;
+            logger.LogError($"Bearer: {bearer}");
+
+            var response = await client.SendAsync(request);
+            if ((int)response.StatusCode >= 300 && (int)response.StatusCode < 400)
+            {
+                var redirectUri = response.Headers.Location;
+                if (redirectUri != null)
+                {
+                    // Reissue the request to the redirected URL with the Authorization header
+                    var redirectedResponse = await client.GetAsync($"{redirectUri}");
+                    var page = await redirectedResponse.Content.ReadAsStringAsync();
+                    if (redirectedResponse.IsSuccessStatusCode)
+                    {
+                        register.AppId = GetStampitFieldValue("public", page);
+                        register.AppSecret = GetStampitFieldValue("private", page);
+                        await repo.SaveChangesAsync();
+                    } 
+                    if (string.IsNullOrEmpty(register.AppId) || string.IsNullOrEmpty(register.AppSecret))
+                    {
+                        logger.LogError($"{redirectUri} {redirectedResponse.StatusCode} Bearer: {bearer}");
+                    }
+                } else
+                {
+                    logger.LogError($"{redirectUri}  Bearer: {bearer}");
+                }
+            } else
+            {
+                logger.LogError($"{response.StatusCode} Bearer: {bearer}");
+            }
+        }
+
         private async Task CreateRegister(Register register)
         {
+            await InitStampit(register);
+
             var baseAddress = configuration.GetValue<string>("Infrastructure:BaseUrl") ?? string.Empty;
             var pass = Guid.NewGuid().ToString("d");
-            var result = await httpRequester.PostAsync(string.Empty, baseAddress, new { name = register.Code, pass });
+            register.DateDeploy = DateTime.UtcNow;
+            var result = await httpRequester.PostAsync(string.Empty, baseAddress, new { 
+                name = register.Code, 
+                pass,
+                appId = register.AppId,
+                appSecret = register.AppSecret
+            });
             if (result.IsSuccessStatusCode)
             {
                 logger.LogError($"CreateRegister {baseAddress} {result.StatusCode} {result.Content}");
@@ -827,6 +943,7 @@ namespace URegister.RegistersCatalog.Services
         {
             var result = new List<AdministrationUicItem>();
             var administrations = await repo.All<Administration>()
+                                            .Where(x => x.IsActive)
                                             .IgnoreQueryFilters()
                                             .Include(x => x.RegisterAdministrations)
                                             .ToListAsync();
@@ -850,7 +967,7 @@ namespace URegister.RegistersCatalog.Services
         {
             var result = new List<ServiceItem>();
             result.AddRange(await repo.AllReadonly<Data.Models.RegisterService>()
-                                      .Where(x => !string.IsNullOrEmpty(x.EFormCode)) 
+                                      .Where(x => !string.IsNullOrEmpty(x.EFormCode))
                                       .Select(x => new ServiceItem
                                       {
                                           RegisterId = x.RegisterId,
@@ -864,9 +981,10 @@ namespace URegister.RegistersCatalog.Services
             return result;
         }
 
-        public async Task SaveService(ServiceItem request) {
+        public async Task SaveService(ServiceItem request)
+        {
             var service = await repo.All<Data.Models.RegisterService>()
-                                    .Where(x => x.RegisterId == request.RegisterId && 
+                                    .Where(x => x.RegisterId == request.RegisterId &&
                                                 x.ServiceId == request.ServiceId)
                                     .FirstOrDefaultAsync();
             if (service == null)
@@ -953,13 +1071,13 @@ namespace URegister.RegistersCatalog.Services
                              .Where(x => x.Id == id)
                              .Select(x => new CalendarDayItem
                              {
-                               Id =  x.Id,
-                               CurrentDate = x.CurrentDate.ToUniversalTime().ToTimestamp(),
-                               KindId = x.KindId,
-                               Description = x.Description,
-                             } )
+                                 Id = x.Id,
+                                 CurrentDate = x.CurrentDate.ToUniversalTime().ToTimestamp(),
+                                 KindId = x.KindId,
+                                 Description = x.Description,
+                             })
                              .FirstAsync();
-            
+
         }
 
         /// <summary>
@@ -996,9 +1114,9 @@ namespace URegister.RegistersCatalog.Services
             return (result, countAll);
         }
 
-        public async Task<DateTime> CalcWorkDays (DateTime dateFrom, int days) 
+        public async Task<DateTime> CalcWorkDays(DateTime dateFrom, int days)
         {
-            var calendarDays = await  repo.AllReadonly<CalendarDay>()
+            var calendarDays = await repo.AllReadonly<CalendarDay>()
                                           .Where(x => dateFrom <= x.CurrentDate)
                                           .ToListAsync();
             for (int i = 0; i < days; i++)
@@ -1039,14 +1157,82 @@ namespace URegister.RegistersCatalog.Services
                                                     {
                                                         SourceId = x.SourceId,
                                                         CodeableConceptCode = x.CodeableConceptCode,
-                                                        FileName= x.FileName,
+                                                        FileName = x.FileName,
                                                         Description = x.Description,
                                                         MetaFileId = x.Id.ToString(),
                                                         NomenclatureType = x.NomenclatureType,
                                                         SourceType = x.FileSourceTypeId,
                                                     })
                                                     .ToListAsync());
-            return result;   
+            return result;
+        }
+
+        public async Task<OpenDataParam> GetOpenDataParam(OpenDataParamRequest request)
+        {
+            var register = await repo.AllReadonly<Register>()
+                                     .Where(x => x.Id == request.RegisterId)
+                                     .FirstAsync();
+            var administration = await repo.AllReadonly<Administration>()
+                                                 .Where(x => x.Id == request.AdministrationId.ToGuid())
+                                                 .FirstAsync();
+            var registerAdministration = await repo.AllReadonly<RegisterAdministration>()
+                                                 .Where(x => x.RegisterId == request.RegisterId &&
+                                                             x.AdministrationId == request.AdministrationId.ToGuid())
+                                                 .FirstAsync();
+
+            return new OpenDataParam
+            {
+                ApiKey = administration.OpenDataApiKey,
+                OrganisationId = administration.OpenDataOrgId,
+                Tags = register.OpenDataTags,
+                CategoryId = register.OpenDataCategoryId,
+                DataSetId = registerAdministration.OpenDataDataSetId,
+                ResourceMetaId = registerAdministration.ResourceMetaId,
+                FrequencyId = registerAdministration.FrequencyId,
+                FrequencyAdministrationId = administration.FrequencyId,
+                AdministrationName = administration.Name
+            };
+        }
+        public async Task SaveOpenDataRegister(OpenDataRegisterSaveRequest request)
+        {
+            var register = await repo.All<Register>()
+                                     .Where(x => x.Id == request.RegisterId)
+                                     .FirstAsync();
+            register.OpenDataTags = request.Tags;
+            register.OpenDataCategoryId = request.CategoryId;
+            await repo.SaveChangesAsync();
+        }
+
+        public async Task SaveOpenDataAdministration(OpenDataAdministrationSaveRequest request)
+        {
+            var administration = await repo.All<Administration>()
+                                     .Where(x => x.Id == request.AdministrationId.ToGuid())
+                                     .FirstAsync();
+            administration.OpenDataApiKey = request.ApiKey;
+            administration.OpenDataOrgId = request.OrganisationId;
+            administration.FrequencyId = request.FrequencyId;
+            await repo.SaveChangesAsync();
+        }
+
+        public async Task SaveOpenDataRegisterAdministration(OpenDataRegisterAdministrationSaveRequest request)
+        {
+            var registerAdministration = await repo.All<RegisterAdministration>()
+                                     .Where(x => x.AdministrationId == request.AdministrationId.ToGuid() && 
+                                                 x.RegisterId == request.RegisterId )
+                                     .FirstAsync();
+            registerAdministration.FrequencyId = request.FrequencyId;
+            await repo.SaveChangesAsync();
+        }
+
+        public async Task SaveOpenDataRegisterAdministrationMeta(OpenDataRegisterAdministrationMetaSaveRequest request)
+        {
+            var registerAdministration = await repo.All<RegisterAdministration>()
+                                     .Where(x => x.AdministrationId == request.AdministrationId.ToGuid() &&
+                                                 x.RegisterId == request.RegisterId)
+                                     .FirstAsync();
+            registerAdministration.OpenDataDataSetId = request.DataSetId;
+            registerAdministration.ResourceMetaId = request.ResourceMetaId;
+            await repo.SaveChangesAsync();
         }
     }
 }

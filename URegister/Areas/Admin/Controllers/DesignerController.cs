@@ -12,6 +12,7 @@ using URegister.NomenclaturesCatalog;
 using URegister.ObjectsCatalog;
 using System.Security.Claims;
 using System.ComponentModel.DataAnnotations;
+using URegister.Core.Models.CurrentRegister;
 
 namespace URegister.Areas.Admin.Controllers
 {
@@ -27,6 +28,7 @@ namespace URegister.Areas.Admin.Controllers
         private readonly IFormConfigurationPersistenceService _formConfigurationPersistenceService;
         private readonly IRegisterService registerService;
         public readonly ILogger<DesignerController> Logger;
+        private readonly IFieldFormulaCalculationService _fieldFormulaCalculationService;
 
         public DesignerController(IFormFieldsLayoutService formFieldsLayoutService,
             IFormValidationService formValidationService,
@@ -34,7 +36,8 @@ namespace URegister.Areas.Admin.Controllers
             ObjectsCatalogGrpc.ObjectsCatalogGrpcClient objectCatalogGrpcClient,
             IFormConfigurationPersistenceService formConfigurationPersistenceService,
             IRegisterService registerService,
-            ILogger<DesignerController> logger)
+            ILogger<DesignerController> logger,
+            IFieldFormulaCalculationService fieldFormulaCalculationService)
         {
             this.formFieldsLayoutService = formFieldsLayoutService;
             this.formValidationService = formValidationService;
@@ -43,6 +46,7 @@ namespace URegister.Areas.Admin.Controllers
             this.registerService = registerService;
             _formConfigurationPersistenceService = formConfigurationPersistenceService;
             Logger = logger;
+            _fieldFormulaCalculationService = fieldFormulaCalculationService;
         }
 
         /// <summary>
@@ -61,7 +65,10 @@ namespace URegister.Areas.Admin.Controllers
                 return View(new DesignerViewModel());
             }
 
-            IEnumerable<CatalogFieldType> fieldTypes = await FieldTypeCatalogService.GetAllFieldType(objectCatalogGrpcClient);
+            RegisterVM currentRegister = await registerService.GetCurrentRegister();
+
+            IEnumerable<CatalogFieldType> fieldTypes = 
+                await FieldTypeCatalogService.GetAllFieldType(objectCatalogGrpcClient, currentRegister.Code);
 
             if (fieldTypes == null)
             {
@@ -78,7 +85,7 @@ namespace URegister.Areas.Admin.Controllers
 
             NomenclaturePublicRequest getNomenclaturesRequest = new NomenclaturePublicRequest
             {
-               RegisterId = await registerService.GetCurrentRegisterId(),
+               RegisterId = currentRegister.Id,
             };
 
             try
@@ -172,6 +179,8 @@ namespace URegister.Areas.Admin.Controllers
                 viewModel.DontUploadFilesToStorage = true;
 
                 formFieldsLayoutService.DistributePostedFieldValuesToViewModel(form, viewModel);
+                await _formConfigurationPersistenceService.ApplyConditionTreeOnFormModel(viewModel);
+
                 bool isViewModelValidationSuccess = await formValidationService.ValidateViewModel(
                     viewModel,
                     nomenclatureGrpcClient,
@@ -179,9 +188,20 @@ namespace URegister.Areas.Admin.Controllers
 
                 if (isViewModelValidationSuccess)
                 {
-                    SetSuccessMessage(MessageConstant.SuccessfulValidation);
-                    return View(nameof(ShowPreview), viewModel);
-                    //return View("ShowReadonlyForm", viewModel);
+                    OperationResult calculationResult = await _fieldFormulaCalculationService.CalculateFormulas(viewModel);
+
+                    if (calculationResult.IsSuccess)
+                    {
+                        SetSuccessMessage(MessageConstant.SuccessfulValidation);
+                        //return View(nameof(ShowPreview), viewModel);
+                        //return View("ShowReadonlyForm", viewModel);
+                    }
+                    else
+                    {
+                        SetWarningMessage("Валидацията е успешна, но изчисленията на формулите на полетата не можаха да бъдат извършени. " + calculationResult.ErrorMessage);
+                        //return View(nameof(ShowPreview), viewModel);
+                        //return View("ShowReadonlyForm", viewModel);
+                    }
                 }
 
                 return View(nameof(ShowPreview), viewModel);

@@ -3,8 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using URegister.Core.Contracts;
-using URegister.Core.Models.Process;
-using URegister.Core.Services;
 using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Model.AuditLog;
 
@@ -27,6 +25,7 @@ namespace URegister.Areas.Admin.Controllers
         /// Списък на записи в системен журнал
         /// </summary>
         /// <param name="request"></param>
+        /// <param name="filter"></param>
         /// <returns></returns>
         [HttpPost]
         [Display(Name = "Извличане на списък със записи в системния журнал")]

@@ -51,9 +51,13 @@ namespace URegister.Core.Services
             {
                 queryWhere = queryWhere.Where(x => x.Created < filter.DateTo.Value.ToUniversalTime().AddDays(1));
             }
-            if (!string.IsNullOrEmpty(filter.ActionType))
-            {
-                queryWhere = queryWhere.Where(x => EF.Functions.ILike(x.Method, filter.ActionType));
+            //if (!string.IsNullOrEmpty(filter.ActionType))
+            //{
+            //    queryWhere = queryWhere.Where(x => EF.Functions.ILike(x.Method, filter.ActionType));
+            //}
+            if (!string.IsNullOrEmpty(filter.Action))
+            {              
+                queryWhere = queryWhere.Where(x => EF.Functions.ILike(x.Action, $"%{filter.Action}%"));
             }
             //if (!string.IsNullOrEmpty(filter.IpAddress) && IPAddress.TryParse(filter.IpAddress, out var parsedIp))
             //{

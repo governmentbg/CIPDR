@@ -185,6 +185,7 @@ namespace URegister.IntegrationsCatalog.Services
                         edeliveryMessage.StatusId = (int)EDeliveryStatus.Error;
                         edeliveryMessage.ErrorMessage = service == null ? $"Не намирам услуга {appFileData.ServiceCode} " : string.Empty;
                         edeliveryMessage.ErrorMessage += string.IsNullOrEmpty(administrationId) ? $"Не намирам администрация {appFileData.AdministrationUic} " : string.Empty;
+                        await emailService.AddEmailOnError(edeliveryMessage);
                         await repo.SaveChangesAsync();
                         continue;
                     }
@@ -222,6 +223,7 @@ namespace URegister.IntegrationsCatalog.Services
                         {
                             edeliveryMessage.StatusId = (int)EDeliveryStatus.Error;
                             edeliveryMessage.ErrorMessage = responseMessage;
+                            await emailService.AddEmailOnError(edeliveryMessage);
                         }
                     }
                 }
@@ -231,6 +233,7 @@ namespace URegister.IntegrationsCatalog.Services
                     edeliveryMessage.StepId = (int)EDeliveryStep.File;
                     edeliveryMessage.StatusId = (int)EDeliveryStatus.Error;
                     edeliveryMessage.ErrorMessage = $"В полученото съобщение има {appFileDataList.Count} заявления";
+                    await emailService.AddEmailOnError(edeliveryMessage);
                 }
                 await repo.SaveChangesAsync();
             }
@@ -298,7 +301,7 @@ namespace URegister.IntegrationsCatalog.Services
                     openMessage.Sender.ProfileId, 
                     1, 
                     $"{administration.Name} ({register.Name})", 
-                    $"Вх. № {outMessage.IncomingNumber} / {outMessage.IncomingDate}", 
+                    $"Вх. № {outMessage.IncomingNumber} / {outMessage.IncomingDate.ConvertUtcToBGTime().Value.ToString(FormattingConstant.DateFormat)}", 
                     outMessage.Rnu, 
                     string.Empty, 
                     new byte[] { }
@@ -483,6 +486,7 @@ namespace URegister.IntegrationsCatalog.Services
                                       //RegisterId = x.RegisterId ?? 0,
                                       RegisterId = x.RegisterId.GetValueOrDefault(0),
                                       ErrorMessage = x.ErrorMessage,
+                                      MessageId = x.MessageId,
                                       ModifiedOn = x.ModifiedOn != DateTime.MinValue
                                       ? x.ModifiedOn.ToUniversalTime().ToTimestamp()
                                       : null,

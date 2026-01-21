@@ -120,8 +120,34 @@ namespace URegister.RegistersCatalog.Data.Models
         public string? OpenDataTags { get; set; }
 
         /// <summary>
+        /// AppId за Stampit
+        /// </summary>
+        [Comment("AppId за Stampit")]
+        [MaxLength(100)]
+        public string? AppId { get; set; }
+
+        /// <summary>
+        /// AppSecret за Stampit
+        /// </summary>
+        [Comment("AppSecret за Stampit")]
+        [MaxLength(100)]
+        public string? AppSecret { get; set; }
+
+        /// <summary>
+        /// Дата на старт deploy
+        /// </summary>
+        [Comment("Дата на старт на deploy")]
+        public DateTime? DateDeploy { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
         /// Администрации
         /// </summary>
         public List<RegisterAdministration> RegisterAdministrations { get; set; } = new ();
+
+        /// <summary>
+        /// Историята не е публична
+        /// </summary>
+        [Comment("Историята не е публична")]
+        public bool? HistoryNotPublic { get; set; } = false;
     }
 }

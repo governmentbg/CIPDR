@@ -20,7 +20,7 @@ namespace URegister.IntegrationsCatalog.Models
             [XmlElement("SettlementID")] public int SettlementID { get; set; }
             [XmlElement("SettlementEKATTE")] public string SettlementEKATTE { get; set; }
             [XmlElement("Settlement")] public string Settlement { get; set; }
-            [XmlElement("AreaID")] public int AreaID { get; set; }
+            [XmlElement("AreaID")] public int? AreaID { get; set; }
             [XmlElement("Area")] public string Area { get; set; }
             [XmlElement("AreaEkatte")] public string AreaEkatte { get; set; }
             [XmlElement("PostCode")] public string PostCode { get; set; }

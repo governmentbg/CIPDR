@@ -3,10 +3,8 @@ using IO.HtmlToPdf.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.Extensions.Primitives;
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using URegister.Core.Contracts;
 using URegister.Core.Data.Models.Common;
 using URegister.Core.Data.Models.Process;
@@ -37,7 +35,8 @@ namespace URegister.Areas.Admin.Controllers
         INomenclatureClientService nomenclatureClient,
         IUserContext userContext,
         ILogger<ProcessController> logger,
-        IDeadlineService deadlineService
+        IDeadlineService deadlineService,
+        IFieldFormulaCalculationService fieldFormulaCalculationService
         ) : BaseController
     {
 
@@ -46,6 +45,7 @@ namespace URegister.Areas.Admin.Controllers
             ViewBag.DeadlineId_ddl = await deadlineService.GetDeadlineDDL(serviceId);
             await nomenclatureClient.SetViewBagProcess(ViewData);
         }
+
         [Authorize(Roles = $"{UserRoles.Manager},{UserRoles.Editor},{UserRoles.Registrator}")]
         [Display(Name = "Зареждане на страница Заявени услуги")]
         public async Task<IActionResult> Index()
@@ -65,7 +65,18 @@ namespace URegister.Areas.Admin.Controllers
                 Value = x.Code,
                 Text = x.Value
             }).ToList();
-            var model = new ProcessFilterVM();
+
+            ServiceVM registerService = await service.GetRegisterService();
+
+            if (registerService == null)
+            {
+                SetErrorMessage("Няма услуга за вписване");
+            }
+
+            var model = new ProcessFilterVM()
+            {
+                RegisterServiceHasJustOneStep = registerService?.Steps.Count < 2
+            };
             return View(nameof(Index), model);
         }
 
@@ -404,7 +415,7 @@ namespace URegister.Areas.Admin.Controllers
                 );
                 SetSuccessMessage("Успешен запис");
             }
-            return View("Index");
+            return RedirectToAction("Index");
         }
 
         [Display(Name = "Извличане на файл на удостоверение")]
@@ -471,7 +482,7 @@ namespace URegister.Areas.Admin.Controllers
                 var oldIncomingDateStr = form["ProcessInfo.OldIncomingDate"].ToString();
                 if (!string.IsNullOrEmpty(oldIncomingDateStr))
                 {
-                    oldIncomingDate = DateTime.ParseExact(oldIncomingDateStr, "dd.MM.yyyy", null);
+                    oldIncomingDate = DateTime.ParseExact(oldIncomingDateStr, FormattingConstant.NormalDateFormat, null);
                 }
 
                 formFieldsLayoutService.DistributePostedFieldValuesToViewModel(form, viewModel);
@@ -486,6 +497,7 @@ namespace URegister.Areas.Admin.Controllers
                     return View(model);
                 }
 
+                await formConfigurationPersistenceService.ApplyConditionTreeOnFormModel(viewModel);
                 bool isViewModelValidationSuccess = await formValidationService.ValidateViewModel(
                     viewModel,
                     nomenclatureGrpcClient,
@@ -495,6 +507,15 @@ namespace URegister.Areas.Admin.Controllers
 
                 if (isViewModelValidationSuccess)
                 {
+                    OperationResult calculationResult = await fieldFormulaCalculationService.CalculateFormulas(viewModel);
+
+                    if (!calculationResult.IsSuccess)
+                    {
+                        await SetViewBag(serviceId);
+                        SetErrorMessage("Валидацията е успешна, но изчисленията на формулите на полетата не можаха да бъдат извършени. " + calculationResult.ErrorMessage);
+                        return View(model);
+                    }
+
                     (var savedModel,var process) = await processService.AddStep(model);
                     var serviceModel = await service.GetRegisterService();
                     if (serviceModel.Id == process.ServiceId && process.StatusId == (int)ProcessStatus.Registered)
@@ -600,6 +621,7 @@ namespace URegister.Areas.Admin.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UploadFile(IFormFile file, int formParentId, string fieldName, string key, bool dontUploadFilesToStorage = false)
         {
+            key = null;//#406058 нека се генерира ключ при всеки upload
             try
             {
                 if (file == null || file.Length <= 0)

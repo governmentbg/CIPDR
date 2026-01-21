@@ -1,7 +1,7 @@
 ﻿namespace OpenDataClient.Models
 {
-    internal class ApiRequestBase
+    public class ApiRequestBase
     {
-        public string ApiKey { get; set; }
+        public string ApiKey { get; set; } = null!;
     }
 }

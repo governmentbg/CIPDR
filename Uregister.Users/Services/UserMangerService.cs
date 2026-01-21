@@ -86,7 +86,8 @@ namespace Uregister.Users.Services
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Грешка при упълномощаване на потребител");
+                logger.LogError(ex, $"Грешка при упълномощаване на потребител {ex.InnerException?.Message} pid: {authorizeUserData.Pid ?? "липсва"}, registerCode: {authorizeUserData.RegisterCode ?? "липсва"}");
+                
 
                 appUser.Status = new ResultStatus
                 {
@@ -131,6 +132,7 @@ namespace Uregister.Users.Services
                     Position = userData.Position,
                     Enable = false,
                     CreatedAt = DateTime.UtcNow,
+                    ReceiveEmailOnError = userData.ReceiveEmailOnError,
                     Logins = new List<ApplicationUserLogin>
                 {
                     new ApplicationUserLogin
@@ -250,6 +252,7 @@ namespace Uregister.Users.Services
                     appUser.LastName = userData.LastName;
                     appUser.UserName = userData.UserName;
                     appUser.Enable = userData.Enabled;
+                    appUser.ReceiveEmailOnError = userData.ReceiveEmailOnError;
                     appUser.Logins.Clear();
                     appUser.Logins.Add(new ApplicationUserLogin
                     {

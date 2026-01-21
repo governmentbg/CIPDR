@@ -1,10 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using URegister.Infrastructure.Data.Common;
 
 namespace URegister.Core.Data.Models.Common
@@ -30,12 +26,14 @@ namespace URegister.Core.Data.Models.Common
         /// Вид срок за изпълнение на услуга
         /// </summary>
         [Comment("Вид срок за изпълнение на услуга")]
+        [MaxLength(11)]
         public string DeadlineTypeId { get; set; } = null!;
 
         /// <summary>
         /// Работни/календарни дни
         /// </summary>
         [Comment("Работни/календарни дни")]
+        [MaxLength(11)]
         public string DayTypeId { get; set; } = string.Empty!;
 
 

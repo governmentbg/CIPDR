@@ -26,5 +26,13 @@ namespace URegister.Infrastructure.Model.RegisterForms
         [DisplayName("Тип (на английски език)")]
         [StringLength(50, ErrorMessage = MessageConstant.StringMaxLengthValidation)]
         public string? Type { get; set; }
+
+        /// <summary>
+        /// Идентификатор на тип поле
+        /// </summary>
+        public int Id { get; set; }
+
+        [DisplayName("Само за следните регистри")]
+        public List<string>? RegisterRestrictionCodes { get; set; }
     }
 }

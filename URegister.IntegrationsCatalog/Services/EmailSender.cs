@@ -54,7 +54,7 @@ namespace URegister.IntegrationsCatalog.Services
         {
             if (string.IsNullOrEmpty(configuration.GetValue<string>("Email:FromEmail")))
             {
-                throw new Exception("Не е конфигуриран адрес за изпращане на майл Email:FromEmail");
+                throw new Exception("Не е конфигуриран адрес за изпращане на имейл Email:FromEmail");
             }
             MailAddress emailFrom = new MailAddress(configuration.GetValue<string>("Email:FromEmail")!,
                                                     configuration.GetValue<string>("Email:FromName"));

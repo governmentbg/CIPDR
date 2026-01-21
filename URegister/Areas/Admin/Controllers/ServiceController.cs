@@ -122,7 +122,7 @@ namespace URegister.Areas.Admin.Controllers
                     });
 
                     SetSuccessMessage(model.IsInsert ? "Успешно добавена тип услуга" : "Успешна редакция на тип услуга");
-                    return RedirectToAction(nameof(Edit), new { id = model.Id });
+                    return RedirectToAction(nameof(Index), new { id = model.Id });
                 }
                 catch (Exception ex)
                 {

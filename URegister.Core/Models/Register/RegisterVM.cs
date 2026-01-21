@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using URegister.Infrastructure.Constants;
 
 namespace URegister.Core.Models.Register
@@ -140,5 +141,11 @@ namespace URegister.Core.Models.Register
         };
 
         public RegisterFileListVM AdministrationFiles { get; set; } = new();
+
+        /// <summary>
+        /// Историята не е публична
+        /// </summary>
+        [DisplayName("Историята не е публична")]
+        public bool HistoryNotPublic { get; set; } = false;
     }
 }

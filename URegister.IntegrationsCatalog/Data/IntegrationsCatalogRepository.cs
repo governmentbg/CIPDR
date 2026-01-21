@@ -1,4 +1,5 @@
-﻿using URegister.Infrastructure.Data.Common;
+﻿using URegister.Infrastructure.Contracts;
+using URegister.Infrastructure.Data.Common;
 
 namespace URegister.IntegrationsCatalog.Data
 {
@@ -11,9 +12,15 @@ namespace URegister.IntegrationsCatalog.Data
         /// Създава ново репозитори за работа с каталога на регистрите
         /// </summary>
         /// <param name="context"></param>
-        public IntegrationsCatalogRepository(IntegrationsCatalogDbContext context)
+        /// <param name="auditInfo"></param>
+        /// <param name="auditLogClient"></param>
+        public IntegrationsCatalogRepository(IntegrationsCatalogDbContext context,
+            IAuditInfo auditInfo,
+            IAuditLogServiceClient auditLogClient)
         {
             Context = context;
+            this.auditInfo = auditInfo;
+            this.auditLogClient = auditLogClient;
         }
     }
 }

@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using URegister.Core.Services;
 using Google.Protobuf.WellKnownTypes;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using URegister.Common;
 using URegister.Core.Contracts;
 using URegister.Infrastructure.Constants;
@@ -137,11 +138,15 @@ namespace URegister.Core.Services
                     }
                     else if (field.Type == SimpleFormFieldType.Address.ToString())
                     {
-                        validSoFar = await ValidateAddress(field, nomenclatureGrpcClient, registerId) && validSoFar;
+                        validSoFar = await ValidateAddress(field, nomenclatureGrpcClient, registerId, skipRequiredTest) && validSoFar;
                     }
                     else if (field.Type == SimpleFormFieldType.Company.ToString())
                     {
                         validSoFar = await ValidateCompany(field, skipRequiredTest) && validSoFar;
+                    }
+                    else if (field.Type == nameof(SimpleFormFieldType.MPREntity))
+                    {
+                        validSoFar = await ValidateMPREntity(field, nomenclatureGrpcClient, registerId, skipRequiredTest) && validSoFar;
                     }
 
                     continue;
@@ -207,27 +212,90 @@ namespace URegister.Core.Services
                 return true;
             }
 
-            var legalFormEIKField =
-            field.Fields!.SingleOrDefault(f =>
-                f.Name.Contains("legalFormEIKImmutable", StringComparison.InvariantCultureIgnoreCase));
-            
-            var legalFormBulstatField =
-                field.Fields!.SingleOrDefault(f =>
-                    f.Name.Contains("legalFormBulstatImmutable", StringComparison.InvariantCultureIgnoreCase));
+            var companyNumberField = field.Fields!.SingleOrDefault(f =>
+                f.Name.Contains(ComplexFieldsNameConstants.CompanyNumberImmutable, StringComparison.InvariantCultureIgnoreCase));
 
-            //TODO : да се проверява за празно само полето спрямо избрания идентификатор
-
-            if (string.IsNullOrWhiteSpace(legalFormEIKField.Value) &&
-                string.IsNullOrWhiteSpace(legalFormBulstatField.Value))
+            if (!string.IsNullOrWhiteSpace(companyNumberField.Value))
             {
-                field.ValidationError =
-                legalFormEIKField.ValidationError = 
-                    legalFormBulstatField.ValidationError = 
-                        MessageConstant.FieldIsRequiredNoParam;
-                return false;
+                var components = companyNumberField.Value.Split(':');
+                if (components.Length > 1)
+                {
+                    if (int.TryParse(components[0], out int typeOfId))
+                    {
+                        if (typeOfId == (int)CidTypes.EIK)
+                        {
+                            var legalFormEIKField =
+                                field.Fields!.SingleOrDefault(f =>
+                                    f.Name.Contains(ComplexFieldsNameConstants.LegalFormEIKImmutable, StringComparison.InvariantCultureIgnoreCase));
+
+                            if (string.IsNullOrWhiteSpace(legalFormEIKField.Value))
+                            {
+                                field.ValidationError =
+                                    legalFormEIKField.ValidationError =
+                                            MessageConstant.FieldIsRequiredNoParam;
+                                return false;
+                            }
+
+                        }
+                        else if (typeOfId == (int)CidTypes.BULSTAT)
+                        {
+                            var legalFormBulstatField =
+                                field.Fields!.SingleOrDefault(f =>
+                                    f.Name.Contains(ComplexFieldsNameConstants.LegalFormBulstatImmutable, StringComparison.InvariantCultureIgnoreCase));
+
+                            if (string.IsNullOrWhiteSpace(legalFormBulstatField.Value))
+                            {
+                                field.ValidationError =
+                                        legalFormBulstatField.ValidationError =
+                                            MessageConstant.FieldIsRequiredNoParam;
+                                return false;
+                            }
+                        }
+                    }
+                }
             }
 
             return true;
+        }
+
+        private async Task<bool> ValidateMPREntity(FormField field,
+            NomenclatureGrpc.NomenclatureGrpcClient nomenclatureGrpcClient, int registerId, bool skipRequiredTest = false)
+        {
+            if (!field.IsRequired || skipRequiredTest)
+            {
+                return true;
+            }
+
+            bool companyEmpty = false;
+            bool personEmpty = false;
+
+            var personIdField =
+                field.Fields!.SingleOrDefault(f =>
+                    f.Name.Contains(ComplexFieldsNameConstants.IdentifierImmutable, StringComparison.InvariantCultureIgnoreCase));
+
+            var companyIdField =
+                field.Fields!.SingleOrDefault(f =>
+                    f.Name.Contains(ComplexFieldsNameConstants.CompanyNumberImmutable, StringComparison.InvariantCultureIgnoreCase));
+
+            //TODO : да се проверява за празно само полето спрямо избрания идентификатор
+
+            if (!string.IsNullOrWhiteSpace(companyIdField.Value) && 
+                await ValidateCid(companyIdField, nomenclatureGrpcClient, registerId))
+            {
+                return true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(personIdField.Value) &&
+                await ValidatePid(personIdField, nomenclatureGrpcClient, registerId))
+            {
+                return true;
+            }
+
+            field.ValidationError =
+                    companyIdField.ValidationError =
+                        personIdField.ValidationError = MessageConstant.MPRIdRequired;
+
+            return false;
         }
 
         private bool ValidateIndividualIdentifier(FormField field)
@@ -381,7 +449,7 @@ namespace URegister.Core.Services
         }
 
         private async Task<bool> ValidateAddress(FormField field,
-            NomenclatureGrpc.NomenclatureGrpcClient nomenclatureGrpcClient, int registerId)
+            NomenclatureGrpc.NomenclatureGrpcClient nomenclatureGrpcClient, int registerId, bool skipRequiredTest)
         {
             if (field.IsRequired)
             {
@@ -392,6 +460,12 @@ namespace URegister.Core.Services
                 if (countrySubfield == null)
                 {
                     field.ValidationError = MessageConstant.InvalidFieldConfig;
+                    return false;
+                }
+                
+                if (string.IsNullOrEmpty(countrySubfield.Value) && !skipRequiredTest)
+                {
+                    countrySubfield.ValidationError = MessageConstant.FieldIsRequiredNoParam;
                     return false;
                 }
 
@@ -406,28 +480,48 @@ namespace URegister.Core.Services
                         return false;
                     }
 
-                    if (string.IsNullOrWhiteSpace(bgSettlementField.Value))
+                    if (string.IsNullOrWhiteSpace(bgSettlementField.Value) && !skipRequiredTest)
                     {
-                        bgSettlementField.ValidationError = MessageConstant.FieldIsRequired;
-                        return false;
+                        bgSettlementField.ValidationError = MessageConstant.FieldIsRequiredNoParam;
                     }
-                }
-                else
-                {
-                    var foreignAddress = field.Fields!.SingleOrDefault(f =>
-                        f.Name.Contains("addressAbroadImmutable", StringComparison.InvariantCultureIgnoreCase));
 
-                    if (foreignAddress == null)
+                    var bgStreetField = field.Fields!.SingleOrDefault(f =>
+                        f.Name.Contains("streetImmutable", StringComparison.InvariantCultureIgnoreCase));
+
+                    if (bgStreetField == null)
                     {
                         field.ValidationError = MessageConstant.InvalidFieldConfig;
                         return false;
                     }
 
-                    if (string.IsNullOrWhiteSpace(foreignAddress.Value))
+                    if (string.IsNullOrWhiteSpace(bgStreetField.Value) && !skipRequiredTest)
                     {
-                        foreignAddress.ValidationError = MessageConstant.FieldIsRequired;
+                        bgStreetField.ValidationError = MessageConstant.FieldIsRequiredNoParam;
+                    }
+
+                    if (!string.IsNullOrEmpty(bgStreetField.ValidationError) ||
+                        !string.IsNullOrEmpty(bgSettlementField.ValidationError))
+                    {
                         return false;
                     }
+                }
+                else
+                {
+                    //Временно е спряна проверката за адрес в чужбина
+                    //var foreignAddress = field.Fields!.SingleOrDefault(f =>
+                    //    f.Name.Contains("addressAbroadImmutable", StringComparison.InvariantCultureIgnoreCase));
+
+                    //if (foreignAddress == null)
+                    //{
+                    //    field.ValidationError = MessageConstant.InvalidFieldConfig;
+                    //    return false;
+                    //}
+
+                    //if (string.IsNullOrWhiteSpace(foreignAddress.Value))
+                    //{
+                    //    foreignAddress.ValidationError = MessageConstant.FieldIsRequiredNoParam;
+                    //    return false;
+                    //}
                 }
             }
 

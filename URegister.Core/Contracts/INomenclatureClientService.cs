@@ -82,5 +82,6 @@ namespace URegister.Core.Contracts
         Task SetViewBagBlankTemplate(ViewDataDictionary viewData);
         Task SetViewBagCalendar(ViewDataDictionary viewData);
         Task SetViewBagDeadline(ViewDataDictionary viewData);
+        Task SetViewBagOpenDataAdministration(ViewDataDictionary viewData, bool isAdmin);
     }
 }

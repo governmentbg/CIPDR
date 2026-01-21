@@ -21,7 +21,7 @@ function LoadAdministrations() {
                     messageHelper.ShowErrorMessage('Проблем при четене ' + error.responseText);
                 }
             },
-            filter: false,
+            filter: true,
             columns: [
                 {
                     name: 'uic',
@@ -53,7 +53,10 @@ function LoadAdministrations() {
                     className: "text-left noExport",
                     width: 120,
                     "render": function (data, type, row) {
-                        return `<a href="/Admin/Register/indexPerson?administrationId=${row.id}" data-tooltip="Оторизирани лица" class="ui tertiary icon button">
+                        return `<a href="/Admin/Register/OpenDataAdministration?administrationId=${row.administrationId}" data-tooltip="OpenData" class="ui tertiary icon button">
+                                   <i class="upload icon"></i>
+                               </a>` +
+                            `<a href="/Admin/Register/indexPerson?administrationId=${row.id}" data-tooltip="Оторизирани лица" class="ui tertiary icon button">
                                    <i class="tasks icon"></i>
                                 </a>`;
                         //editButton(`/Admin/Register/EditAdministration?administrationId=${row.id}`)+

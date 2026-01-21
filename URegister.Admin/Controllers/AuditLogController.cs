@@ -8,9 +8,6 @@ using URegister.Common;
 using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Extensions;
 using URegister.Infrastructure.Model.AuditLog;
-using URegister.Users;
-using static FastExpressionCompiler.ExpressionCompiler;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using static URegister.Users.AppUserManager;
 
 namespace URegister.Admin.Controllers
@@ -18,9 +15,10 @@ namespace URegister.Admin.Controllers
     [Display(Name = "Системен журнал")]
     public class AuditLogController(
         AuditLogGrpc.AuditLogGrpcClient auditLogClient,
-        AppUserManagerClient appUserManagerClient
+        AppUserManagerClient appUserManagerClient,
+        ILogger<AuditLogController> logger
         ) : BaseController
-    {       
+    {
         [Authorize(Roles = $"{UserRoles.Manager},{UserRoles.Editor},{UserRoles.Registrator},{UserRoles.GlobalAdmin}")]
         [Display(Name = "Зареждане на страница Системен журнал")]
         public IActionResult Index()
@@ -38,21 +36,23 @@ namespace URegister.Admin.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> GetAuditLogRecordsList(IDataTablesRequest request, AuditLogFilterVM filter)
         {
+            logger.LogInformation($"AuditLogController {nameof(GetAuditLogRecordsList)} Данни подадени от потребителят през интерфейса - От дата: {filter.DateFrom}, До дата: {filter.DateTo}");
             var protoRequest = request!.GetDataTablesRequestProto();
             var complexRequest = new DatatableRequestWithAuditLogFilter
             {
                 Request = protoRequest,
                 Filter = new AuditLogFilter
                 {
-                    DateFrom = filter.DateFrom.HasValue ? Timestamp.FromDateTime(filter.DateFrom.Value.ToUniversalTime()) : null,
-                    DateTo = filter.DateTo.HasValue ? Timestamp.FromDateTime(filter.DateTo.Value.ToUniversalTime()) : null,
-                    Method = filter.ActionType ?? string.Empty,
+                    DateFrom = filter.DateFrom.HasValue ? Timestamp.FromDateTime(filter.DateFrom.Value.ConvertBgTimeToUtc()) : null,
+                    DateTo = filter.DateTo.HasValue ? Timestamp.FromDateTime(filter.DateTo.Value.ConvertBgTimeToUtc()) : null,
+                    Action = filter.Action ?? string.Empty,
                     IpAddress = filter.IpAddress ?? string.Empty,
                     UserName = filter.UserName ?? string.Empty
                 }
             };
+            logger.LogInformation($"AuditLogController {nameof(GetAuditLogRecordsList)} Данни в complexRequest, който е DatatableRequestWithAuditLogFilter: {complexRequest}");
             var response = await auditLogClient.GetAuditLogRecordsListAsync(complexRequest);
-         
+
             return request.GetResponseServerPaging(response.AuditList, response.CountAll);
         }
 

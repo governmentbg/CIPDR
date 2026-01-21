@@ -53,7 +53,20 @@ namespace URegister.RegistersCatalog.Data.Models
         /// </summary>
         [MaxLength(100)]
         [Comment("OpenData DataSetId")]
-        public string? OpenDataDataSetId { get; set; } 
+        public string? OpenDataDataSetId { get; set; }
+
+        /// <summary>
+        /// OpenData ResourceMetaId
+        /// </summary>
+        [MaxLength(100)]
+        [Comment("OpenData ResourceMetaId")]
+        public string? ResourceMetaId { get; set; }
+
+        /// <summary>
+        /// Автоматично изпращане на данни към OpenData 1 ежедневно 2 седмично 3 месечно
+        /// </summary>
+        [Comment("Автоматично изпращане на данни към OpenData 1 ежедневно 2 седмично 3 месечно")]
+        public int FrequencyId { get; set; }
 
         /// <summary>
         /// Регистър

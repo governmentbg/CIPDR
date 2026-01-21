@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using URegister.Infrastructure.Constants;
@@ -84,5 +85,10 @@ namespace URegister.Core.Data.Models.Register
         [Column(TypeName = AttributeConstants.Timestamptz)]
         public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
 
+        /// <summary>
+        /// Историята не е публична
+        /// </summary>
+        [DisplayName("Историята не е публична")]
+        public bool? HistoryNotPublic { get; set; } = false;
     }
 }

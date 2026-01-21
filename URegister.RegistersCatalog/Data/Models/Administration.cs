@@ -56,6 +56,12 @@ namespace URegister.RegistersCatalog.Data.Models
         public int OpenDataOrgId { get; set; }
 
         /// <summary>
+        /// Автоматично изпращане на данни към OpenData 1 ежедневно 2 седмично 3 месечно
+        /// </summary>
+        [Comment("Автоматично изпращане на данни към OpenData 1 ежедневно 2 седмично 3 месечно")]
+        public int FrequencyId { get; set; }
+
+        /// <summary>
         /// Дата на създаване
         /// </summary>
         [Required]

@@ -15,7 +15,7 @@ using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Contracts;
 using URegister.Infrastructure.Models;
 using URegister.Infrastructure.Services;
-
+using OpenDataClient.Extensions;
 namespace Microsoft.Extensions.DependencyInjection
 {
     public static class ServiceCollectionExtension
@@ -85,7 +85,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 options.LoginPath = "/account/login";
                 options.LogoutPath = "/account/logoff";
             });
-
+            services.ConfigureOpenDataClient(configuration);
             return services;
         }
 

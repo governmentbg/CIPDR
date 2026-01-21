@@ -30,12 +30,14 @@
 
     $('#submitAddRoleButton').on('click', function () {
 
-        let roleValue = $('#rolesDropdown').dropdown('get value');        
+        let roleValue = $('#rolesDropdown').dropdown('get value');     
+        let regValue = $('#registriesDropdown').dropdown('get value');
         let userId = $("#userRoles").data('userid');
 
         post_async('/Admin/Admin/UpdateUserRoles', {
             userId: userId,
-            roleIds: roleValue,            
+            roleIds: roleValue,    
+            registerCode: regValue,
             __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
         })
             .then((result) => {
@@ -69,15 +71,25 @@ function openRolesModal() {
 }
 function populateRolesDropdown(result) {
     let dropdown = $('#rolesDropdown');    
+    let registriesDropDown = $('#registriesDropdown');
     dropdown.empty();    
+    registriesDropDown.empty();
     dropdown.dropdown('destroy').dropdown({
         placeholder: 'Избери роля'
     });    
+    registriesDropDown.dropdown('destroy').dropdown({
+        placeholder: 'Избери регистър'
+    });
     result.roles.forEach(function (role) {
         dropdown.append(`<option value="${role.roleId}">${role.label}</option>`);
     });    
+    result.registries.forEach(function (reg) {
+        registriesDropDown.append(`<option value="${reg.code}">${reg.name} (${reg.code})</option>`);
+    });
     dropdown.dropdown('clear');
     dropdown.dropdown('refresh');
+    registriesDropDown.dropdown('clear');
+    registriesDropDown.dropdown('refresh');
 }
 function loadUserRoles() {
     const tableId = '#userRoles';

@@ -13,8 +13,8 @@ function LoadItems() {
         let columns = [];
 
         columns.push({
-            "data": "IncomingDate",
-            "title": "Дата на вписване",
+            "data": "ModifiedOn",
+            "title": "Дата на последна промяна",
             "sortable": false,
             "searchable": false,
             "width": "5%",
@@ -40,7 +40,7 @@ function LoadItems() {
                         else if (data?.startsWith("http") || data?.startsWith("ftp")) {
                             return `<a href="${data}" type='button' class='ui tertiary icon button'>${data}</a>`;
                         }
-                        return data;
+                        return data.replace(/\n/g, '<br>');
                     }
                 });
             }

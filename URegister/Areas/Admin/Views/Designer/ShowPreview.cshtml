@@ -10,6 +10,7 @@
             @Html.HiddenFor(m => m.SelectedType)
             @Html.HiddenFor(m => m.DontUploadFilesToStorage)
             @Html.HiddenFor(m => m.UserTimeZoneOffsetInMinutes)
+            @Html.HiddenFor(m => m.ConditionTree)
             @Html.AntiForgeryToken()
             @{
                 await Html.RenderPartialAsync("FormFieldArranger", Model.FormFields);

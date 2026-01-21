@@ -1,7 +1,7 @@
 ﻿@using URegister.Core.Models.Service
 @model PublicFieldTemplateVM
 @{
-    ViewBag.Title = "Съдържание на публично поле";
+    ViewBag.Title = $"Съдържание на публично поле '{Model.Label}'";
 }
 <form id="submit" action="@Url.Action("EditContent")" method="post" enctype="multipart/form-data">
     @Html.HiddenFor(x => x.Id)

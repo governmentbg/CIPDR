@@ -3,14 +3,11 @@ using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
-using Amazon.Runtime.Internal;
 using URegister.Common;
 using URegister.Core.Contracts;
-using URegister.Core.Models.Register;
 using URegister.Core.Models.User;
 using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Extensions;
-using URegister.Infrastucture.Extensions;
 using URegister.RegistersCatalog;
 using URegister.Users;
 
@@ -160,7 +157,7 @@ namespace URegister.Areas.Admin.Controllers
                 model.Pid = response.User.Pid;
                 model.Enabled = response.User.Enabled;
                 model.Username = response.User.UserName;
-                model.AdministrationId = response.User.AdministrationId;
+                model.AdministrationId = string.IsNullOrEmpty(administrationId) ? response.User.AdministrationId : administrationId;
                 model.AdministrationName = response.User.Administration;
                 model.ReceiveEFormNotification = response.User.ReceiveEFormNotification;
                 return View(model);
@@ -394,7 +391,16 @@ namespace URegister.Areas.Admin.Controllers
             {
                 AppRoles roles = await appUserManagerClient.GetRolesAsync(new Empty());
                 RolesRegistriesVM result = new RolesRegistriesVM();
+                HashSet<int> existingRegistryIds = new HashSet<int>();
                 result.Roles = roles.Roles.Where(r => !r.Name.Equals(UserRoles.GlobalAdmin)).ToList();
+                var registriesByAdministration = await registerClient.GetAllRegisterInAdministration(administrationId);
+                foreach (var reg in registriesByAdministration)
+                {
+                    if (existingRegistryIds.Add(reg.Id))
+                    {
+                        result.Registries.Add(reg);
+                    }
+                }
                 return Ok(result);
             }
             catch (Exception ex)
@@ -417,10 +423,15 @@ namespace URegister.Areas.Admin.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UpdateUserRoles(
             string userId,
-            string[] roleIds)
+            string[] roleIds,
+            string registerCode)
         {
             try
             {
+                if (string.IsNullOrEmpty(registerCode))
+                {
+                    return BadRequest(new { message = "Изберете регистър." });
+                }
                 if (!roleIds.Any())
                 {
                     return BadRequest(new { message = "Изберете роля." });
@@ -435,7 +446,7 @@ namespace URegister.Areas.Admin.Controllers
                 {
                     userRoleData.Roles.Add(new RoleData
                     {
-                        RegisterCode = (await registerService.GetCurrentRegister()).Code,
+                        RegisterCode = registerCode,
                         RoleId = roleId
                     });
                 }

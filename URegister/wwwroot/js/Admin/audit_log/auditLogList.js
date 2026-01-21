@@ -21,7 +21,7 @@ function LoadAuditLogRecords() {
                     d.filter = {
                         dateFrom: $('#DateFrom').val(),
                         dateTo: $('#DateTo').val(),
-                        actionType: $('#ActionType').val(),
+                        action: $('#Action').val(),
                         ipAddress: $('#IpAddress').val(),
                         userName: $('#UserName').val()
                     }
@@ -94,7 +94,8 @@ function LoadAuditLogRecords() {
                     searchable: false,
                     className: "dt-center noExport",                  
                     "render": function (data, type, row) {
-                        const jsonParameters = row.parameters.replaceAll('"', '');
+                        const parameters = row.parameters || ""; // fallback to empty string
+                        const jsonParameters = parameters.replaceAll('"', '');
                         let result = `<a onclick="showAuditRecordDetails('${jsonParameters}', '${row.id}')" data-tooltip="Детайли" class="ui tertiary icon button">
                                 <i class="eye icon"></i>
                            </a>`;                                           
