@@ -70,7 +70,7 @@ namespace URegister.Areas.Admin.Controllers
         [Display(Name = "Зареждане на форма за запазване на импортиран файл")]
         public async Task<IActionResult> ImportFileSave(int serviceId, string? fileId)
         {
-            var aService = await service.GetService(serviceId);
+            var aService = await service.GetService(serviceId, true);
             var aForm = await service.GetForm(aService.FormParentId);
             var model = new ImportFileVM
             {
@@ -89,7 +89,7 @@ namespace URegister.Areas.Admin.Controllers
         {
             var importItems = new List<List<ImportItemVM>>();
             var data = await importService.GetImportData(model.FileId);
-            var aService = await service.GetService(model.ServiceId ?? 0);
+            var aService = await service.GetService(model.ServiceId ?? 0, true);
             var aForm = await service.GetForm(aService.FormParentId);
             var formFields = await formConfigurationPersistenceService.GetFormFieldNamesInFlatListByParentId(aService.FormParentId);
             var fields = formFields.Select(x => new ImportItemVM
@@ -172,7 +172,7 @@ namespace URegister.Areas.Admin.Controllers
                         formData[kv.Key] = new StringValues(kv.Value);
                     }
                     IFormCollection formImport = new FormCollection(formData);
-                    var serviceVM = await service.GetService(model.ServiceId ?? 0);
+                    var serviceVM = await service.GetService(model.ServiceId ?? 0, true);
                     int formParentId = serviceVM.FormParentId;
                     FormViewModel viewModel = await formConfigurationPersistenceService.GetFormViewModel(formParentId);
                     var processId = Guid.Empty;

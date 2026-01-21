@@ -11,7 +11,7 @@
 }
 <div class="ui segments">
     <div class="ui green clearing segment">
-        <form action="@Url.Action("AddStep")" method="post" id="submit" novalidate enctype="multipart/form-data">
+        <form action="@Url.Action("AddStep")" method="post" id="submit" name="formAddStep" novalidate enctype="multipart/form-data">
             @Html.HiddenFor(m => m.ProcessId)
             @Html.HiddenFor(m => m.FromProcessId)
             @Html.HiddenFor(m => m.ServiceStepId)

@@ -198,5 +198,23 @@ namespace URegister.Core.Identity
                 return result;
             }
         }
+        public string CertificateNumber
+        {
+            get
+            {
+                string certNum = String.Empty;
+                var user = httpContextAccessor.HttpContext?.User;
+                if (user != null && user.Claims != null && user.Claims.Count() > 0)
+                {
+
+                    var claimCertNum = user.Claims
+                        .FirstOrDefault(c => c.Type == CustomClaimType.IdStampit.CertificateNumber);
+
+                    certNum = claimCertNum?.Value;
+                }
+
+                return certNum;
+            }
+        }
     }
 }

@@ -17,9 +17,12 @@ $(function () {
         singleClickSubmitDisable(this);
         e.preventDefault();
         showLoader('body');
-        //if (!$(this).parents('form:first').valid()) {
-        //    singleClickSubmitEnable();
-        //}
+        if ($(this).parents('form:first').valid != undefined) {
+            if (!$(this).parents('form:first').valid()) {
+                hideLoader('body')
+                singleClickSubmitEnable();
+            }
+        }
         return false;
     });
     InitForm();

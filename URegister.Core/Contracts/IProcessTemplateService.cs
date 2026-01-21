@@ -7,7 +7,7 @@ namespace URegister.Core.Contracts
 {
     public interface IProcessTemplateService
     {
-        Task<string> GetProcessCertificateHtml(Process process, Process processCertificate, int serviceIdCertificate, List<RegisterItem> registerItemsCertificate, List<RegisterItem> registerItems);
+        Task<string> GetProcessCertificateHtml(Process process, Process processCertificate, BlanksTemplate? blankTemplate, List<RegisterItem> registerItemsCertificate, List<RegisterItem> registerItems);
         Task<string> GetProcessCertificateOnRegisterHtml(Process process, List<RegisterItem> registerItems, BlanksTemplate blanksTemplate);
 
         /// <summary>

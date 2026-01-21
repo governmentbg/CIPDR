@@ -566,7 +566,7 @@ function setLoadCompanyInfoButtonVisibility(cid) {
                     let buildingNumber = parentForm.find("[name*='buildingNumberImmutable']");
                     if (buildingNumber.length) {
                         buildingNumber.val(!(result.buildingNumber === null || result.buildingNumber === "") ?
-                            result.buildingNumber : result.streetNumber).addClass('disabled').prop('readonly', true);
+                            "бл. " + result.buildingNumber : "№ " + result.streetNumber).addClass('disabled').prop('readonly', true);
                     }
 
                     let entranceNumber = parentForm.find("[name*='entranceNumberImmutable']");

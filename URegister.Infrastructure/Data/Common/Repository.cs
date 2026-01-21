@@ -418,7 +418,8 @@ namespace URegister.Infrastructure.Data.Common
                 };
 
                 await AddAsync(audit);
-                await SaveChangesAsync();
+                //await SaveChangesAsync();
+                await this.Context.SaveChangesAsync();
                 auditInfo.IsSaved = true;
             }
             catch (Exception ex)

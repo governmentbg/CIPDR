@@ -1,8 +1,8 @@
 ﻿@model URegister.Core.Models.Previewer.PreviewInfoViewModel
 @{
     TempData["PageTitle"] = ViewBag.Title;
-    string fileUrl = Url.Action("GetFileInline", "Files", new { area = "Admin", id = Model.FileId });
-    string checkSignatureUrl = Url.Action("VerifySignature", "Files", new { area = "Admin", fileId = Model.FileId });
+    string fileUrl = Url.Action("GetFileInline", "Files", new { id = Model.FileId });
+    string checkSignatureUrl = Url.Action("VerifySignature", "Files", new { fileId = Model.FileId });
 }
 
 <form id="signForm" asp-action="Sign" asp-controller="Files" method="post">

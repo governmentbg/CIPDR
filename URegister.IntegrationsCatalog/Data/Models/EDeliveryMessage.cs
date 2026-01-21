@@ -135,6 +135,55 @@ namespace URegister.IntegrationsCatalog.Data.Models
         [Comment("Идентификатор на изходящо съобщение")]
         public Guid? OutboxId { get; set; }
 
+
+        /// <summary>
+        /// Текст на съобщението при изпращане
+        /// </summary>
+        [Comment("Текст на съобщението при изпращане")]
+        public string? MessageText { get; set; }
+
+        /// <summary>
+        /// Subject на съобщението при изпращане
+        /// </summary>
+        [Comment("Subject на съобщението при изпращане")]
+        public string? SubjectText { get; set; }
+
+        /// <summary>
+        /// Брой повторения при грешно изпращане
+        /// </summary>
+        [Comment("Брой повторения при грешно изпращане")]
+        public int ErrorCountSend { get; set; }
+
+        /// <summary>
+        /// Профил ИД в ССЕВ
+        /// </summary>
+        [Comment("Профил ИД в ССЕВ")]
+        public int? ProfileId { get; set; }
+
+        /// <summary>
+        /// Име на файл
+        /// </summary>
+        [Comment("Име на файл")]
+        public string? FileName { get; set; }
+
+        /// <summary>
+        /// Темплейт на съобщение
+        /// </summary>
+        [Comment("Темплейт на съобщение")]
+
+        public int TemplateId { get; set; }
+        /// <summary>
+        /// URL на файл
+        /// </summary>
+        [Comment("URL на файл")]
+        public string? FileUrl { get; set; }
+
+        /// <summary>
+        /// Номер на вписване което се променя
+        /// </summary>
+        [Comment("Номер на вписване което се променя")]
+        public string? RegisterNumber { get; set; }
+
         public ICollection<EDeliveryFileMetadata> EDeliveryFiles { get; set; } = new List<EDeliveryFileMetadata>();
     }
 }

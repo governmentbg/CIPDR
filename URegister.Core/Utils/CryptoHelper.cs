@@ -16,7 +16,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Web;
 
-namespace MHRegistries.Core.Utils
+namespace URegister.Core.Utils
 {
     /// <summary>
     /// General Crypto methods

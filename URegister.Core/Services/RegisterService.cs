@@ -60,6 +60,7 @@ namespace URegister.Core.Services
                 Description = model.Description,
                 IdentitySecurityLevel = model.IdentitySecurityLevel,
                 Name = model.Name,
+                NameEDelivery = model.NameEDelivery,
                 HistoryNotPublic = model.HistoryNotPublic
             };
         }
@@ -112,6 +113,7 @@ namespace URegister.Core.Services
                 Id = registerItem.Id,
                 Code = registerItem.Code,
                 Name = registerItem.Name,
+                NameEn = registerItem.NameEn,
                 Description = registerItem.Description,
                 LegalBasis = registerItem.LegalBasis,
                 TypeEntry = registerItem.EntryType,

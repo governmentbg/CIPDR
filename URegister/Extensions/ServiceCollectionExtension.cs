@@ -22,6 +22,9 @@ using URegister.Infrastructure.Data.Common;
 using URegister.Infrastructure.Models;
 using URegister.Infrastructure.Services;
 using OpenDataClient.Extensions;
+using IO.SignTools.Contracts;
+using Quartz;
+using URegister.Jobs;
 namespace Microsoft.Extensions.DependencyInjection;
 
 public static class ServiceCollectionExtension
@@ -58,6 +61,9 @@ public static class ServiceCollectionExtension
         services.AddScoped<IPublicFieldTemplateService, PublicFieldTemplateService>();
         services.AddScoped<IProcessTemplateService, ProcessTemplateService>();
         services.AddScoped<IFieldFormulaCalculationService, FieldFormulaCalculationService>();
+        services.AddScoped<ITempFileHandler, TempFileHandler>();
+        services.AddScoped<ICommonFileService, CommonFileService>();
+        services.AddScoped<IProcessEMailService, ProcessEMailService>();
         services.AddIOHtmlToPdf(options =>
         {
             options.PdfCreatorUrl = config.GetValue<string>("PdfCreator:Url");
@@ -65,17 +71,53 @@ public static class ServiceCollectionExtension
             options.PdfOptions = new PDFOptions() { Timeout = 0 };
             options.RequestTimeout = TimeSpan.FromMinutes(15);
         });
-        TimestampClientOptions tsOptions = new TimestampClientOptions()
+        TimestampClientOptions tsOptions = new TimestampClientOptions();
+
+        VerificationServiceOptions vsOptions = new VerificationServiceOptions()
         {
             Token = config.GetValue<string>("Signer:Token"),
-            TimestampEndpoint = config.GetValue<string>("Signer:TimestampUrl"),
+            VerificationServiceEndpoint = config.GetValue<string>("Signer:VerificationServiceEndpoint"),
+            ClientId = config.GetValue<string>("Authentication:StampIT:AppId")
         };
+
         services.AddIOSignTools(options =>
         {
             options.HashAlgorithm = System.Security.Cryptography.HashAlgorithmName.SHA256.Name;
             options.TimestampOptions = tsOptions;
+            options.VerificationServiceOptions = vsOptions;
         });
         services.ConfigureOpenDataClient(config);
+
+        if (File.Exists("quartz_jobs.xml"))
+        {
+            services.AddQuartz(q =>
+            {
+                q.SchedulerId = Guid.NewGuid().ToString();
+                q.SchedulerName = "IOScheduler";
+                q.UseSimpleTypeLoader();
+                q.UseDefaultThreadPool(tp =>
+                {
+                    tp.MaxConcurrency = 5;
+                });
+                q.UseInMemoryStore();
+
+
+                q.UseXmlSchedulingConfiguration(x =>
+                {
+                    x.Files = new[] { "~/quartz_jobs.xml" };
+                    x.ScanInterval = TimeSpan.FromMinutes(1);
+                    x.FailOnFileNotFound = true;
+                    x.FailOnSchedulingError = true;
+                });
+            });
+
+            services.AddQuartzHostedService(options =>
+            {
+                options.WaitForJobsToComplete = true;
+            });
+
+            services.AddTransient<ProcessEMailSendJob>();
+        }
         return services;
     }
 

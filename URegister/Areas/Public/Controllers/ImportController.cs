@@ -88,19 +88,25 @@ namespace URegister.Areas.Public.Controllers
                 var jsonDocument = JsonDocument.Parse(model.JsonFromFile);
 
                 ServiceVM registerService = await _serviceService.GetRegisterService();
+                if (model.ServiceId > 0)
+                {
+                    registerService = await _serviceService.GetService(model.ServiceId, true);
+                }
 
                 if (registerService == null)
                 {
                     return BadRequest("Не е намерена услуга за вписване или формата асоциирана с нея");
                 }
 
-                FormViewModel viewModel =
-                    await _formConfigurationPersistenceService.GetFormViewModel(registerService.FormParentId, true);
+                //Взимаме попълнен модел при частичен импорт
+                FormViewModel viewModel = string.IsNullOrWhiteSpace(model.RegisterNumber) ?
+                    (await _formConfigurationPersistenceService.GetFormViewModel(registerService.FormParentId, true)) :
+                    (await _processService.GetFormViewModel(model.RegisterNumber)).Item1;
 
                 var metaFiles = await _processService.ImportApplicationEDeliveryFile(model.EDeliveryFiles);
                 var attachedFileData = metaFiles.ToDictionary(x => x.FileName, x => x.FileId.ToString());
 
-                string readEFormJsonError = await GatherJsonDataFromEForm(jsonDocument, formData, viewModel, attachedFileData, model.AdministrationUic);
+                string readEFormJsonError = await GatherAndSetJsonDataFromEForm(jsonDocument, formData, viewModel, attachedFileData, model.AdministrationUic);
 
                 if (!string.IsNullOrWhiteSpace(readEFormJsonError))
                 {
@@ -151,6 +157,7 @@ namespace URegister.Areas.Public.Controllers
                     serviceStep.OrderNum, null, null, viewModel, false);
                 stepVM.ProcessInfo.ReceivedChannelId = ChannelType.EDelivery;
                 stepVM.ProcessInfo.PreferredResultDeliveryMethod = formData["_resultChannel"].ToString();
+                stepVM.FromProcessId = await _processService.GetFromProcessId(model.RegisterNumber);
                 (ProcessStepVM addedStep, _) = await _processService.AddStep(
                     stepVM,
                     model.AdministrationUic,
@@ -214,10 +221,15 @@ namespace URegister.Areas.Public.Controllers
         /// </summary>
         /// <param name="file">Pdf файл с json данни на заявена услуга.</param>
         /// <param name="attachedFileDataJson">Инфромация за качените фалове. Речник с ключ името, и стойност идентификатор на файл от Storage-а</param>
+        /// <param name="registerNumber">Номер на заявена услуга при частичен импорт</param>
+        /// <param name="serviceId">Идентификатор на услуга за промяна при частичен импорт</param>
         [HttpPost("import-application")]
         [Display(Name = "Импорт на данни за заявена услуга от файл")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> ImportApplication(IFormFile file, [FromForm] string attachedFileDataJson = null)
+        public async Task<IActionResult> ImportApplication(IFormFile file, 
+            [FromForm] string attachedFileDataJson = null, 
+            string registerNumber = null, 
+            int serviceId = 0)
         {
             try
             {
@@ -264,11 +276,13 @@ namespace URegister.Areas.Public.Controllers
                     return BadRequest("Не е намерена услуга за вписване или формата асоциирана с нея");
                 }
 
-                FormViewModel viewModel =
-                    await _formConfigurationPersistenceService.GetFormViewModel(registerService.FormParentId, true);
+                //Взимаме попълнен модел при частичен импорт
+                FormViewModel viewModel = string.IsNullOrWhiteSpace(registerNumber) ?
+                    (await _formConfigurationPersistenceService.GetFormViewModel(registerService.FormParentId, true)) :
+                    (await _processService.GetFormViewModel(registerNumber)).Item1;
 
                 string administrationId = await GetAdministrationUicFromEForm(jsonDocument);
-                string readEFormJsonError = await GatherJsonDataFromEForm(jsonDocument, formData, viewModel, attachedFileData, administrationId);
+                string readEFormJsonError = await GatherAndSetJsonDataFromEForm(jsonDocument, formData, viewModel, attachedFileData, administrationId);
 
                 if (!string.IsNullOrWhiteSpace(readEFormJsonError))
                 {
@@ -374,36 +388,17 @@ namespace URegister.Areas.Public.Controllers
             }
         }
 
-        //private void AddAttachedFileDataToForm(Dictionary<string, StringValues> form, Dictionary<string, string> attachedFileData)
-        //{
-        //    if (attachedFileData == null)
-        //    {
-        //        return;
-        //    }
-
-        //    foreach (KeyValuePair<string, string> keyValuePair in attachedFileData)
-        //    {
-        //        int indexOfDash = keyValuePair.Key.IndexOf('-');
-
-        //        if (indexOfDash < 0)
-        //        {
-        //            throw new InputFormatterException(
-        //                $"Формата на името на файл {keyValuePair.Key} е неправилно. Очакван формат [име на поле от форма]-[Guid от form.io]");
-        //        }
-
-        //        string trimmedFilename = keyValuePair.Key.Substring(0, indexOfDash);
-        //        form[trimmedFilename] = keyValuePair.Value;
-        //    }
-        //}
-
-        private async Task<string> GatherJsonDataFromEForm(JsonDocument jsonDocument,
+        private async Task<string> GatherAndSetJsonDataFromEForm(JsonDocument jsonDocument,
             Dictionary<string, StringValues> formData,
             FormViewModel viewModel, Dictionary<string, string>? attachedFileData, string administrationUic)
         {
             JsonElement nodeWithUsefulData;
+            JsonElement baseElement;
             try
             {
-                nodeWithUsefulData = jsonDocument.RootElement.GetProperty("ServiceRequest")
+                baseElement = jsonDocument.RootElement.GetProperty("ServiceRequest");
+
+                nodeWithUsefulData = baseElement
                     .GetProperty("specificContent")
                     .GetProperty("specificContent");
             }
@@ -414,14 +409,14 @@ namespace URegister.Areas.Public.Controllers
 
             try
             {
-                var requestDateTime = jsonDocument.RootElement.GetProperty("ServiceRequest")
+                var requestDateTime = baseElement
                     .GetProperty("requestDateTime");
 
-                var identifier = jsonDocument.RootElement.GetProperty("ServiceRequest")
+                var identifier = baseElement
                     .GetProperty("requestURI")
                     .GetProperty("identifier");
 
-                var resultChannel = jsonDocument.RootElement.GetProperty("ServiceRequest")
+                var resultChannel = baseElement
                     .GetProperty("resultChannel")
                     .GetProperty("channelType")
                     .GetProperty("code");
@@ -437,7 +432,7 @@ namespace URegister.Areas.Public.Controllers
 
             try
             {
-                var administrationIdentifier = jsonDocument.RootElement.GetProperty("ServiceRequest")
+                var administrationIdentifier = baseElement
                     .GetProperty("serviceProvider")
                     .GetProperty("legalIdentifier")
                     .GetProperty("identifier");
@@ -448,8 +443,6 @@ namespace URegister.Areas.Public.Controllers
                 return "Структурата на Json данните в документа е неправилна. Не са намерени данни за идентификатор на администрация";
             }
 
-            //var problematicImportCommonFields = await AdaptAndAssignCommonEFormFieldsByImportPath(jsonDocument.RootElement.GetProperty("ServiceRequest"), formData, viewModel, nodeWithUsefulData);
-            //var problematicImportSpecificFields = AdaptAndAssignJsonEFormDataByName(nodeWithUsefulData, formData);
             var problematicImportFields =
                 await AdaptAndAssignCommonEFormFieldsByTags(
                     formData,
@@ -475,16 +468,16 @@ namespace URegister.Areas.Public.Controllers
 
                 foreach (FormField field in viewModel.FormFields)
                 {
-                    if (/*field.Fields?.Any() != true && */field.Type != SimpleFormFieldType.StaticText.ToString())
+                    if (field.Type != nameof(SimpleFormFieldType.StaticText))
                     {
                         result.Add(field.Name, field);
                     }
-                    foreach (FormField subField in field.Fields
-                                 .Where(f => f.Type != SimpleFormFieldType.StaticText.ToString() &&
+                    foreach (FormField subField in field.Fields!
+                                 .Where(f => f.Type != nameof(SimpleFormFieldType.StaticText) &&
                                              string.IsNullOrWhiteSpace(f.EFormImportPath))
                             )
                     {
-                        result.Add(subField.Name, field);
+                        result.Add(subField.Name, subField);
                     }
                 }
 
@@ -496,162 +489,6 @@ namespace URegister.Areas.Public.Controllers
                 return new Dictionary<string, FormField>();
             }
         }
-
-
-        //private Dictionary<string, string> GetFormFieldNamesInFlatList(FormViewModel viewModel)
-        //{
-        //    try
-        //    {
-        //        var result = new Dictionary<string, string>();
-
-        //        foreach (FormField field in viewModel.FormFields)
-        //        {
-        //            if (field.Fields?.Any() != true && field.Type != SimpleFormFieldType.StaticText.ToString())
-        //            {
-        //                result.Add(field.Name, field.Label);
-        //            }
-        //            foreach (FormField subField in field.Fields
-        //                         .Where(f => f.Type != SimpleFormFieldType.StaticText.ToString() &&
-        //                                     string.IsNullOrWhiteSpace(f.EFormImportPath))
-        //                            )
-        //            {
-        //                result.Add(subField.Name, field.EFormImportPath);
-        //            }
-        //        }
-
-        //        return result;
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        _logger.LogError(e, $"Грешка при {nameof(GetFormFieldNamesInFlatList)}");
-        //        return new Dictionary<string, string>();
-        //    }
-        //}
-
-        //private static JsonElement? GetJsonNodeByPath(JsonElement current, string path)
-        //{
-        //    string[] segments = path.Split('/'); // Split by '/' instead of '.'
-
-        //    foreach (string segment in segments)
-        //    {
-        //        if (string.IsNullOrEmpty(segment)) // Handle empty segments (e.g., leading/trailing '/')
-        //        {
-        //            return null;
-        //            //throw new ArgumentException($"Невалиден сегмент на пътя в '{path}'.");
-        //        }
-
-        //        if (current.ValueKind == JsonValueKind.Object)
-        //        {
-        //            if (!current.TryGetProperty(segment, out JsonElement next))
-        //            {
-        //                return null;
-        //                //throw new ArgumentException($"Пропърти '{segment}' не е намерено в пътя '{path}'.");
-        //            }
-        //            current = next;
-        //        }
-        //        else
-        //        {
-        //            return null;
-        //            //throw new ArgumentException($"Не може да се навигира до '{segment}' в пътя '{path}'. Текущият елемент не е обект.");
-        //        }
-        //    }
-
-        //    return current;
-        //}
-
-        ///// <summary>
-        ///// Извлича данни за по-сложните полета.
-        ///// </summary>
-        ///// <param name="jsonDocument"></param>
-        ///// <param name="formData"></param>
-        ///// <param name="viewModel"></param>
-        ///// <param name="nodeWithUsefulData"></param>
-        ///// <returns></returns>
-        //private async Task<List<string>> AdaptAndAssignCommonEFormFieldsByImportPath(JsonElement jsonDocument,
-        //    Dictionary<string, StringValues> formData, FormViewModel viewModel, JsonElement nodeWithUsefulData)
-        //{
-        //    List<string> problematicFields = new List<string>();
-
-        //    foreach (var field in viewModel.FormFields)
-        //    {
-        //        JsonElement element;
-
-        //        if (string.IsNullOrWhiteSpace(field.EFormImportPath))
-        //        {
-        //            if (!nodeWithUsefulData.TryGetProperty(field.Name, out JsonElement wrapperElement))
-        //            {
-        //                //TODO : test, check
-
-        //                continue;
-        //            }
-
-        //            //element = wrapperElement.EnumerateObject().First().Value;
-        //            element = wrapperElement;
-        //        }
-        //        else
-        //        {
-        //            var foundElement = GetJsonNodeByPath(jsonDocument, field.EFormImportPath);
-        //            if (!foundElement.HasValue)
-        //            {
-        //                continue;
-        //            }
-
-        //            element = foundElement.Value;
-        //        }
-
-        //        string formDataKey = field.Name;
-
-        //        if (element.ValueKind == JsonValueKind.Object)
-        //        {
-        //            if (field.Type == SimpleFormFieldType.Address.ToString())
-        //            {
-        //                ImportAddress(formData, element, formDataKey);
-        //            }
-        //            else if (field.Type == SimpleFormFieldType.Person.ToString())
-        //            {
-        //                ImportPerson(formData, element, formDataKey);
-        //            }
-        //            else if (field.Type == SimpleFormFieldType.Select.ToString() ||
-        //                     field.Type == SimpleFormFieldType.Autocomplete.ToString() ||
-        //                     field.Type == SimpleFormFieldType.AutocompleteWithCategory.ToString())
-        //            {
-        //                ImportCode(formData, element, formDataKey);
-        //            }
-        //            else if (field.Type == SimpleFormFieldType.PersonIdentifier.ToString())
-        //            {
-        //                ImportPersonIdentifier(formData, element, formDataKey);
-        //            }
-        //            else if (field.Type == SimpleFormFieldType.Company.ToString())
-        //            {
-        //                await ImportCompany(formData, element, formDataKey);
-        //            }
-        //            ///TODO
-        //            else if (field.Type == SimpleFormFieldType.CompanyIdentifier.ToString())
-        //            {
-        //                ImportPersonIdentifier(formData, element, formDataKey);
-        //            }
-        //            else if (element.TryGetProperty("value", out var valueProperty))
-        //            {
-        //                formData[formDataKey] = new StringValues(valueProperty.ToString());
-        //            }
-        //            else if (element.TryGetProperty("SettlementSelect", out var settlementSelect) &&
-        //                     settlementSelect.TryGetProperty("settlementCode", out var settlementCode))
-        //            {
-        //                formData[formDataKey] = new StringValues(settlementCode.ToString());
-        //            }
-        //            else
-        //            {
-        //                problematicFields.Add(formDataKey);
-        //            }
-        //        }
-        //        else
-        //        {
-        //            formData[formDataKey] = new StringValues(element.ToString());
-        //        }
-        //    }
-
-        //    return problematicFields;
-        //}
 
         /// <summary>
         /// Извлича данни от е-формата по таговете в json.
@@ -673,14 +510,14 @@ namespace URegister.Areas.Public.Controllers
                     .GetProperty("__additionalSpecificContent")
                     .GetProperty("tags");
 
-                tagsDictionary = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(tagsElement);
+                tagsDictionary = tagsElement.Deserialize<Dictionary<string, JsonElement>>();
                 tagsDictionary = RefineTagsDictionaryWithRepeatingElements(tagsDictionary, formSubmitNameFieldDictionary);
                 _logger.LogInformation("Тагове в импортирания файл/tags in the imported file " + tagsElement);
             }
             catch (Exception e)
             {
                 _logger.LogError(e, $"Проблем при разчитане на Json елемент tags в {nameof(AdaptAndAssignCommonEFormFieldsByTags)}");
-                return new List<string> { $"Проблем при разчитане на Json елемент tags" };
+                return new List<string> { "Проблем при разчитане на Json елемент tags" };
             }
 
             List<string> problematicFields = new List<string>();
@@ -695,22 +532,25 @@ namespace URegister.Areas.Public.Controllers
                 }
 
                 var foundElement = tagEntry.Value;
-              
+
                 string formDataKey = tagEntry.Key;
 
-                if (field.Type == SimpleFormFieldType.File.ToString())
+                if (field.Type == nameof(SimpleFormFieldType.File))
                 {
                     if (foundElement.ValueKind == JsonValueKind.Object)
                     {
                         ImportFile(formData, attachedFileData, foundElement, formDataKey);
                     }
-                    else if (foundElement.ValueKind == JsonValueKind.Array)
+                    else if (foundElement.ValueKind is JsonValueKind.Array)
                     {
                         int fileIndex = 0;
                         foreach (JsonElement jsonElement in foundElement.EnumerateArray())
                         {
                             ImportFile(formData, attachedFileData, jsonElement, formDataKey, fileIndex++);
                         }
+                    }
+                    else if(foundElement.ValueKind == JsonValueKind.String && foundElement.GetString() == "<непосочено>")
+                    {
                     }
                     else
                     {
@@ -722,39 +562,39 @@ namespace URegister.Areas.Public.Controllers
                 
                 if (foundElement.ValueKind == JsonValueKind.Object)
                 {
-                    if (field.Type == SimpleFormFieldType.Address.ToString())
+                    if (field.Type == nameof(SimpleFormFieldType.Address))
                     {
                         ImportAddress(formData, foundElement, formDataKey);
                     }
-                    else if (field.Type == SimpleFormFieldType.Person.ToString())
+                    else if (field.Type == nameof(SimpleFormFieldType.Person))
                     {
                         ImportPerson(formData, foundElement, formDataKey);
                     }
-                    else if (field.Type.ToLower() == SimpleFormFieldType.authorizedOfficial.ToString().ToLower())
+                    else if (field.Type.ToLower() == nameof(SimpleFormFieldType.authorizedOfficial).ToLower())
                     {
                         ImportPerson(formData, foundElement, formDataKey);
                         await ImportCompany(formData, foundElement, formDataKey);
                     }
-                    else if (field.Type == SimpleFormFieldType.Select.ToString() ||
-                             field.Type == SimpleFormFieldType.Autocomplete.ToString() ||
-                             field.Type == SimpleFormFieldType.AutocompleteWithCategory.ToString())
+                    else if (field.Type == nameof(SimpleFormFieldType.Select) ||
+                             field.Type == nameof(SimpleFormFieldType.Autocomplete) ||
+                             field.Type == nameof(SimpleFormFieldType.AutocompleteWithCategory))
                     {
                         ImportCode(formData, foundElement, formDataKey);
                     }
-                    else if (field.Type == SimpleFormFieldType.PersonIdentifier.ToString())
+                    else if (field.Type == nameof(SimpleFormFieldType.PersonIdentifier))
                     {
                         ImportPersonIdentifier(formData, foundElement, formDataKey);
                     }
-                    else if (field.Type == SimpleFormFieldType.Company.ToString())
+                    else if (field.Type == nameof(SimpleFormFieldType.Company))
                     {
                         await ImportCompany(formData, foundElement, formDataKey);
                     }
-                    else if (field.Type == SimpleFormFieldType.CompanyWithAddress.ToString())
+                    else if (field.Type == nameof(SimpleFormFieldType.CompanyWithAddress))
                     {
                         ImportAddress(formData, foundElement, formDataKey);
                         await ImportCompany(formData, foundElement, formDataKey);
                     }
-                    else if (field.Type == SimpleFormFieldType.CompanyIdentifier.ToString())
+                    else if (field.Type == nameof(SimpleFormFieldType.CompanyIdentifier))
                     {
                         ImportPersonIdentifier(formData, foundElement, formDataKey);
                     }
@@ -774,9 +614,21 @@ namespace URegister.Areas.Public.Controllers
                 }
                 else
                 {
-                    if (field.Type == SimpleFormFieldType.MultiSelect.ToString())
+                    if (field.Type == nameof(SimpleFormFieldType.MultiSelect))
                     {
                         ImportMultiselect(formData, foundElement, formDataKey);
+                    }
+                    else if (field.Type == nameof(SimpleFormFieldType.Date))
+                    {
+                        formData[formDataKey] = DateTimeOffset
+                            .Parse(foundElement.ToString())
+                            .ToString(FormattingConstant.NormalDateFormat);
+                    }
+                    else if (field.Type == nameof(SimpleFormFieldType.DateTime))
+                    {
+                        formData[formDataKey] = DateTimeOffset
+                            .Parse(foundElement.ToString())
+                            .ToString(FormattingConstant.DateTimeFormat);
                     }
                     else
                     {
@@ -903,66 +755,6 @@ namespace URegister.Areas.Public.Controllers
 
             return false;
         }
-
-        //private static void ImportAddress(Dictionary<string, StringValues> formData, JsonElement element, string formDataKey)
-        //{
-        //    if (element.TryGetProperty("country", out var countryProperty) &&
-        //        countryProperty.TryGetProperty("code", out var countryCode))
-        //    {
-        //        formData[formDataKey + "_countryImmutable"] = countryCode.ToString();
-        //    }
-
-        //    if (element.TryGetProperty("address", out var addressProperty))
-        //    {
-        //        if (addressProperty.TryGetProperty("fullAddress", out var fullAddressProperty))
-        //        {
-        //            formData[formDataKey + "_addressAbroadImmutable"] = fullAddressProperty.ToString();
-        //        }
-
-        //        if (addressProperty.TryGetProperty("settlement", out var settlementProperty) &&
-        //            settlementProperty.TryGetProperty("code", out var settlementCode))
-        //        {
-        //            formData[formDataKey + "_settlementImmutable"] = settlementCode.ToString();
-        //        }
-
-        //        if (addressProperty.TryGetProperty("postCode", out var postCodeProperty))
-        //        {
-        //            formData[formDataKey + "_postalCodeImmutable"] = postCodeProperty.ToString();
-        //        }
-
-        //        if (addressProperty.TryGetProperty("area", out var areaProperty) &&
-        //            areaProperty.TryGetProperty("code", out var areaCode))
-        //        {
-        //            formData[formDataKey + "_regionImmutable"] = areaCode.ToString();
-        //        }
-
-        //        if (addressProperty.TryGetProperty("locationName", out var streetProperty))
-        //        {
-        //            formData[formDataKey + "_streetImmutable"] = streetProperty.ToString();
-        //        }
-
-        //        if (addressProperty.TryGetProperty("buildingNumber", out var buildingNumberProperty))
-        //        {
-        //            formData[formDataKey + "_buildingNumberImmutable"] = buildingNumberProperty.ToString();
-        //        }
-
-        //        if (addressProperty.TryGetProperty("entrance", out var entranceProperty))
-        //        {
-        //            formData[formDataKey + "_entranceNumberImmutable"] = entranceProperty.ToString();
-        //        }
-
-        //        if (addressProperty.TryGetProperty("floor", out var floorProperty))
-        //        {
-        //            formData[formDataKey + "_floorImmutable"] = floorProperty.ToString();
-        //        }
-
-        //        if (addressProperty.TryGetProperty("apartment", out var apartmentProperty))
-        //        {
-        //            formData[formDataKey + "_apartmentNumberImmutable"] = apartmentProperty.ToString();
-        //        }
-        //    }
-        //}
-
         private static void ImportAddress(Dictionary<string, StringValues> formData, JsonElement element, string formDataKey)
         {
             var enumeratedObject = element.EnumerateObject();
@@ -1158,41 +950,6 @@ namespace URegister.Areas.Public.Controllers
             }
         }
 
-        //private async Task<SaveOperationResult> GetCompanyData(string cid, CidTypes cidType, string administrationId)
-        //{
-        //    var validationResult = PidValidateService.ValidateCompanyId(cid, (int)cidType);
-
-        //    if (!validationResult)
-        //    {
-        //        return new SaveOperationResult($"{cid} е невалиден идентификатор за {cidType.GetDescription()}");
-        //    }
-
-        //    GetCompanyInfoRequest request = new GetCompanyInfoRequest()
-        //    {
-        //        Cid = cid,
-        //        CidType = (int)cidType,
-        //        ContextInfo = GetRegexContextInfo(administrationId)
-        //    };
-
-        //    GetCompanyInfoResponse response = await _integrationGrpcClient.GetCompanyInfoAsync(request);
-
-        //    if (response.ResultStatus.Code != ResultCodes.Ok)
-        //    {
-        //        _logger.LogError($"Не може да се извлекат данни за компания в {nameof(GetCompanyData)} {response.ResultStatus.Message}");
-        //        return new SaveOperationResult("Проблем при извличане на данни за компания");
-        //    }
-
-        //    await _regixReportService.CreateRegixReport(
-        //        JsonSerializer.Serialize(request),
-        //        JsonSerializer.Serialize(response),
-        //        ((int)RegixRequestTypes.DataRequestForCompany).ToString());
-
-        //    return new SaveOperationResult(true, cid)
-        //    {
-        //        CustomObject = response
-        //    };
-        //}
-
         private async Task<IntegrationServiceContextInfo> GetRegexContextInfo(string administrationUic)
         {
             string administration = administrationUic;
@@ -1289,57 +1046,6 @@ namespace URegister.Areas.Public.Controllers
 
             return (0, string.Empty);
         }
-
-        //private List<string> AdaptAndAssignJsonEFormDataByName(JsonElement nodeWithUsefulData, Dictionary<string, StringValues> formData)
-        //{
-        //    List<string> problematicFields = new List<string>();
-
-        //    foreach (var element in nodeWithUsefulData.EnumerateObject())
-        //    {
-        //        if (element.Name.StartsWith("_") || formData.ContainsKey(element.Name))
-        //        {
-        //            continue;
-        //        }
-
-        //        if (element.Value.ValueKind == JsonValueKind.Object)
-        //        {
-        //            // Идентификатори за лице и компания
-        //            if (element.Value.TryGetProperty("specificContent", out var specificContentProperty))
-        //            {
-        //                //TODO
-        //                if (specificContentProperty.TryGetProperty("identifierType", out var identifierTypeProperty)
-        //                   && identifierTypeProperty.TryGetProperty("value", out var identifierType)
-        //                    && specificContentProperty.TryGetProperty("value", out var identifier))
-        //                {
-        //                    formData[element.Name] = new StringValues($"{EFormsIdentifierTypes[identifierType.ToString()]}:{identifier}");
-        //                }
-        //            }
-        //            else if (element.Value.TryGetProperty("value", out var valueProperty))
-        //            {
-        //                formData[element.Name] = new StringValues(valueProperty.ToString());
-        //            }
-        //            else if (element.Value.TryGetProperty("code", out var codeProperty))
-        //            {
-        //                formData[element.Name] = new StringValues(codeProperty.ToString());
-        //            }
-        //            else if (element.Value.TryGetProperty("SettlementSelect", out var settlementSelect) &&
-        //                     settlementSelect.TryGetProperty("settlementCode", out var settlementCode))
-        //            {
-        //                formData[element.Name] = new StringValues(settlementCode.ToString());
-        //            }
-        //            else
-        //            {
-        //                problematicFields.Add(element.Name);
-        //            }
-        //        }
-        //        else
-        //        {
-        //            formData[element.Name] = new StringValues(element.Value.ToString());
-        //        }
-        //    }
-
-        //    return problematicFields;
-        //}
 
         public static Dictionary<string, int> EFormsIdentifierTypes = new Dictionary<string, int>()
         {

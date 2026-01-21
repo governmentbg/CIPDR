@@ -35,6 +35,20 @@ namespace URegister.RegistersCatalog.Data.Models
         public string Name { get; set; } = null!;
 
         /// <summary>
+        /// Име на регистър на английски език
+        /// </summary>
+        [MaxLength(500)]
+        [Comment("Име на регистър на английски език")]
+        public string NameEn { get; set; } = null;
+
+        /// <summary>
+        /// Съкратено име на регистър ползва се при пращане на съобщение към ССЕВ
+        /// </summary>
+        [MaxLength(200)]
+        [Comment("Съкратено име на регистър ползва се при пращане на съобщение към ССЕВ")]
+        public string? NameEDelivery { get; set; } 
+
+        /// <summary>
         /// Описание
         /// </summary>
         [MaxLength(1000)]

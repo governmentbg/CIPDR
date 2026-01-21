@@ -19,7 +19,9 @@ namespace Uregister.Users.Data.Models
         public string RegisterCode { get; set; } = null!;
         public Guid AdministrationId { get; set; }
         public bool ReceiveEFormNotification { get; set; }
-       
+
+        public bool ReceiveInstructionResponse { get; set; }
+
         [ForeignKey(nameof(UserId))]
         public ApplicationUser ApplicationUser { get; set; } = null!;
     }

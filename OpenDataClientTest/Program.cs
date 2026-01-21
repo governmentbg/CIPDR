@@ -22,3 +22,5 @@ var uri = await client.AddDatasetAsync(39, "Тест 4", "Test 4", 7, 1);
 //var uri2 = await client.AddResourceAsync(uri, "Тест 3", "Test 3", [["Име", "Поле"], ["1", "2"]]);
 
 //Console.WriteLine(uri2.ToString());
+
+//fca4f95a-c4cc-42c6-b399-9a001088edc5

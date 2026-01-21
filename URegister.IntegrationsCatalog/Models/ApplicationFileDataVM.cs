@@ -30,5 +30,17 @@ namespace URegister.IntegrationsCatalog.Models
         /// Код на услуга
         /// </summary>
         public string? ServiceCode { get; set; }
+
+
+
+        /// <summary>
+        /// Номер на вписване което се променя
+        /// </summary>
+        public string? RegisterNumber { get; set; }
+
+        /// <summary>
+        /// Тип вписване ако една бланка се ползва за вписване/промяна/заличаване
+        /// </summary>
+        public string? RegisterType { get; set; }
     }
 }

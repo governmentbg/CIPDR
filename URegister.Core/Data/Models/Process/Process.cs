@@ -49,6 +49,7 @@ namespace URegister.Core.Data.Models.Process
         [Comment("Номер на вписване ")]
         public string? RegisterNumber { get; set; }
 
+
         /// <summary>
         /// Дата на входиране
         /// </summary>
@@ -62,6 +63,20 @@ namespace URegister.Core.Data.Models.Process
         [Comment("Стара дата на входиране")]
         [Column(TypeName = AttributeConstants.Timestamptz)]
         public DateTime? OldIncomingDate { get; set; }
+
+        /// <summary>
+        /// Дата на вписване
+        /// </summary>
+        [Comment("Дата на вписване")]
+        [Column(TypeName = AttributeConstants.Timestamptz)]
+        public DateTime? RegisterDate { get; set; }
+
+        /// <summary>
+        /// Дата на пурвоначално вписване
+        /// </summary>
+        [Comment("Дата на първоначално вписване")]
+        [Column(TypeName = AttributeConstants.Timestamptz)]
+        public DateTime? RegisterInitDate { get; set; }
 
         /// <summary>
         /// Идентификатор на услуга
@@ -131,6 +146,13 @@ namespace URegister.Core.Data.Models.Process
         [Comment("Номер на отказ")]
         public string? RejectionNumber { get; set; } = null!;
 
+        /// <summary>
+        /// Номер на удостоверение при вписване
+        /// </summary>
+        [MaxLength(20)]
+        [Comment("Номер на удостоверение при вписване")]
+        public string? RegisterCertificateNumber { get; set; } = null!;
+
         ///<summary> 
         ///Потребител, на който е присвоена услугата
         ///</summary>
@@ -173,6 +195,12 @@ namespace URegister.Core.Data.Models.Process
         /// </summary>
         [Comment("Срок за изпълнение на услуга")]
         public DateTime? DeadlineDate { get; set; }
+
+        /// <summary>
+        /// Нотификация за настъпващ срок за изпълнение на услуга
+        /// </summary>
+        [Comment("Нотификация за настъпващ срок за изпълнение на услуга")]
+        public bool IsSendEMailDeadlineDate { get; set; }
 
         #region ForeignKey
 
@@ -233,6 +261,12 @@ namespace URegister.Core.Data.Models.Process
         /// </summary>
         [Comment("Връчвания към заявената услуга")]
         public List<ProcessDelivery> ProcessDeliveries { get; set; } = new();
+
+        /// <summary>
+        /// Прикачени файлове
+        /// </summary>
+        [Comment("Връчвания към заявената услуга")]
+        public List<FileMetadata> FileMetadataList { get; set; } = new();
         #endregion
     }
 }

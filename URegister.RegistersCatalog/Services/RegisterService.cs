@@ -175,7 +175,8 @@ public class RegisterService(
             reply.Data = new AppAdministration
             {
                 Id = administration.Id.ToString(),
-                Name = administration.Name
+                Name = administration.Name,
+                NameEDelivery = administration.NameEDelivery,
             };
         }
         catch (Exception ex)

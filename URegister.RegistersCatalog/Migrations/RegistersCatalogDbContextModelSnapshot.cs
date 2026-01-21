@@ -177,6 +177,19 @@ namespace URegister.RegistersCatalog.Migrations
                         .HasColumnName("name")
                         .HasComment("Име");
 
+                    b.Property<string>("NameEDelivery")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name_e_delivery")
+                        .HasComment("Съкратено име на администрация ползва се при пращане на съобщение към ССЕВ");
+
+                    b.Property<string>("NameEn")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("name_en")
+                        .HasComment("Име на английски език");
+
                     b.Property<string>("OpenDataApiKey")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
@@ -527,6 +540,19 @@ namespace URegister.RegistersCatalog.Migrations
                         .HasColumnName("name")
                         .HasComment("Име на регистър");
 
+                    b.Property<string>("NameEDelivery")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name_e_delivery")
+                        .HasComment("Съкратено име на регистър ползва се при пращане на съобщение към ССЕВ");
+
+                    b.Property<string>("NameEn")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("name_en")
+                        .HasComment("Име на регистър на английски език");
+
                     b.Property<int>("OpenDataCategoryId")
                         .HasColumnType("integer")
                         .HasColumnName("open_data_category_id")
@@ -819,6 +845,11 @@ namespace URegister.RegistersCatalog.Migrations
                         .HasColumnType("timestamptz")
                         .HasColumnName("modified_on")
                         .HasComment("Дата на последна промяна");
+
+                    b.Property<int>("ServiceTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("service_type_id")
+                        .HasComment("Идентификатор на услуга");
 
                     b.HasKey("RegisterId", "ServiceId")
                         .HasName("pk_register_services");

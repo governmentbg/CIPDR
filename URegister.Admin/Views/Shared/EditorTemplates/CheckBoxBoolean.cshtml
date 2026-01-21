@@ -1,6 +1,8 @@
 ﻿@model bool
-
+@{
+     var onclick = (string)(ViewData["onclick"] ?? String.Empty);
+}
 <div class="ui toggle checkbox four wide column">
-    <input asp-for="@Model" class="center" type="checkbox" />
+    <input asp-for="@Model" class="center" type="checkbox" onclick="@onclick" />
     <label asp-for="@Model"><b>@Html.DisplayNameFor(model => model)</b></label>
 </div>

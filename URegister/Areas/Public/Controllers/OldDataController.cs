@@ -1,7 +1,5 @@
 ﻿using BlueCardPortal.Infrastructure.Validation;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using OfficeOpenXml;
 using Org.BouncyCastle.Asn1.Ocsp;
 using System.ComponentModel.DataAnnotations;
@@ -190,437 +188,437 @@ namespace URegister.Areas.Public.Controllers
         //    };
         //}
 
-        /// <summary>
-        /// Импорт на данни за заявена услуга от файл нови тютюневи изделия
-        /// </summary>
-        /// <param name="file">Pdf файл с json данни на заявена услуга.</param>
-        [HttpPost("import-excel-file-for-e-cigarettes")]
-        [Display(Name = "Импорт на данни за заявена услуга от файл електронни цигари и контейнери за многократно пълнене")]
-        [Consumes("multipart/form-data")]
-        public async Task<IActionResult> ImportExcelFileForECigarettes(IFormFile file, CancellationToken cancellationToken)
-        {
-            List<string> errors = new List<string>();
-            List<int> addedRows = new List<int>();
+        ///// <summary>
+        ///// Импорт на данни за заявена услуга от файл нови тютюневи изделия
+        ///// </summary>
+        ///// <param name="file">Pdf файл с json данни на заявена услуга.</param>
+        //[HttpPost("import-excel-file-for-e-cigarettes")]
+        //[Display(Name = "Импорт на данни за заявена услуга от файл електронни цигари и контейнери за многократно пълнене")]
+        //[Consumes("multipart/form-data")]
+        //public async Task<IActionResult> ImportExcelFileForECigarettes(IFormFile file, CancellationToken cancellationToken)
+        //{
+        //    List<string> errors = new List<string>();
+        //    List<int> addedRows = new List<int>();
 
-            int sheetCount = await GetExcelSheetCount(file);
+        //    int sheetCount = await GetExcelSheetCount(file);
 
-            for (int sheetIndex = 0; sheetIndex < sheetCount; sheetIndex++)
-            {
+        //    for (int sheetIndex = 0; sheetIndex < sheetCount; sheetIndex++)
+        //    {
 
-                string oldDateNotification = null;
+        //        string oldDateNotification = null;
 
-                List<Dictionary<string, string>> data = await ExcelToDictionary(file, sheetIndex);
+        //        List<Dictionary<string, string>> data = await ExcelToDictionary(file, sheetIndex);
 
-                ServiceVM registerServiceVM = await _serviceService.GetRegisterService();
+        //        ServiceVM registerServiceVM = await _serviceService.GetRegisterService();
 
-                if (registerServiceVM == null)
-                {
-                    return BadRequest("Не е намерена услуга за вписване или формата асоциирана с нея");
-                }
+        //        if (registerServiceVM == null)
+        //        {
+        //            return BadRequest("Не е намерена услуга за вписване или формата асоциирана с нея");
+        //        }
 
-                int rowNumber = 1;
-                foreach (Dictionary<string, string> row in data)
-                {
-                    rowNumber++;
+        //        int rowNumber = 1;
+        //        foreach (Dictionary<string, string> row in data)
+        //        {
+        //            rowNumber++;
 
-                    try
-                    {
-                        if (cancellationToken.IsCancellationRequested)
-                        {
-                            return StatusCode(499, "Request was canceled by the client.");
-                        }
+        //            try
+        //            {
+        //                if (cancellationToken.IsCancellationRequested)
+        //                {
+        //                    return StatusCode(499, "Request was canceled by the client.");
+        //                }
 
-                        FormViewModel viewModel =
-                            await _formConfigurationPersistenceService.GetFormViewModel(registerServiceVM.FormParentId,
-                                true);
+        //                FormViewModel viewModel =
+        //                    await _formConfigurationPersistenceService.GetFormViewModel(registerServiceVM.FormParentId,
+        //                        true);
 
-                        List<string> values = row.Values.ToList();
+        //                List<string> values = row.Values.ToList();
 
-                        if (string.IsNullOrWhiteSpace(values[0]))
-                        {
-                            continue;
-                        }
+        //                if (string.IsNullOrWhiteSpace(values[0]))
+        //                {
+        //                    continue;
+        //                }
 
-                        string dateInformationProvision = ReadExcelDate(values[0].Trim());
-                        var dateInformationProvisionField =
-                            viewModel.FormFields.First(f => f.Name == "dateInformationProvision");
-                        dateInformationProvisionField.Value = dateInformationProvision;
+        //                string dateInformationProvision = ReadExcelDate(values[0].Trim());
+        //                var dateInformationProvisionField =
+        //                    viewModel.FormFields.First(f => f.Name == "dateInformationProvision");
+        //                dateInformationProvisionField.Value = dateInformationProvision;
 
-                        _logger.LogInformation(
-                            $"Импорт в {nameof(ImportExcelFileForECigarettes)} на ред {rowNumber}, {nameof(dateInformationProvisionField)} стойност {dateInformationProvisionField.Value}");
+        //                _logger.LogInformation(
+        //                    $"Импорт в {nameof(ImportExcelFileForECigarettes)} на ред {rowNumber}, {nameof(dateInformationProvisionField)} стойност {dateInformationProvisionField.Value}");
 
-                        var dateNotificationField = viewModel.FormFields.First(f => f.Name == "dateNotification");
-                        if (string.IsNullOrWhiteSpace(values[8]))
-                        {
-                            dateNotificationField.Value = oldDateNotification;
-                        }
-                        else
-                        {
-                            string dateNotification = ReadExcelDate(values[8].Trim());
-                            oldDateNotification = dateNotification;
-                            dateNotificationField.Value = dateNotification;
-                        }
+        //                var dateNotificationField = viewModel.FormFields.First(f => f.Name == "dateNotification");
+        //                if (string.IsNullOrWhiteSpace(values[8]))
+        //                {
+        //                    dateNotificationField.Value = oldDateNotification;
+        //                }
+        //                else
+        //                {
+        //                    string dateNotification = ReadExcelDate(values[8].Trim());
+        //                    oldDateNotification = dateNotification;
+        //                    dateNotificationField.Value = dateNotification;
+        //                }
 
-                        _logger.LogInformation(
-                            $"Импорт в {nameof(ImportExcelFileForECigarettes)} на ред {rowNumber}, {nameof(dateNotificationField)} стойност {dateNotificationField.Value}");
+        //                _logger.LogInformation(
+        //                    $"Импорт в {nameof(ImportExcelFileForECigarettes)} на ред {rowNumber}, {nameof(dateNotificationField)} стойност {dateNotificationField.Value}");
 
-                        string Manufacturer = values[1].Trim();
-                        var ManufacturerField = viewModel.FormFields.First(f => f.Name == "Manufacturer");
-                        ManufacturerField.Value = Manufacturer;
+        //                string Manufacturer = values[1].Trim();
+        //                var ManufacturerField = viewModel.FormFields.First(f => f.Name == "Manufacturer");
+        //                ManufacturerField.Value = Manufacturer;
 
-                        _logger.LogInformation(
-                            $"Импорт в {nameof(ImportExcelFileForECigarettes)} на ред {rowNumber}, {nameof(ManufacturerField)} стойност {ManufacturerField.Value}");
+        //                _logger.LogInformation(
+        //                    $"Импорт в {nameof(ImportExcelFileForECigarettes)} на ред {rowNumber}, {nameof(ManufacturerField)} стойност {ManufacturerField.Value}");
 
-                        var company = viewModel.FormFields.First(f => f.Name == "BasicData");
+        //                var company = viewModel.FormFields.First(f => f.Name == "BasicData");
 
-                        if (/*!string.IsNullOrWhiteSpace(company.Value) && */!string.IsNullOrWhiteSpace(values[9]))
-                        {
-                            bool companyImported = await ImportCompany(values[9], company, errors, rowNumber);
+        //                if (/*!string.IsNullOrWhiteSpace(company.Value) && */!string.IsNullOrWhiteSpace(values[9]))
+        //                {
+        //                    bool companyImported = await ImportCompany(values[9], company, errors, rowNumber);
 
-                            if (!companyImported)
-                            {
-                                _logger.LogError($"Не може да импортира компания с id {values[9]}, ред {rowNumber}");
-                            }
-                        }
+        //                    if (!companyImported)
+        //                    {
+        //                        _logger.LogError($"Не може да импортира компания с id {values[9]}, ред {rowNumber}");
+        //                    }
+        //                }
 
-                        string companyName = values[2].Trim(' ', '-');
-                        if (!string.IsNullOrWhiteSpace(companyName))
-                        {
-                            var companyNameField =
-                                company.Fields.First(f => f.Name == "BasicData_companyNameImmutable");
-                            if (sheetIndex > 0)
-                            {
-                                companyNameField.Value = companyName.Replace(" ЕООД", string.Empty);
-                            }
-                            else
-                            {
-                                companyNameField.Value = Manufacturer.Replace(" ЕООД", string.Empty);
-                            }
+        //                string companyName = values[2].Trim(' ', '-');
+        //                if (!string.IsNullOrWhiteSpace(companyName))
+        //                {
+        //                    var companyNameField =
+        //                        company.Fields.First(f => f.Name == "BasicData_companyNameImmutable");
+        //                    if (sheetIndex > 0)
+        //                    {
+        //                        companyNameField.Value = companyName.Replace(" ЕООД", string.Empty);
+        //                    }
+        //                    else
+        //                    {
+        //                        companyNameField.Value = Manufacturer.Replace(" ЕООД", string.Empty);
+        //                    }
                                 
-                            var importerNameField =
-                                viewModel.FormFields.First(f => f.Name == "responsiblePersonName");
+        //                    var importerNameField =
+        //                        viewModel.FormFields.First(f => f.Name == "responsiblePersonName");
 
-                            importerNameField.Value = companyName;
-                            _logger.LogInformation(
-                                $"Импорт в {nameof(ImportExcelFileForECigarettes)} на ред {rowNumber}, {nameof(companyNameField)} стойност {companyNameField.Value}");
-                            _logger.LogInformation(
-                                $"Импорт в {nameof(ImportExcelFileForECigarettes)} на ред {rowNumber}, companyPid стойност {company.Fields.First(f => f.Name == "BasicData_companyNumberImmutable").Value}");
-                        }
+        //                    importerNameField.Value = companyName;
+        //                    _logger.LogInformation(
+        //                        $"Импорт в {nameof(ImportExcelFileForECigarettes)} на ред {rowNumber}, {nameof(companyNameField)} стойност {companyNameField.Value}");
+        //                    _logger.LogInformation(
+        //                        $"Импорт в {nameof(ImportExcelFileForECigarettes)} на ред {rowNumber}, companyPid стойност {company.Fields.First(f => f.Name == "BasicData_companyNumberImmutable").Value}");
+        //                }
 
-                        string idProduct = values[3].Trim();
-                        var idProductField = viewModel.FormFields.First(f => f.Name == "idProduct");
-                        idProductField.Value = idProduct;
+        //                string idProduct = values[3].Trim();
+        //                var idProductField = viewModel.FormFields.First(f => f.Name == "idProduct");
+        //                idProductField.Value = idProduct;
 
-                        string trademark = values[4].Trim();
-                        var trademarkField = viewModel.FormFields.First(f => f.Name == "trademark");
-                        trademarkField.Value = trademark;
+        //                string trademark = values[4].Trim();
+        //                var trademarkField = viewModel.FormFields.First(f => f.Name == "trademark");
+        //                trademarkField.Value = trademark;
 
-                        string VarietyProduct = values[5].Trim();
-                        var VarietyProductField = viewModel.FormFields.First(f => f.Name == "VarietyProduct");
-                        VarietyProductField.Value = VarietyProduct;
+        //                string VarietyProduct = values[5].Trim();
+        //                var VarietyProductField = viewModel.FormFields.First(f => f.Name == "VarietyProduct");
+        //                VarietyProductField.Value = VarietyProduct;
 
-                        var ElectronicCigarettesRefillableContainersField = viewModel.FormFields.First(f => f.Name == "ElectronicCigarettesRefillableContainers");
+        //                var ElectronicCigarettesRefillableContainersField = viewModel.FormFields.First(f => f.Name == "ElectronicCigarettesRefillableContainers");
 
 
-                        string productType = values[6].Trim(' ', '.');
-                        if (productType.EndsWith("еднократна употреба", StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            ElectronicCigarettesRefillableContainersField.Value = "1";
-                        }
-                        else if (productType.Contains("йство. Всяка презареждаща се, която може да се използва и за многократно пълнене, трябва да се докладва в категорият", StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            ElectronicCigarettesRefillableContainersField.Value = "2";
-                        } 
-                        else if (productType.Contains("(фиксирана комбинация). Всяка презареждащ", StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            ElectronicCigarettesRefillableContainersField.Value = "3";
-                        }
-                        else if (productType.Contains("за многократно пълнене, пусната на пазара с един вид течност", StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            ElectronicCigarettesRefillableContainersField.Value = "4";
-                        }
-                        else if (productType.Contains("за многократно пълнене, само устройство", StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            ElectronicCigarettesRefillableContainersField.Value = "5";
-                        }
-                        else if (productType.Contains("тделна част от електронна", StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            ElectronicCigarettesRefillableContainersField.Value = "6";
-                        }
-                        else if (productType.Contains("тделен съд за електронна", StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            ElectronicCigarettesRefillableContainersField.Value = "6";
-                        }
-                        else if (productType.Contains("Комплект", StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            ElectronicCigarettesRefillableContainersField.Value = "7";
-                        }
-                        else if (productType.Contains("Контейнер за многократно пълнене", StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            ElectronicCigarettesRefillableContainersField.Value = "8";
-                        }
-                        else if (productType.Contains("Друго", StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            ElectronicCigarettesRefillableContainersField.Value = "9";
-                        }
-                        else
-                        {
-                            errors.Add($"Таб {sheetIndex + 1}, ред {rowNumber}, непознат тип цигарено изделие {productType}");
-                            continue;
-                        }
+        //                string productType = values[6].Trim(' ', '.');
+        //                if (productType.EndsWith("еднократна употреба", StringComparison.InvariantCultureIgnoreCase))
+        //                {
+        //                    ElectronicCigarettesRefillableContainersField.Value = "1";
+        //                }
+        //                else if (productType.Contains("йство. Всяка презареждаща се, която може да се използва и за многократно пълнене, трябва да се докладва в категорият", StringComparison.InvariantCultureIgnoreCase))
+        //                {
+        //                    ElectronicCigarettesRefillableContainersField.Value = "2";
+        //                } 
+        //                else if (productType.Contains("(фиксирана комбинация). Всяка презареждащ", StringComparison.InvariantCultureIgnoreCase))
+        //                {
+        //                    ElectronicCigarettesRefillableContainersField.Value = "3";
+        //                }
+        //                else if (productType.Contains("за многократно пълнене, пусната на пазара с един вид течност", StringComparison.InvariantCultureIgnoreCase))
+        //                {
+        //                    ElectronicCigarettesRefillableContainersField.Value = "4";
+        //                }
+        //                else if (productType.Contains("за многократно пълнене, само устройство", StringComparison.InvariantCultureIgnoreCase))
+        //                {
+        //                    ElectronicCigarettesRefillableContainersField.Value = "5";
+        //                }
+        //                else if (productType.Contains("тделна част от електронна", StringComparison.InvariantCultureIgnoreCase))
+        //                {
+        //                    ElectronicCigarettesRefillableContainersField.Value = "6";
+        //                }
+        //                else if (productType.Contains("тделен съд за електронна", StringComparison.InvariantCultureIgnoreCase))
+        //                {
+        //                    ElectronicCigarettesRefillableContainersField.Value = "6";
+        //                }
+        //                else if (productType.Contains("Комплект", StringComparison.InvariantCultureIgnoreCase))
+        //                {
+        //                    ElectronicCigarettesRefillableContainersField.Value = "7";
+        //                }
+        //                else if (productType.Contains("Контейнер за многократно пълнене", StringComparison.InvariantCultureIgnoreCase))
+        //                {
+        //                    ElectronicCigarettesRefillableContainersField.Value = "8";
+        //                }
+        //                else if (productType.Contains("Друго", StringComparison.InvariantCultureIgnoreCase))
+        //                {
+        //                    ElectronicCigarettesRefillableContainersField.Value = "9";
+        //                }
+        //                else
+        //                {
+        //                    errors.Add($"Таб {sheetIndex + 1}, ред {rowNumber}, непознат тип цигарено изделие {productType}");
+        //                    continue;
+        //                }
 
-                        string ingredients = values[7].Trim();
-                        var ingredientsField = viewModel.FormFields.First(f => f.Name == "ingredients");
-                        ingredientsField.Value = ingredients;
+        //                string ingredients = values[7].Trim();
+        //                var ingredientsField = viewModel.FormFields.First(f => f.Name == "ingredients");
+        //                ingredientsField.Value = ingredients;
 
-                        bool isViewModelValidationSuccess = await _formValidationService.ValidateViewModel(
-                            viewModel,
-                            _nomenclatureGrpcClient,
-                            await _registerService.GetCurrentRegisterId(),
-                            null,
-                            true);
+        //                bool isViewModelValidationSuccess = await _formValidationService.ValidateViewModel(
+        //                    viewModel,
+        //                    _nomenclatureGrpcClient,
+        //                    await _registerService.GetCurrentRegisterId(),
+        //                    null,
+        //                    true);
 
-                        if (!isViewModelValidationSuccess)
-                        {
-                            string validationError = string.Join(',',
-                                (await _formValidationService.GetValidatedFormFieldsErrors(viewModel)));
-                            errors.Add($"ред {rowNumber}, {validationError}");
-                            continue;
-                        }
+        //                if (!isViewModelValidationSuccess)
+        //                {
+        //                    string validationError = string.Join(',',
+        //                        (await _formValidationService.GetValidatedFormFieldsErrors(viewModel)));
+        //                    errors.Add($"ред {rowNumber}, {validationError}");
+        //                    continue;
+        //                }
 
-                        string oldIncomingNumber = string.Empty;
+        //                string oldIncomingNumber = string.Empty;
 
-                        var serviceStep = registerServiceVM.Steps
-                            .Where(x => x.StatusId == (int)ProcessStatus.Registered)
-                            .First();
-                        var stepVM = await _processService.ToProcessStepVM(Guid.Empty, null, registerServiceVM.Id,
-                            serviceStep.Id,
-                            serviceStep.OrderNum, oldIncomingNumber, null, viewModel, false);
+        //                var serviceStep = registerServiceVM.Steps
+        //                    .Where(x => x.StatusId == (int)ProcessStatus.Registered)
+        //                    .First();
+        //                var stepVM = await _processService.ToProcessStepVM(Guid.Empty, null, registerServiceVM.Id,
+        //                    serviceStep.Id,
+        //                    serviceStep.OrderNum, oldIncomingNumber, null, viewModel, false);
 
-                        //_logger.LogInformation("ViewModel за импорт: " + JsonSerializer.Serialize(viewModel));
-                        //_logger.LogInformation("Модел на стъпка за импорт: " + JsonSerializer.Serialize(stepVM));
+        //                //_logger.LogInformation("ViewModel за импорт: " + JsonSerializer.Serialize(viewModel));
+        //                //_logger.LogInformation("Модел на стъпка за импорт: " + JsonSerializer.Serialize(stepVM));
 
-                        stepVM.ProcessInfo.PreferredResultDeliveryMethod = ChannelType.OnDesk;
-                        (ProcessStepVM addedStep, _) = await _processService.AddStep(
-                            stepVM,
-                            "177549105");
+        //                stepVM.ProcessInfo.PreferredResultDeliveryMethod = ChannelType.OnDesk;
+        //                (ProcessStepVM addedStep, _) = await _processService.AddStep(
+        //                    stepVM,
+        //                    "177549105");
 
-                        addedRows.Add(rowNumber);
-                    }
-                    catch (Exception e)
-                    {
-                        _logger.LogError(e, nameof(ImportExcelFileForECigarettes));
-                        errors.Add(
-                            $"таб {sheetIndex + 1}, ред {rowNumber}, {e.Message} {e.InnerException?.Message}. Стойности на реда: {string.Join("; ", row.Values)}");
-                    }
+        //                addedRows.Add(rowNumber);
+        //            }
+        //            catch (Exception e)
+        //            {
+        //                _logger.LogError(e, nameof(ImportExcelFileForECigarettes));
+        //                errors.Add(
+        //                    $"таб {sheetIndex + 1}, ред {rowNumber}, {e.Message} {e.InnerException?.Message}. Стойности на реда: {string.Join("; ", row.Values)}");
+        //            }
 
-                    _processService.ClearTracker();
-                }
-            }
+        //            _processService.ClearTracker();
+        //        }
+        //    }
 
-            string errorMessage = string.Join(Environment.NewLine, errors);
-            string addedRowsString = string.Join(", ", addedRows);
+        //    string errorMessage = string.Join(Environment.NewLine, errors);
+        //    string addedRowsString = string.Join(", ", addedRows);
 
-            _logger.LogInformation($"Добавени редове в {nameof(ImportExcelFileForECigarettes)} {addedRowsString}");
+        //    _logger.LogInformation($"Добавени редове в {nameof(ImportExcelFileForECigarettes)} {addedRowsString}");
 
-            return new ContentResult
-            {
-                Content = $"Добавени {addedRows.Count} записи. Грешки: {Environment.NewLine}{errorMessage}",
-                ContentType = "text/plain",
-                StatusCode = 200
-            };
-        }
+        //    return new ContentResult
+        //    {
+        //        Content = $"Добавени {addedRows.Count} записи. Грешки: {Environment.NewLine}{errorMessage}",
+        //        ContentType = "text/plain",
+        //        StatusCode = 200
+        //    };
+        //}
 
-        //Методът е изпълнен и импорта е успешен. Закоментиран е за да се предотврати погрешно изпълнение
+        ////Методът е изпълнен и импорта е успешен. Закоментиран е за да се предотврати погрешно изпълнение
         
-        /// <summary>
-        /// Импорт на данни за заявена услуга от файл нови тютюневи изделия
-        /// </summary>
-        /// <param name="file">Pdf файл с json данни на заявена услуга.</param>
-        [HttpPost("import-excel-file-for-new-tobacco-products")]
-        [Display(Name = "Импорт на данни за заявена услуга от файл нови тютюневи изделия")]
-        [Consumes("multipart/form-data")]
-        public async Task<IActionResult> ImportExcelFileForNewTobaccoProducts(IFormFile file, CancellationToken cancellationToken)
-        {
-            List<string> errors = new List<string>();
-            List<int> addedRows = new List<int>();
+        ///// <summary>
+        ///// Импорт на данни за заявена услуга от файл нови тютюневи изделия
+        ///// </summary>
+        ///// <param name="file">Pdf файл с json данни на заявена услуга.</param>
+        //[HttpPost("import-excel-file-for-new-tobacco-products")]
+        //[Display(Name = "Импорт на данни за заявена услуга от файл нови тютюневи изделия")]
+        //[Consumes("multipart/form-data")]
+        //public async Task<IActionResult> ImportExcelFileForNewTobaccoProducts(IFormFile file, CancellationToken cancellationToken)
+        //{
+        //    List<string> errors = new List<string>();
+        //    List<int> addedRows = new List<int>();
 
-            List<Dictionary<string, string>> data = await ExcelToDictionary(file);
+        //    List<Dictionary<string, string>> data = await ExcelToDictionary(file);
 
-            ServiceVM registerServiceVM = await _serviceService.GetRegisterService();
+        //    ServiceVM registerServiceVM = await _serviceService.GetRegisterService();
 
-            if (registerServiceVM == null)
-            {
-                return BadRequest("Не е намерена услуга за вписване или формата асоциирана с нея");
-            }
+        //    if (registerServiceVM == null)
+        //    {
+        //        return BadRequest("Не е намерена услуга за вписване или формата асоциирана с нея");
+        //    }
 
-            int rowNumber = 1;
-            foreach (Dictionary<string, string> row in data)
-            {
-                rowNumber++;
+        //    int rowNumber = 1;
+        //    foreach (Dictionary<string, string> row in data)
+        //    {
+        //        rowNumber++;
 
-                try
-                {
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        return StatusCode(499, "Request was canceled by the client.");
-                    }
+        //        try
+        //        {
+        //            if (cancellationToken.IsCancellationRequested)
+        //            {
+        //                return StatusCode(499, "Request was canceled by the client.");
+        //            }
 
-                    FormViewModel viewModel =
-                        await _formConfigurationPersistenceService.GetFormViewModel(registerServiceVM.FormParentId, true);
+        //            FormViewModel viewModel =
+        //                await _formConfigurationPersistenceService.GetFormViewModel(registerServiceVM.FormParentId, true);
 
-                    List<string> values = row.Values.ToList();
+        //            List<string> values = row.Values.ToList();
 
-                    if (string.IsNullOrWhiteSpace(values[0]))
-                    {
-                        continue;
-                    }
+        //            if (string.IsNullOrWhiteSpace(values[0]))
+        //            {
+        //                continue;
+        //            }
 
-                    string dateInformationProvision = ReadExcelDate(values[0].Trim());
-                    var dateInformationProvisionField = viewModel.FormFields.First(f => f.Name == "dateInformationProvision");
-                    dateInformationProvisionField.Value = dateInformationProvision;
+        //            string dateInformationProvision = ReadExcelDate(values[0].Trim());
+        //            var dateInformationProvisionField = viewModel.FormFields.First(f => f.Name == "dateInformationProvision");
+        //            dateInformationProvisionField.Value = dateInformationProvision;
 
-                    _logger.LogInformation($"Импорт в {nameof(ImportExcelFileForNewTobaccoProducts)} на ред {rowNumber}, {nameof(dateInformationProvisionField)} стойност {dateInformationProvisionField.Value}");
+        //            _logger.LogInformation($"Импорт в {nameof(ImportExcelFileForNewTobaccoProducts)} на ред {rowNumber}, {nameof(dateInformationProvisionField)} стойност {dateInformationProvisionField.Value}");
 
-                    string dateNotification = ReadExcelDate(values[1].Trim());
-                    var dateNotificationField = viewModel.FormFields.First(f => f.Name == "dateNotification");
-                    dateNotificationField.Value = dateNotification;
+        //            string dateNotification = ReadExcelDate(values[1].Trim());
+        //            var dateNotificationField = viewModel.FormFields.First(f => f.Name == "dateNotification");
+        //            dateNotificationField.Value = dateNotification;
 
-                    _logger.LogInformation($"Импорт в {nameof(ImportExcelFileForNewTobaccoProducts)} на ред {rowNumber}, {nameof(dateNotificationField)} стойност {dateNotificationField.Value}");
+        //            _logger.LogInformation($"Импорт в {nameof(ImportExcelFileForNewTobaccoProducts)} на ред {rowNumber}, {nameof(dateNotificationField)} стойност {dateNotificationField.Value}");
 
-                    string Manufacturer = values[2].Trim();
-                    var ManufacturerField = viewModel.FormFields.First(f => f.Name == "Manufacturer");
-                    ManufacturerField.Value = Manufacturer;
+        //            string Manufacturer = values[2].Trim();
+        //            var ManufacturerField = viewModel.FormFields.First(f => f.Name == "Manufacturer");
+        //            ManufacturerField.Value = Manufacturer;
 
-                    _logger.LogInformation($"Импорт в {nameof(ImportExcelFileForNewTobaccoProducts)} на ред {rowNumber}, {nameof(ManufacturerField)} стойност {ManufacturerField.Value}");
+        //            _logger.LogInformation($"Импорт в {nameof(ImportExcelFileForNewTobaccoProducts)} на ред {rowNumber}, {nameof(ManufacturerField)} стойност {ManufacturerField.Value}");
 
-                    var company = viewModel.FormFields.First(f => f.Name == "BasicData");
-                    bool companyImported = await ImportCompany(values[9], company, errors, rowNumber);
+        //            var company = viewModel.FormFields.First(f => f.Name == "BasicData");
+        //            bool companyImported = await ImportCompany(values[9], company, errors, rowNumber);
 
-                    if (!companyImported)
-                    {
-                        _logger.LogError($"Не може да импортира компания с id {values[9]}, ред {rowNumber}");
-                        errors.Add($"Ред {rowNumber} Не може да импортира компания с id {values[9]}, ред {rowNumber}");
-                        continue;
-                    }
+        //            if (!companyImported)
+        //            {
+        //                _logger.LogError($"Не може да импортира компания с id {values[9]}, ред {rowNumber}");
+        //                errors.Add($"Ред {rowNumber} Не може да импортира компания с id {values[9]}, ред {rowNumber}");
+        //                continue;
+        //            }
 
-                    string companyName = values[3].Trim();
-                    var companyNameField = company.Fields.First(f => f.Name == "BasicData_companyNameImmutable");
-                    companyNameField.Value = companyName;
+        //            string companyName = values[3].Trim();
+        //            var companyNameField = company.Fields.First(f => f.Name == "BasicData_companyNameImmutable");
+        //            companyNameField.Value = companyName;
 
-                    var importedAddress = viewModel.FormFields.First(f => f.Name == "ImportedAddress");
+        //            var importedAddress = viewModel.FormFields.First(f => f.Name == "ImportedAddress");
 
-                    viewModel.FormFields.First(f => f.Name == "responsiblePersonName").Value =
-                        company.Fields.First(f => f.Name == "BasicData_companyNameImmutable").Value;
+        //            viewModel.FormFields.First(f => f.Name == "responsiblePersonName").Value =
+        //                company.Fields.First(f => f.Name == "BasicData_companyNameImmutable").Value;
 
-                    importedAddress.Fields.First(f => f.Name == "ImportedAddress_countryImmutable").Value =
-                        company.Fields.First(f => f.Name == "BasicData_countryImmutable").Value;
+        //            importedAddress.Fields.First(f => f.Name == "ImportedAddress_countryImmutable").Value =
+        //                company.Fields.First(f => f.Name == "BasicData_countryImmutable").Value;
 
-                    importedAddress.Fields.First(f => f.Name == "ImportedAddress_settlementImmutable").Value =
-                        company.Fields.First(f => f.Name == "BasicData_settlementImmutable").Value;
+        //            importedAddress.Fields.First(f => f.Name == "ImportedAddress_settlementImmutable").Value =
+        //                company.Fields.First(f => f.Name == "BasicData_settlementImmutable").Value;
 
-                    importedAddress.Fields.First(f => f.Name == "ImportedAddress_postalCodeImmutable").Value =
-                        company.Fields.First(f => f.Name == "BasicData_postalCodeImmutable").Value;
+        //            importedAddress.Fields.First(f => f.Name == "ImportedAddress_postalCodeImmutable").Value =
+        //                company.Fields.First(f => f.Name == "BasicData_postalCodeImmutable").Value;
 
-                    importedAddress.Fields.First(f => f.Name == "ImportedAddress_regionImmutable").Value =
-                        company.Fields.First(f => f.Name == "BasicData_regionImmutable").Value;
+        //            importedAddress.Fields.First(f => f.Name == "ImportedAddress_regionImmutable").Value =
+        //                company.Fields.First(f => f.Name == "BasicData_regionImmutable").Value;
 
-                    importedAddress.Fields.First(f => f.Name == "ImportedAddress_streetImmutable").Value =
-                        company.Fields.First(f => f.Name == "BasicData_streetImmutable").Value;
+        //            importedAddress.Fields.First(f => f.Name == "ImportedAddress_streetImmutable").Value =
+        //                company.Fields.First(f => f.Name == "BasicData_streetImmutable").Value;
 
-                    importedAddress.Fields.First(f => f.Name == "ImportedAddress_buildingNumberImmutable").Value =
-                        company.Fields.First(f => f.Name == "BasicData_buildingNumberImmutable").Value;
+        //            importedAddress.Fields.First(f => f.Name == "ImportedAddress_buildingNumberImmutable").Value =
+        //                company.Fields.First(f => f.Name == "BasicData_buildingNumberImmutable").Value;
 
-                    importedAddress.Fields.First(f => f.Name == "ImportedAddress_entranceNumberImmutable").Value =
-                        company.Fields.First(f => f.Name == "BasicData_entranceNumberImmutable").Value;
+        //            importedAddress.Fields.First(f => f.Name == "ImportedAddress_entranceNumberImmutable").Value =
+        //                company.Fields.First(f => f.Name == "BasicData_entranceNumberImmutable").Value;
 
-                    importedAddress.Fields.First(f => f.Name == "ImportedAddress_floorImmutable").Value =
-                        company.Fields.First(f => f.Name == "BasicData_floorImmutable").Value;
+        //            importedAddress.Fields.First(f => f.Name == "ImportedAddress_floorImmutable").Value =
+        //                company.Fields.First(f => f.Name == "BasicData_floorImmutable").Value;
 
-                    importedAddress.Fields.First(f => f.Name == "ImportedAddress_apartmentNumberImmutable").Value =
-                        company.Fields.First(f => f.Name == "BasicData_apartmentNumberImmutable").Value;
+        //            importedAddress.Fields.First(f => f.Name == "ImportedAddress_apartmentNumberImmutable").Value =
+        //                company.Fields.First(f => f.Name == "BasicData_apartmentNumberImmutable").Value;
 
-                    importedAddress.Fields.First(f => f.Name == "ImportedAddress_addressAbroadImmutable").Value =
-                        company.Fields.First(f => f.Name == "BasicData_addressAbroadImmutable").Value;
-
-
-                    _logger.LogInformation($"Импорт в {nameof(ImportExcelFileForNewTobaccoProducts)} на ред {rowNumber}, {nameof(companyNameField)} стойност {companyNameField.Value}");
-                    _logger.LogInformation($"Импорт в {nameof(ImportExcelFileForNewTobaccoProducts)} на ред {rowNumber}, companyPid стойност {company.Fields.First(f => f.Name == "BasicData_companyNumberImmutable").Value}");
+        //            importedAddress.Fields.First(f => f.Name == "ImportedAddress_addressAbroadImmutable").Value =
+        //                company.Fields.First(f => f.Name == "BasicData_addressAbroadImmutable").Value;
 
 
-                    string idProduct = values[4].Trim();
-                    var idProductField = viewModel.FormFields.First(f => f.Name == "idProduct");
-                    idProductField.Value = idProduct;
+        //            _logger.LogInformation($"Импорт в {nameof(ImportExcelFileForNewTobaccoProducts)} на ред {rowNumber}, {nameof(companyNameField)} стойност {companyNameField.Value}");
+        //            _logger.LogInformation($"Импорт в {nameof(ImportExcelFileForNewTobaccoProducts)} на ред {rowNumber}, companyPid стойност {company.Fields.First(f => f.Name == "BasicData_companyNumberImmutable").Value}");
 
-                    string trademark = values[5].Trim();
-                    var trademarkField = viewModel.FormFields.First(f => f.Name == "trademark");
-                    trademarkField.Value = trademark;
 
-                    string VarietyProduct = values[6].Trim();
-                    var VarietyProductField = viewModel.FormFields.First(f => f.Name == "VarietyProduct");
-                    VarietyProductField.Value = VarietyProduct;
+        //            string idProduct = values[4].Trim();
+        //            var idProductField = viewModel.FormFields.First(f => f.Name == "idProduct");
+        //            idProductField.Value = idProduct;
 
-                    var typesProductsField = viewModel.FormFields.First(f => f.Name == "typesProducts");
-                    typesProductsField.Value = "1";//Бездимно
+        //            string trademark = values[5].Trim();
+        //            var trademarkField = viewModel.FormFields.First(f => f.Name == "trademark");
+        //            trademarkField.Value = trademark;
 
-                    string ingredients = values[8].Trim();
-                    var ingredientsField = viewModel.FormFields.First(f => f.Name == "ingredients");
-                    ingredientsField.Value = ingredients;
+        //            string VarietyProduct = values[6].Trim();
+        //            var VarietyProductField = viewModel.FormFields.First(f => f.Name == "VarietyProduct");
+        //            VarietyProductField.Value = VarietyProduct;
 
-                    bool isViewModelValidationSuccess = await _formValidationService.ValidateViewModel(
-                        viewModel,
-                        _nomenclatureGrpcClient,
-                        await _registerService.GetCurrentRegisterId(),
-                        null,
-                        true);
+        //            var typesProductsField = viewModel.FormFields.First(f => f.Name == "typesProducts");
+        //            typesProductsField.Value = "1";//Бездимно
 
-                    if (!isViewModelValidationSuccess)
-                    {
-                        string validationError = string.Join(',',
-                            (await _formValidationService.GetValidatedFormFieldsErrors(viewModel)));
-                        errors.Add($"ред {rowNumber}, {validationError}");
-                        continue;
-                    }
+        //            string ingredients = values[8].Trim();
+        //            var ingredientsField = viewModel.FormFields.First(f => f.Name == "ingredients");
+        //            ingredientsField.Value = ingredients;
 
-                    string oldIncomingNumber = string.Empty;
+        //            bool isViewModelValidationSuccess = await _formValidationService.ValidateViewModel(
+        //                viewModel,
+        //                _nomenclatureGrpcClient,
+        //                await _registerService.GetCurrentRegisterId(),
+        //                null,
+        //                true);
 
-                    var serviceStep = registerServiceVM.Steps.Where(x => x.StatusId == (int)ProcessStatus.Registered)
-                        .First();
-                    var stepVM = await _processService.ToProcessStepVM(Guid.Empty, null, registerServiceVM.Id,
-                        serviceStep.Id,
-                        serviceStep.OrderNum, oldIncomingNumber, null, viewModel, false);
+        //            if (!isViewModelValidationSuccess)
+        //            {
+        //                string validationError = string.Join(',',
+        //                    (await _formValidationService.GetValidatedFormFieldsErrors(viewModel)));
+        //                errors.Add($"ред {rowNumber}, {validationError}");
+        //                continue;
+        //            }
 
-                    _logger.LogInformation("ViewModel за импорт: " + JsonSerializer.Serialize(viewModel));
-                    _logger.LogInformation("Модел на стъпка за импорт: " + JsonSerializer.Serialize(stepVM));
+        //            string oldIncomingNumber = string.Empty;
 
-                    stepVM.ProcessInfo.PreferredResultDeliveryMethod = ChannelType.OnDesk;
-                    (ProcessStepVM addedStep, _) = await _processService.AddStep(
-                        stepVM,
-                        "177549105");
+        //            var serviceStep = registerServiceVM.Steps.Where(x => x.StatusId == (int)ProcessStatus.Registered)
+        //                .First();
+        //            var stepVM = await _processService.ToProcessStepVM(Guid.Empty, null, registerServiceVM.Id,
+        //                serviceStep.Id,
+        //                serviceStep.OrderNum, oldIncomingNumber, null, viewModel, false);
 
-                    addedRows.Add(rowNumber);
-                }
-                catch (Exception e)
-                {
-                    _logger.LogError(e, nameof(ImportExcelFileForNewTobaccoProducts));
-                    errors.Add($"ред {rowNumber}, {e.Message} {e.InnerException?.Message}. Стойности на реда: {string.Join("; ", row.Values)}");
-                }
+        //            _logger.LogInformation("ViewModel за импорт: " + JsonSerializer.Serialize(viewModel));
+        //            _logger.LogInformation("Модел на стъпка за импорт: " + JsonSerializer.Serialize(stepVM));
 
-                _processService.ClearTracker();
-            }
+        //            stepVM.ProcessInfo.PreferredResultDeliveryMethod = ChannelType.OnDesk;
+        //            (ProcessStepVM addedStep, _) = await _processService.AddStep(
+        //                stepVM,
+        //                "177549105");
 
-            string errorMessage = string.Join(Environment.NewLine, errors);
-            string addedRowsString = string.Join(", ", addedRows);
+        //            addedRows.Add(rowNumber);
+        //        }
+        //        catch (Exception e)
+        //        {
+        //            _logger.LogError(e, nameof(ImportExcelFileForNewTobaccoProducts));
+        //            errors.Add($"ред {rowNumber}, {e.Message} {e.InnerException?.Message}. Стойности на реда: {string.Join("; ", row.Values)}");
+        //        }
 
-            _logger.LogInformation($"Добавени редове в {nameof(ImportExcelFileForNewTobaccoProducts)} {addedRowsString}");
+        //        _processService.ClearTracker();
+        //    }
 
-            return new ContentResult
-            {
-                Content = $"Добавени {addedRows.Count} записи. Грешки: {Environment.NewLine}{errorMessage}",
-                ContentType = "text/plain",
-                StatusCode = 200
-            };
-        }
+        //    string errorMessage = string.Join(Environment.NewLine, errors);
+        //    string addedRowsString = string.Join(", ", addedRows);
+
+        //    _logger.LogInformation($"Добавени редове в {nameof(ImportExcelFileForNewTobaccoProducts)} {addedRowsString}");
+
+        //    return new ContentResult
+        //    {
+        //        Content = $"Добавени {addedRows.Count} записи. Грешки: {Environment.NewLine}{errorMessage}",
+        //        ContentType = "text/plain",
+        //        StatusCode = 200
+        //    };
+        //}
 
         private string ReadExcelDate(string excelDate)
         {
@@ -921,179 +919,179 @@ namespace URegister.Areas.Public.Controllers
             return data;
         }
 
-        /// <summary>
-        /// Импорт на данни за заявена услуга от файл [R00036]
-        /// </summary>
-        /// <param name="file">Pdf файл с json данни на заявена услуга.</param>
-        [HttpPost("import-excel-file-for-r00036-zznn")]
-        [Display(Name = "Импорт на данни за заявена услуга от файл [R00036]")]
-        [Consumes("multipart/form-data")]
-        public async Task<IActionResult> ImportExcelFileForZZNNR0036(IFormFile file, CancellationToken cancellationToken)
-        {
-            List<string> errors = new List<string>();
-            List<int> addedRows = new List<int>();
+        ///// <summary>
+        ///// Импорт на данни за заявена услуга от файл [R00036]
+        ///// </summary>
+        ///// <param name="file">Pdf файл с json данни на заявена услуга.</param>
+        //[HttpPost("import-excel-file-for-r00036-zznn")]
+        //[Display(Name = "Импорт на данни за заявена услуга от файл [R00036]")]
+        //[Consumes("multipart/form-data")]
+        //public async Task<IActionResult> ImportExcelFileForZZNNR0036(IFormFile file, CancellationToken cancellationToken)
+        //{
+        //    List<string> errors = new List<string>();
+        //    List<int> addedRows = new List<int>();
 
-            List<Dictionary<string, string>> data = await ExcelToDictionary(file);
+        //    List<Dictionary<string, string>> data = await ExcelToDictionary(file);
 
-            ServiceVM registerServiceVM = await _serviceService.GetRegisterService();
+        //    ServiceVM registerServiceVM = await _serviceService.GetRegisterService();
 
-            if (registerServiceVM == null)
-            {
-                return BadRequest("Не е намерена услуга за вписване или формата асоциирана с нея");
-            }
+        //    if (registerServiceVM == null)
+        //    {
+        //        return BadRequest("Не е намерена услуга за вписване или формата асоциирана с нея");
+        //    }
 
-            int rowNumber = 1;
-            foreach (Dictionary<string, string> row in data)
-            {
-                rowNumber++;
+        //    int rowNumber = 1;
+        //    foreach (Dictionary<string, string> row in data)
+        //    {
+        //        rowNumber++;
 
-                try
-                {
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        return StatusCode(499, "Request was canceled by the client.");
-                    }
+        //        try
+        //        {
+        //            if (cancellationToken.IsCancellationRequested)
+        //            {
+        //                return StatusCode(499, "Request was canceled by the client.");
+        //            }
 
-                    FormViewModel viewModel =
-                        await _formConfigurationPersistenceService.GetFormViewModel(registerServiceVM.FormParentId, true);
+        //            FormViewModel viewModel =
+        //                await _formConfigurationPersistenceService.GetFormViewModel(registerServiceVM.FormParentId, true);
 
-                    List<string> values = row.Values.ToList();
+        //            List<string> values = row.Values.ToList();
 
-                    if (string.IsNullOrWhiteSpace(values[0]))
-                    {
-                        continue;
-                    }
+        //            if (string.IsNullOrWhiteSpace(values[0]))
+        //            {
+        //                continue;
+        //            }
 
-                    //string oldIncomingNumber = values[0].Trim(new char[] { ' ', '№' });
+        //            //string oldIncomingNumber = values[0].Trim(new char[] { ' ', '№' });
 
-                    //ProcessVM alreadyImported = await _processService.GetProcessByOldIncomingNumber(oldIncomingNumber);
+        //            //ProcessVM alreadyImported = await _processService.GetProcessByOldIncomingNumber(oldIncomingNumber);
 
-                    //if (alreadyImported != null)
-                    //{
-                    //    continue;
-                    //}
+        //            //if (alreadyImported != null)
+        //            //{
+        //            //    continue;
+        //            //}
 
-                    var company = viewModel.FormFields.First(f => f.Name == "PersonObliged");
+        //            var company = viewModel.FormFields.First(f => f.Name == "PersonObliged");
 
-                    bool companyImported = await ImportCompany(values[2], company, errors, rowNumber);
+        //            bool companyImported = await ImportCompany(values[2], company, errors, rowNumber);
 
-                    if (!companyImported)
-                    {
-                        continue;
-                    }
+        //            if (!companyImported)
+        //            {
+        //                continue;
+        //            }
 
-                    //if (!string.IsNullOrWhiteSpace(companyName))
-                    //Взимаме от Regix според #405807
-                    //{
-                    //    var companyNameField =
-                    //        company.Fields.First(f => f.Name == "PersonObliged_companyNameImmutable");
+        //            //if (!string.IsNullOrWhiteSpace(companyName))
+        //            //Взимаме от Regix според #405807
+        //            //{
+        //            //    var companyNameField =
+        //            //        company.Fields.First(f => f.Name == "PersonObliged_companyNameImmutable");
 
-                    //    string companyName = values[1];
+        //            //    string companyName = values[1];
 
-                    //    companyNameField.Value = companyName.Replace(" ЕООД", string.Empty);
+        //            //    companyNameField.Value = companyName.Replace(" ЕООД", string.Empty);
 
-                    //}
+        //            //}
 
-                    string oldIncomingNumber = values[0].Trim();
-                    string[] numberAndDate =  oldIncomingNumber.Split(new char[] {'/'});
+        //            string oldIncomingNumber = values[0].Trim();
+        //            string[] numberAndDate =  oldIncomingNumber.Split(new char[] {'/'});
 
                     
-                    var numberField = viewModel.FormFields.First(f => f.Name == "regNumber");
-                    //numberField.Value = numberAndDate[1].Replace("г.", string.Empty);
-                    numberField.Value = RemoveFirstWordAfterQuote(numberAndDate[0]);
+        //            var numberField = viewModel.FormFields.First(f => f.Name == "regNumber");
+        //            //numberField.Value = numberAndDate[1].Replace("г.", string.Empty);
+        //            numberField.Value = RemoveFirstWordAfterQuote(numberAndDate[0]);
 
-                    string entryReasonAsString = values[3].Trim();
-                    var entryReasonField = viewModel.FormFields.First(f => f.Name == "EntryReason");
+        //            string entryReasonAsString = values[3].Trim();
+        //            var entryReasonField = viewModel.FormFields.First(f => f.Name == "EntryReason");
 
-                    if (entryReasonAsString == "чл. 23, ал. 2")
-                    {
-                        entryReasonField.Value = "1";
-                    }
-                    else if (entryReasonAsString == "чл. 23, ал. 3")
-                    {
-                        entryReasonField.Value = "2";
-                    }
-                    else if(entryReasonAsString is "чл. 23, ал. 2 и ал. 3" or "чл. 23, ал. 2 и 3" or "чл. 23, ал 2 и ал. 3")
-                    {
-                        entryReasonField.Value = "3";
-                    }
-                    else
-                    {
-                        errors.Add($"Непознато ОСНОВАНИЕ ЗА ВЪЗНИКВАНЕ НА ЗАДЪЛЖЕНИЕТО СЪГЛАСНО ЗЗНН {entryReasonAsString} ред {rowNumber}");
-                    }
+        //            if (entryReasonAsString == "чл. 23, ал. 2")
+        //            {
+        //                entryReasonField.Value = "1";
+        //            }
+        //            else if (entryReasonAsString == "чл. 23, ал. 3")
+        //            {
+        //                entryReasonField.Value = "2";
+        //            }
+        //            else if(entryReasonAsString is "чл. 23, ал. 2 и ал. 3" or "чл. 23, ал. 2 и 3" or "чл. 23, ал 2 и ал. 3")
+        //            {
+        //                entryReasonField.Value = "3";
+        //            }
+        //            else
+        //            {
+        //                errors.Add($"Непознато ОСНОВАНИЕ ЗА ВЪЗНИКВАНЕ НА ЗАДЪЛЖЕНИЕТО СЪГЛАСНО ЗЗНН {entryReasonAsString} ред {rowNumber}");
+        //            }
 
-                    string periodAsString = values[4].Trim();
-                    var periodField = viewModel.FormFields.First(f => f.Name == "period");
+        //            string periodAsString = values[4].Trim();
+        //            var periodField = viewModel.FormFields.First(f => f.Name == "period");
 
-                    if (periodAsString == "01.07.2024 - 30.06.2025")
-                    {
-                        periodField.Value = "1";
-                    }
-                    else if (periodAsString == "01.07.2025 - 30.06.2026")
-                    {
-                        periodField.Value = "2";
-                    }
-                    else if (periodAsString == "01.07.2026 - 30.06.2027")
-                    {
-                        periodField.Value = "3";
-                    }
-                    else if (periodAsString == "01.07.2027 - 30.06.2028")
-                    {
-                        periodField.Value = "4";
-                    }
-                    else
-                    {
-                        errors.Add($"Непознат период {periodField} ред {rowNumber}");
-                    }
+        //            if (periodAsString == "01.07.2024 - 30.06.2025")
+        //            {
+        //                periodField.Value = "1";
+        //            }
+        //            else if (periodAsString == "01.07.2025 - 30.06.2026")
+        //            {
+        //                periodField.Value = "2";
+        //            }
+        //            else if (periodAsString == "01.07.2026 - 30.06.2027")
+        //            {
+        //                periodField.Value = "3";
+        //            }
+        //            else if (periodAsString == "01.07.2027 - 30.06.2028")
+        //            {
+        //                periodField.Value = "4";
+        //            }
+        //            else
+        //            {
+        //                errors.Add($"Непознат период {periodField} ред {rowNumber}");
+        //            }
 
-                    bool isViewModelValidationSuccess = await _formValidationService.ValidateViewModel(
-                            viewModel,
-                            _nomenclatureGrpcClient,
-                            await _registerService.GetCurrentRegisterId(),
-                            null,
-                            true);
+        //            bool isViewModelValidationSuccess = await _formValidationService.ValidateViewModel(
+        //                    viewModel,
+        //                    _nomenclatureGrpcClient,
+        //                    await _registerService.GetCurrentRegisterId(),
+        //                    null,
+        //                    true);
 
-                    if (!isViewModelValidationSuccess)
-                    {
-                        string validationError = string.Join(',',
-                            (await _formValidationService.GetValidatedFormFieldsErrors(viewModel)));
-                        errors.Add($"ред {rowNumber}, {validationError}");
-                        continue;
-                    }
+        //            if (!isViewModelValidationSuccess)
+        //            {
+        //                string validationError = string.Join(',',
+        //                    (await _formValidationService.GetValidatedFormFieldsErrors(viewModel)));
+        //                errors.Add($"ред {rowNumber}, {validationError}");
+        //                continue;
+        //            }
 
-                    var serviceStep = registerServiceVM.Steps.Where(x => x.StatusId == (int)ProcessStatus.Registered)
-                        .First();
-                    var stepVM = await _processService.ToProcessStepVM(Guid.Empty, null, registerServiceVM.Id,
-                        serviceStep.Id,
-                        serviceStep.OrderNum, oldIncomingNumber, null, viewModel, false);
-                    stepVM.ProcessInfo.PreferredResultDeliveryMethod = ChannelType.OnDesk;
-                    (ProcessStepVM addedStep, _) = await _processService.AddStep(
-                        stepVM,
-                        "831913661");
+        //            var serviceStep = registerServiceVM.Steps.Where(x => x.StatusId == (int)ProcessStatus.Registered)
+        //                .First();
+        //            var stepVM = await _processService.ToProcessStepVM(Guid.Empty, null, registerServiceVM.Id,
+        //                serviceStep.Id,
+        //                serviceStep.OrderNum, oldIncomingNumber, null, viewModel, false);
+        //            stepVM.ProcessInfo.PreferredResultDeliveryMethod = ChannelType.OnDesk;
+        //            (ProcessStepVM addedStep, _) = await _processService.AddStep(
+        //                stepVM,
+        //                "831913661");
 
-                    addedRows.Add(rowNumber);
-                }
-                catch (Exception e)
-                {
-                    _logger.LogError(e, nameof(ImportExcelFileForZZNNR0036));
-                    errors.Add($"ред {rowNumber}, {e.Message} {e.InnerException?.Message}. Стойности на реда: {string.Join("; ", row.Values)}");
-                }
+        //            addedRows.Add(rowNumber);
+        //        }
+        //        catch (Exception e)
+        //        {
+        //            _logger.LogError(e, nameof(ImportExcelFileForZZNNR0036));
+        //            errors.Add($"ред {rowNumber}, {e.Message} {e.InnerException?.Message}. Стойности на реда: {string.Join("; ", row.Values)}");
+        //        }
 
-                _processService.ClearTracker();
-            }
+        //        _processService.ClearTracker();
+        //    }
 
-            string errorMessage = string.Join(Environment.NewLine, errors);
-            string addedRowsString = string.Join(", ", addedRows);
+        //    string errorMessage = string.Join(Environment.NewLine, errors);
+        //    string addedRowsString = string.Join(", ", addedRows);
 
-            _logger.LogInformation($"Добавени редове в {nameof(ImportExcelFileForZZNNR0036)} {addedRowsString}");
+        //    _logger.LogInformation($"Добавени редове в {nameof(ImportExcelFileForZZNNR0036)} {addedRowsString}");
 
-            return new ContentResult
-            {
-                Content = $"Добавени {addedRows.Count} записи. Грешки: {Environment.NewLine}{errorMessage}",
-                ContentType = "text/plain",
-                StatusCode = 200
-            };
-        }
+        //    return new ContentResult
+        //    {
+        //        Content = $"Добавени {addedRows.Count} записи. Грешки: {Environment.NewLine}{errorMessage}",
+        //        ContentType = "text/plain",
+        //        StatusCode = 200
+        //    };
+        //}
 
         /// <summary>
         /// Импорт на данни за заявена услуга от файл [R00030]
@@ -1107,7 +1105,7 @@ namespace URegister.Areas.Public.Controllers
             List<string> errors = new List<string>();
             List<int> addedRows = new List<int>();
 
-            List<Dictionary<string, string>> data = await ExcelToDictionary(file);
+            List<Dictionary<string, string>> data = await ExcelToDictionary(file, 1);
 
             ServiceVM registerServiceVM = await _serviceService.GetRegisterService();
 
@@ -1116,13 +1114,13 @@ namespace URegister.Areas.Public.Controllers
                 return BadRequest("Не е намерена услуга за вписване или формата асоциирана с нея");
             }
 
-            var request = new NomenclatureHolderRequest
+            var request = new NomenclaturePublicRequest()
             {
                 RegisterId = 0,
-                NomenclatureType = "CL0057",
+                NomenclatureTypes = { "CL0057", "CL0009" },
             };
 
-            NomenclaturePublicResponse response = await _nomenclatureGrpcClient.GetNomenclatureOnHolderPublicAsync(request);
+            NomenclaturePublicResponse response = await _nomenclatureGrpcClient.GetNomenclaturePublicAsync(request);
 
             if (response.ResultStatus.Code != ResultCodes.Ok)
             {
@@ -1135,13 +1133,15 @@ namespace URegister.Areas.Public.Controllers
                 }; 
             }
 
-            var nomenclatureList = response.NomenclatureTypes.First().CodeableConcepts;
+            var nomenclatureFuelList = response.NomenclatureTypes.Last().CodeableConcepts;
+            var nomenclatureEIKFromList = response.NomenclatureTypes.First().CodeableConcepts;
 
             string lastStorageNumber = string.Empty;
             int rowNumber = 1;
-            foreach (Dictionary<string, string> row in data)
+            for (int dataIndex = 0; dataIndex < data.Count; dataIndex++)
             {
                 rowNumber++;
+                var row = data[dataIndex];
 
                 try
                 {
@@ -1185,10 +1185,30 @@ namespace URegister.Areas.Public.Controllers
 
                     var warehouseNumberField = viewModel.FormFields.First(f => f.Name == "warehouseNumber");
                     warehouseNumberField.Value = values[2].Trim();
-                    lastStorageNumber = values[2].Trim();
 
                     var StorekeeperField = viewModel.FormFields.First(f => f.Name == "Storekeeper");
-                    StorekeeperField.Value = values[3];
+                    var storekeeperValues = SplitAtLastSpace(values[3].Trim());
+
+                    var storekeeperNameField = StorekeeperField.Fields.First(f => f.Name == "Storekeeper_companyNameImmutable");
+                    storekeeperNameField.Value = storekeeperValues.Before;
+
+                    var storekeeperLegalFormEIKField = StorekeeperField.Fields.First(f => f.Name == "Storekeeper_legalFormEIKImmutable");
+                    var legalFormNom = nomenclatureEIKFromList.SingleOrDefault(l => l.Value.Equals(storekeeperValues.After, StringComparison.OrdinalIgnoreCase));
+
+                    var storekeeperIdField = StorekeeperField.Fields.First(f => f.Name == "Storekeeper_companyNumberImmutable");
+                    storekeeperIdField.Value = "1:" + values[12].Trim();
+
+                    //var Storekeeper_companyNumberImmutableField = StorekeeperField.Fields.First(f => f.Name == "Storekeeper_companyNumberImmutable");
+                    //Storekeeper_companyNumberImmutableField.Value = "1:";
+
+                    if (legalFormNom == null)
+                    {
+                        errors.Add($"Ред {rowNumber}, {storekeeperValues.After} е непозната номенклатурна стойност");
+                        continue;
+                    }
+
+                    storekeeperLegalFormEIKField.Value = legalFormNom.Code;
+                    //
 
                     string warehouseAddressFull = values[4].Trim();
 
@@ -1196,6 +1216,9 @@ namespace URegister.Areas.Public.Controllers
 
                     var warehouseAddressStreet = warehouseAddressField.Fields.First(f => f.Name == "warehouseAddress_streetImmutable");
                     var warehouseAddressCountry = warehouseAddressField.Fields.First(f => f.Name == "warehouseAddress_countryImmutable");
+                    var warehouseAddressSettlement = warehouseAddressField.Fields.First(f => f.Name == "warehouseAddress_settlementImmutable");
+
+                    warehouseAddressSettlement.Value = values[13].Trim();
 
                     warehouseAddressStreet.Value = warehouseAddressFull.Substring(warehouseAddressFull.LastIndexOf(',') + 1).Trim();
                     warehouseAddressCountry.Value = "BG";
@@ -1205,76 +1228,127 @@ namespace URegister.Areas.Public.Controllers
 
                     var supplyTypeField = viewModel.FormFields.First(f => f.Name == "supplyType");
 
-                    supplyTypeField.Value = nomenclatureList.Single(l => l.Value == values[6].Trim()).Code;
+                    var supplyNom = nomenclatureFuelList.SingleOrDefault(l => l.Value.Equals(values[6].Trim(), StringComparison.OrdinalIgnoreCase));
 
+                    if (supplyNom == null)
+                    {
+                        errors.Add($"Ред {rowNumber}, {values[6].Trim()} е непозната номенклатурна стойност");
+                        continue;
+                    }
+
+                    supplyTypeField.Value = supplyNom.Code;
+
+                    //повтроряеми
                     var NamePersonField = viewModel.FormFields.First(f => f.Name == "NamePerson");
-                    var NamePersonNameFIeld =
-                        NamePersonField.Fields.First(n => n.Name == "NamePerson_companyNameImmutable");
 
-                    NamePersonNameFIeld.Value = values[7].Trim();
-
-                    //if (!string.IsNullOrWhiteSpace(companyName))
-                    //Взимаме от Regix според #405807
-                    //{
-                    //    var companyNameField =
-                    //        company.Fields.First(f => f.Name == "PersonObliged_companyNameImmutable");
-
-                    //    string companyName = values[1];
-
-                    //    companyNameField.Value = companyName.Replace(" ЕООД", string.Empty);
-
-                    //}
-
-                    string oldIncomingNumber = values[0].Trim();
-                    string[] numberAndDate = oldIncomingNumber.Split(new char[] { '/' });
-
-
-                    var numberField = viewModel.FormFields.First(f => f.Name == "regNumber");
-                    //numberField.Value = numberAndDate[1].Replace("г.", string.Empty);
-                    numberField.Value = RemoveFirstWordAfterQuote(numberAndDate[0]);
-
-                    string entryReasonAsString = values[3].Trim();
-                    var entryReasonField = viewModel.FormFields.First(f => f.Name == "EntryReason");
-
-                    if (entryReasonAsString == "чл. 23, ал. 2")
+                    if (!string.IsNullOrWhiteSpace(values[7].Trim()))
                     {
-                        entryReasonField.Value = "1";
-                    }
-                    else if (entryReasonAsString == "чл. 23, ал. 3")
-                    {
-                        entryReasonField.Value = "2";
-                    }
-                    else if (entryReasonAsString is "чл. 23, ал. 2 и ал. 3" or "чл. 23, ал. 2 и 3" or "чл. 23, ал 2 и ал. 3")
-                    {
-                        entryReasonField.Value = "3";
-                    }
-                    else
-                    {
-                        errors.Add($"Непознато ОСНОВАНИЕ ЗА ВЪЗНИКВАНЕ НА ЗАДЪЛЖЕНИЕТО СЪГЛАСНО ЗЗНН {entryReasonAsString} ред {rowNumber}");
+                        var NamePersonValues = SplitAtLastSpace(values[7].Trim());
+
+                        var NamePersonNameField =
+                            NamePersonField.Fields.First(n => n.Name == "NamePerson_companyNameImmutable");
+
+                        var namePersonFormEIKField =
+                            NamePersonField.Fields.First(f => f.Name == "NamePerson_legalFromEIKImmutable" ||
+                                                              f.Name == "NamePerson_legalFormEIKImmutable");
+
+
+                        if (values[7].Trim().StartsWith("ДА ДРВВЗ", StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            NamePersonNameField.Value = "ДА ДРВВЗ";
+                            var namePersonFormBulstatField =
+                                NamePersonField.Fields.First(f => f.Name == "NamePerson_legalFromBulstatImmutable" ||
+                                                                  f.Name == "NamePerson_legalFormBulstatImmutable");
+                            namePersonFormBulstatField.Value = "1216";
+                        }
+                        else
+                        {
+                            var legalFormNamePersonNom = nomenclatureEIKFromList
+                                .SingleOrDefault(l =>
+                                    l.Value.Equals(NamePersonValues.After, StringComparison.OrdinalIgnoreCase));
+                            if (legalFormNamePersonNom == null)
+                            {
+                                NamePersonNameField.Value = values[7].Trim();
+                                errors.Add(
+                                    $"Ред {rowNumber}, не може да извлече правна форма от {values[7].Trim()}, да се коригира ръчно");
+                            }
+                            else
+                            {
+                                namePersonFormEIKField.Value = legalFormNamePersonNom.Code;
+                                NamePersonNameField.Value = NamePersonValues.Before;
+                            }
+                        }
                     }
 
-                    string periodAsString = values[4].Trim();
-                    var periodField = viewModel.FormFields.First(f => f.Name == "period");
+                    var NamePersonSupplyField =
+                            NamePersonField.Fields.First(n => n.Name == "NamePerson_supplyQuantityTons");
+                    NamePersonSupplyField.Value = values[8].Replace(" ", "").Replace(",", ".");
 
-                    if (periodAsString == "01.07.2024 - 30.06.2025")
+                    var RemarkField = viewModel.FormFields.First(f => f.Name == "Remark");
+                    RemarkField.Value = values[11].Trim();
+
+                    var StockQuantityField = viewModel.FormFields.First(f => f.Name == "StockQuantity");
+                    StockQuantityField.Value = values[9].Replace(" ", "").Replace(",", ".");
+
+                    var coefficientField = viewModel.FormFields.First(f => f.Name == "coefficient");
+                    coefficientField.Value = values[10].Replace(" ", "").Replace(",", ".");
+
+                    int repetitionIndex = 1;
+                    //while (dataIndex + 1 < data.Count && data[dataIndex + 1].Values.ToList()[2] == values[2])
+                    while (dataIndex + 1 < data.Count && string.IsNullOrWhiteSpace(data[dataIndex + 1].Values.ToList()[2]))
                     {
-                        periodField.Value = "1";
-                    }
-                    else if (periodAsString == "01.07.2025 - 30.06.2026")
-                    {
-                        periodField.Value = "2";
-                    }
-                    else if (periodAsString == "01.07.2026 - 30.06.2027")
-                    {
-                        periodField.Value = "3";
-                    }
-                    else if (periodAsString == "01.07.2027 - 30.06.2028")
-                    {
-                        periodField.Value = "4";
-                    }
-                    else
-                    {
-                        errors.Add($"Непознат период {periodField} ред {rowNumber}");
+                        var cloneValues = data[dataIndex + 1].Values.ToList();
+
+                        var clone = 
+                            NamePersonField.CreateRepeaterClone(RepeatedFormFieldHelperService.InsertBeforeFirstUnderscore(NamePersonField.Name, "#" + repetitionIndex));
+                        clone.Fields = NamePersonField.Fields?.Select(f => f.CreateRepeaterClone(RepeatedFormFieldHelperService.InsertBeforeFirstUnderscore(f.Name, "#" + repetitionIndex))).ToList();
+
+                        var NamePersonNameFieldClone =
+                            clone.Fields.First(n => n.Name.EndsWith("_companyNameImmutable"));
+                        var namePersonFormEIKFieldClone =
+                            clone.Fields.First(f => f.Name.EndsWith("EIKImmutable"));
+
+                        if (!string.IsNullOrWhiteSpace(cloneValues[7].Trim()))
+                        {
+                            var NamePersonValues = SplitAtLastSpace(cloneValues[7].Trim());
+                            if (cloneValues[7].Trim().StartsWith("ДА ДРВВЗ", StringComparison.InvariantCultureIgnoreCase))
+                            {
+                                NamePersonNameFieldClone.Value = "ДА ДРВВЗ";
+                                var namePersonFormBulstatField =
+                                    clone.Fields.First(f => f.Name.EndsWith("BulstatImmutable"));
+                                namePersonFormBulstatField.Value = "1216";
+                            }
+                            else
+                            {
+                                var legalFormNamePersonNom = nomenclatureEIKFromList
+                                    .SingleOrDefault(l =>
+                                        l.Value.Equals(NamePersonValues.After, StringComparison.OrdinalIgnoreCase));
+                                if (legalFormNamePersonNom == null)
+                                {
+                                    NamePersonNameFieldClone.Value = cloneValues[7].Trim();
+                                    errors.Add(
+                                        $"Ред {rowNumber + 1}, не може да извлече правна форма от {cloneValues[7].Trim()}, да се коригира ръчно");
+                                }
+                                else
+                                {
+                                    namePersonFormEIKFieldClone.Value = legalFormNamePersonNom.Code;
+                                    NamePersonNameFieldClone.Value = NamePersonValues.Before;
+                                }
+                            }
+                        }
+
+                        var NamePersonSupplyFieldClone =
+                            clone.Fields.First(n => n.Name.EndsWith("_supplyQuantityTons"));
+                        NamePersonSupplyFieldClone.Value = cloneValues[8].Replace(" ", "").Replace(",", ".");
+
+                        NamePersonField.Repetitions.Add(clone);
+
+                        RemarkField.Value += Environment.NewLine;
+                        RemarkField.Value += cloneValues[11].Trim();
+
+                        rowNumber++;
+                        dataIndex++;
+                        repetitionIndex++;
                     }
 
                     bool isViewModelValidationSuccess = await _formValidationService.ValidateViewModel(
@@ -1296,7 +1370,7 @@ namespace URegister.Areas.Public.Controllers
                         .First();
                     var stepVM = await _processService.ToProcessStepVM(Guid.Empty, null, registerServiceVM.Id,
                         serviceStep.Id,
-                        serviceStep.OrderNum, oldIncomingNumber, null, viewModel, false);
+                        serviceStep.OrderNum, null, null, viewModel, false);
                     stepVM.ProcessInfo.PreferredResultDeliveryMethod = ChannelType.OnDesk;
                     (ProcessStepVM addedStep, _) = await _processService.AddStep(
                         stepVM,
@@ -1306,7 +1380,7 @@ namespace URegister.Areas.Public.Controllers
                 }
                 catch (Exception e)
                 {
-                    _logger.LogError(e, nameof(ImportExcelFileForZZNNR0036));
+                    _logger.LogError(e, nameof(ImportExcelFileForEmergencySituationsR0030));
                     errors.Add($"ред {rowNumber}, {e.Message} {e.InnerException?.Message}. Стойности на реда: {string.Join("; ", row.Values)}");
                 }
 
@@ -1316,7 +1390,7 @@ namespace URegister.Areas.Public.Controllers
             string errorMessage = string.Join(Environment.NewLine, errors);
             string addedRowsString = string.Join(", ", addedRows);
 
-            _logger.LogInformation($"Добавени редове в {nameof(ImportExcelFileForZZNNR0036)} {addedRowsString}");
+            _logger.LogInformation($"Добавени редове в {nameof(ImportExcelFileForEmergencySituationsR0030)} {addedRowsString}");
 
             return new ContentResult
             {
@@ -1327,6 +1401,234 @@ namespace URegister.Areas.Public.Controllers
         }
 
 
+        /// <summary>
+        /// Импорт на данни за заявена услуга от файл [R00030]
+        /// </summary>
+        /// <param name="file">Pdf файл с json данни на заявена услуга.</param>
+        [HttpPost("import-excel-file-for-storage-2")]
+        [Display(Name = "Импорт на данни за заявена услуга от файл [R00030]")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> ImportExcelFileForStorage2(IFormFile file, CancellationToken cancellationToken)
+        {
+            List<string> errors = new List<string>();
+            List<int> addedRows = new List<int>();
+
+            List<Dictionary<string, string>> data = await ExcelToDictionary(file);
+
+            ServiceVM registerServiceVM = await _serviceService.GetRegisterService();
+
+            if (registerServiceVM == null)
+            {
+                return BadRequest("Не е намерена услуга за вписване или формата асоциирана с нея");
+            }
+
+            var request = new NomenclaturePublicRequest()
+            {
+                RegisterId = 0,
+                NomenclatureTypes = { "CL0057", "CL0009" },
+            };
+
+            NomenclaturePublicResponse response = await _nomenclatureGrpcClient.GetNomenclaturePublicAsync(request);
+
+            if (response.ResultStatus.Code != ResultCodes.Ok)
+            {
+                errors.Add("Не може да извлече номенклатура");
+                return new ContentResult
+                {
+                    Content = $"Не може да извлече номенклатура CL0057",
+                    ContentType = "text/plain",
+                    StatusCode = 200
+                };
+            }
+
+            var nomenclatureFuelList = response.NomenclatureTypes.Last().CodeableConcepts;
+            var nomenclatureEIKFromList = response.NomenclatureTypes.First().CodeableConcepts;
+
+            int rowNumber = 1;
+            for (int dataIndex = 0; dataIndex < data.Count; dataIndex++)
+            {
+                rowNumber++;
+                var row = data[dataIndex];
+
+                try
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        return StatusCode(499, "Request was canceled by the client.");
+                    }
+
+                    FormViewModel viewModel =
+                        await _formConfigurationPersistenceService.GetFormViewModel(registerServiceVM.FormParentId, true);
+
+                    List<string> values = row.Values.ToList();
+
+                    //todo
+                    //if (lastStorageNumber != values[2])
+                    //{
+
+                    //}
+
+                    if (string.IsNullOrWhiteSpace(values[0]))
+                    {
+                        continue;
+                    }
+
+                    //string oldIncomingNumber = values[0].Trim(new char[] { ' ', '№' });
+
+                    //ProcessVM alreadyImported = await _processService.GetProcessByOldIncomingNumber(oldIncomingNumber);
+
+                    //if (alreadyImported != null)
+                    //{
+                    //    continue;
+                    //}
+
+
+                    var RegnumberwarehouseField = viewModel.FormFields.First(f => f.Name == "warehouseNumber");
+                    RegnumberwarehouseField.Value = values[0];
+
+                    var EntryDateField = viewModel.FormFields.First(f => f.Name == "EntryDate");
+                    EntryDateField.Value = values[1].Replace("г.", "").Trim();
+
+                    var StorekeeperField = viewModel.FormFields.First(f => f.Name == "BasicData");
+                    var storekeeperValues = SplitAtLastSpace(values[2].Trim());
+
+                    var storekeeperNameField = StorekeeperField.Fields.First(f => f.Name == "BasicData_companyNameImmutable");
+                    storekeeperNameField.Value = storekeeperValues.Before;
+
+                    var storekeeperLegalFormEIKField = StorekeeperField.Fields.First(f => f.Name == "BasicData_legalFormEIKImmutable");
+                    var legalFormNom = nomenclatureEIKFromList.SingleOrDefault(l => l.Value.Equals(storekeeperValues.After, StringComparison.OrdinalIgnoreCase));
+
+                    var storekeeperIdField = StorekeeperField.Fields.First(f => f.Name == "BasicData_companyNumberImmutable");
+                    storekeeperIdField.Value = "1:" + values[3].Trim();
+
+                    var registrationNumberKeeperField = viewModel.FormFields.First(f => f.Name == "registrationNumberKeeper");
+                    registrationNumberKeeperField.Value = values[4].Trim();
+
+                    if (legalFormNom == null)
+                    {
+                        errors.Add($"Ред {rowNumber}, {storekeeperValues.After} е непозната номенклатурна стойност");
+                        continue;
+                    }
+
+                    storekeeperLegalFormEIKField.Value = legalFormNom.Code;
+                    
+                    var warehouseAddressField = viewModel.FormFields.First(f => f.Name == "warehouseAddress");
+
+                    var warehouseAddressStreet = warehouseAddressField.Fields.First(f => f.Name == "warehouseAddress_streetImmutable");
+                    var warehouseAddressCountry = warehouseAddressField.Fields.First(f => f.Name == "warehouseAddress_countryImmutable");
+                    var warehouseAddressSettlement = warehouseAddressField.Fields.First(f => f.Name == "warehouseAddress_settlementImmutable");
+                    var warehouseAddressPostCode = warehouseAddressField.Fields.First(f => f.Name == "warehouseAddress_postalCodeImmutable");
+
+                    warehouseAddressSettlement.Value = values[18].Trim();
+
+                    warehouseAddressStreet.Value = values[7].Trim();
+                    warehouseAddressCountry.Value = "BG";
+                    warehouseAddressPostCode.Value = values[6].Trim();
+
+                    var storageNumberTechSchemaField = viewModel.FormFields.First(f => f.Name == "storageNumberTechSchema");
+                    storageNumberTechSchemaField.Value = values[8].Trim();
+
+                    var RegisteredProjectCapacityField = viewModel.FormFields.First(f => f.Name == "RegisteredProjectCapacity");
+                    RegisteredProjectCapacityField.Value = values[9].Replace(",", ".").Replace(" ", "").Replace(" ", "").Trim();
+
+                    var registeredActualCapacityField = viewModel.FormFields.First(f => f.Name == "registeredActualCapacity");
+                    registeredActualCapacityField.Value = values[10].Replace(",", ".").Replace(" ", "").Replace(" ", "").Trim();
+
+                    var nonOperationalCapacityField = viewModel.FormFields.First(f => f.Name == "nonOperationalCapacity");
+                    nonOperationalCapacityField.Value = values[11].Replace(",", ".").Replace(" ", "").Replace(" ", "").Trim();
+
+                    var supplyTypeField = viewModel.FormFields.First(f => f.Name == "supplyType");
+
+                    var supplyNom = nomenclatureFuelList.SingleOrDefault(l => l.Value.Equals(values[12].Trim(), StringComparison.OrdinalIgnoreCase));
+
+                    if (supplyNom == null)
+                    {
+                        errors.Add($"Ред {rowNumber}, {values[12].Trim()} е непозната номенклатурна стойност");
+                        continue;
+                    }
+
+                    supplyTypeField.Value = supplyNom.Code;
+
+                    var ordernumberField = viewModel.FormFields.First(f => f.Name == "ordernumber");
+                    ordernumberField.Value = values[13].Trim();
+
+                    var DateofOrderField = viewModel.FormFields.First(f => f.Name == "DateofOrder");
+                    DateofOrderField.Value = values[14].Replace("г.", "").Trim();
+
+                    var lisencenumberField = viewModel.FormFields.First(f => f.Name == "lisencenumber");
+                    lisencenumberField.Value = values[15].Trim();
+
+                    var lisencedateField = viewModel.FormFields.First(f => f.Name == "lisencedate");
+                    lisencedateField.Value = values[16].Replace("г.", "").Trim();
+
+                    var RemarkField = viewModel.FormFields.First(f => f.Name == "Remark");
+                    RemarkField.Value = values[17].Trim();
+
+                    bool isViewModelValidationSuccess = await _formValidationService.ValidateViewModel(
+                            viewModel,
+                            _nomenclatureGrpcClient,
+                            await _registerService.GetCurrentRegisterId(),
+                            null,
+                            true);
+
+                    if (!isViewModelValidationSuccess)
+                    {
+                        string validationError = string.Join(',',
+                            (await _formValidationService.GetValidatedFormFieldsErrors(viewModel)));
+                        errors.Add($"ред {rowNumber}, {validationError}");
+                        continue;
+                    }
+
+                    var serviceStep = registerServiceVM.Steps.Where(x => x.StatusId == (int)ProcessStatus.Registered)
+                        .First();
+                    var stepVM = await _processService.ToProcessStepVM(Guid.Empty, null, registerServiceVM.Id,
+                        serviceStep.Id,
+                        serviceStep.OrderNum, null, null, viewModel, false);
+                    stepVM.ProcessInfo.PreferredResultDeliveryMethod = ChannelType.OnDesk;
+                    (ProcessStepVM addedStep, _) = await _processService.AddStep(
+                        stepVM,
+                        "831913661");
+
+                    addedRows.Add(rowNumber);
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, nameof(ImportExcelFileForEmergencySituationsR0030));
+                    errors.Add($"ред {rowNumber}, {e.Message} {e.InnerException?.Message}. Стойности на реда: {string.Join("; ", row.Values)}");
+                }
+
+                _processService.ClearTracker();
+            }
+
+            string errorMessage = string.Join(Environment.NewLine, errors);
+            string addedRowsString = string.Join(", ", addedRows);
+
+            _logger.LogInformation($"Добавени редове в {nameof(ImportExcelFileForEmergencySituationsR0030)} {addedRowsString}");
+
+            return new ContentResult
+            {
+                Content = $"Добавени {addedRows.Count} записи. Грешки: {Environment.NewLine}{errorMessage}",
+                ContentType = "text/plain",
+                StatusCode = 200
+            };
+        }
+
+
+        public static (string Before, string After) SplitAtLastSpace(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return (input, string.Empty);
+
+            int lastSpaceIndex = input.LastIndexOf(' ');
+
+            if (lastSpaceIndex == -1)
+                return (input, string.Empty); // No space found
+
+            string before = input.Substring(0, lastSpaceIndex);
+            string after = input.Substring(lastSpaceIndex + 1);
+
+            return (before, after);
+        }
         private static string RemoveFirstWordAfterQuote(string input)
         {
             if (string.IsNullOrEmpty(input))
@@ -1380,268 +1682,268 @@ namespace URegister.Areas.Public.Controllers
             return input.Remove(removeStart, removeLength);
         }
 
-        /// <summary>
-        /// Импорт на данни за заявена услуга от файл възстановяване на неправомерна и несъвместима държавна помощ
-        /// </summary>
-        /// <param name="file">Pdf файл с json данни на заявена услуга.</param>
-        [HttpPost("import-excel-file-for-unlawful-aid")]
-        [Display(Name = "Импорт на данни за заявена услуга от файл възстановяване")]
-        [Consumes("multipart/form-data")]
-        public async Task<IActionResult> ImportExcelFileForUnlawfulAid(IFormFile file, CancellationToken cancellationToken)
-        {
-            List<string> errors = new List<string>();
-            List<int> addedRows = new List<int>();
+        ///// <summary>
+        ///// Импорт на данни за заявена услуга от файл възстановяване на неправомерна и несъвместима държавна помощ
+        ///// </summary>
+        ///// <param name="file">Pdf файл с json данни на заявена услуга.</param>
+        //[HttpPost("import-excel-file-for-unlawful-aid")]
+        //[Display(Name = "Импорт на данни за заявена услуга от файл възстановяване")]
+        //[Consumes("multipart/form-data")]
+        //public async Task<IActionResult> ImportExcelFileForUnlawfulAid(IFormFile file, CancellationToken cancellationToken)
+        //{
+        //    List<string> errors = new List<string>();
+        //    List<int> addedRows = new List<int>();
 
-            List<Dictionary<string, string>> data = await ExcelToDictionary(file);
+        //    List<Dictionary<string, string>> data = await ExcelToDictionary(file);
 
-            ServiceVM registerServiceVM = await _serviceService.GetRegisterService();
+        //    ServiceVM registerServiceVM = await _serviceService.GetRegisterService();
 
-            if (registerServiceVM == null)
-            {
-                return BadRequest("Не е намерена услуга за вписване или формата асоциирана с нея");
-            }
+        //    if (registerServiceVM == null)
+        //    {
+        //        return BadRequest("Не е намерена услуга за вписване или формата асоциирана с нея");
+        //    }
 
-            int rowNumber = 1;
-            foreach (Dictionary<string, string> row in data)
-            {
-                rowNumber++;
+        //    int rowNumber = 1;
+        //    foreach (Dictionary<string, string> row in data)
+        //    {
+        //        rowNumber++;
 
-                try
-                {
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        return StatusCode(499, "Request was canceled by the client.");
-                    }
+        //        try
+        //        {
+        //            if (cancellationToken.IsCancellationRequested)
+        //            {
+        //                return StatusCode(499, "Request was canceled by the client.");
+        //            }
 
-                    FormViewModel viewModel =
-                        await _formConfigurationPersistenceService.GetFormViewModel(registerServiceVM.FormParentId, true);
+        //            FormViewModel viewModel =
+        //                await _formConfigurationPersistenceService.GetFormViewModel(registerServiceVM.FormParentId, true);
 
-                    List<string> values = row.Values.ToList();
+        //            List<string> values = row.Values.ToList();
 
-                    if (string.IsNullOrWhiteSpace(values[0]))
-                    {
-                        continue;
-                    }
+        //            if (string.IsNullOrWhiteSpace(values[0]))
+        //            {
+        //                continue;
+        //            }
 
-                    //string oldIncomingNumber = values[0].Trim(new char[] { ' ', '№' });
+        //            //string oldIncomingNumber = values[0].Trim(new char[] { ' ', '№' });
 
-                    //ProcessVM alreadyImported = await _processService.GetProcessByOldIncomingNumber(oldIncomingNumber);
+        //            //ProcessVM alreadyImported = await _processService.GetProcessByOldIncomingNumber(oldIncomingNumber);
 
-                    //if (alreadyImported != null)
-                    //{
-                    //    continue;
-                    //}
+        //            //if (alreadyImported != null)
+        //            //{
+        //            //    continue;
+        //            //}
 
-                    var companyOrPerson = viewModel.FormFields.First(f => f.Name == "receiversName");
+        //            var companyOrPerson = viewModel.FormFields.First(f => f.Name == "receiversName");
 
-                    string identifier = values[0].Trim();
+        //            string identifier = values[0].Trim();
 
-                    if(ValidationUtils.IsEGN(identifier))
-                    {
-                        var response = await _integrationGrpcClient.GetPersonInfoAsync(new GetPersonInfoRequest()
-                        {
-                            Pid = identifier,
-                            ContextInfo = GetRegixContextInfo()
-                        });
-                        //GetCompanyInfoResponse response = await _integrationGrpcClient.GetCompanyInfoAsync(request);
+        //            if(ValidationUtils.IsEGN(identifier))
+        //            {
+        //                var response = await _integrationGrpcClient.GetPersonInfoAsync(new GetPersonInfoRequest()
+        //                {
+        //                    Pid = identifier,
+        //                    ContextInfo = GetRegixContextInfo()
+        //                });
+        //                //GetCompanyInfoResponse response = await _integrationGrpcClient.GetCompanyInfoAsync(request);
 
-                        var pidField =
-                                companyOrPerson.Fields.First(f => f.Name == "receiversName_identifierImmutable");
-
-
-                        pidField.Value = "1:" + identifier;
-
-                        var firstName =
-                            companyOrPerson.Fields.First(f => f.Name == "receiversName_firstNameImmutable");
-
-                        firstName.Value = response.FirstName;
+        //                var pidField =
+        //                        companyOrPerson.Fields.First(f => f.Name == "receiversName_identifierImmutable");
 
 
-                        var secondName =
-                            companyOrPerson.Fields.First(f => f.Name == "receiversName_middleNameImmutable");
+        //                pidField.Value = "1:" + identifier;
 
-                        secondName.Value = response.MiddleName; 
+        //                var firstName =
+        //                    companyOrPerson.Fields.First(f => f.Name == "receiversName_firstNameImmutable");
+
+        //                firstName.Value = response.FirstName;
+
+
+        //                var secondName =
+        //                    companyOrPerson.Fields.First(f => f.Name == "receiversName_middleNameImmutable");
+
+        //                secondName.Value = response.MiddleName; 
                         
-                        var lastName =
-                            companyOrPerson.Fields.First(f => f.Name == "receiversName_lastNameImmutable");
+        //                var lastName =
+        //                    companyOrPerson.Fields.First(f => f.Name == "receiversName_lastNameImmutable");
 
-                        lastName.Value = response.LastName;
-                    }
-                    else
-                    {
-                        bool companyImported = await ImportCompany(identifier, companyOrPerson, errors, rowNumber);
+        //                lastName.Value = response.LastName;
+        //            }
+        //            else
+        //            {
+        //                bool companyImported = await ImportCompany(identifier, companyOrPerson, errors, rowNumber);
 
-                        if (!companyImported)
-                        {
-                            continue;
-                        }
-                    }
+        //                if (!companyImported)
+        //                {
+        //                    continue;
+        //                }
+        //            }
 
-                    var eudecisionField = viewModel.FormFields.First(f => f.Name == "EUdecision");
-                    var decisiconDateField = viewModel.FormFields.First(f => f.Name == "decisiconDate");
+        //            var eudecisionField = viewModel.FormFields.First(f => f.Name == "EUdecision");
+        //            var decisiconDateField = viewModel.FormFields.First(f => f.Name == "decisiconDate");
 
-                    string columnDecisionMatch = @"^(C\(\d{4}\)\d+).*?от\s*(\d{2}\.\d{2}\.\d{4})";
+        //            string columnDecisionMatch = @"^(C\(\d{4}\)\d+).*?от\s*(\d{2}\.\d{2}\.\d{4})";
 
-                    var decisionMatch = Regex.Match(values[2].Trim(),
-                        columnDecisionMatch);
+        //            var decisionMatch = Regex.Match(values[2].Trim(),
+        //                columnDecisionMatch);
 
-                    if (decisionMatch.Success)
-                    {
-                        eudecisionField.Value = decisionMatch.Groups[1].Value;   // "C(2014)6207"
-                        decisiconDateField.Value = decisionMatch.Groups[2].Value;   // "05.09.2014"
-                    }
-                    else
-                    {
-                        errors.Add($"Row {rowNumber} can't parse {values[2]}");
-                        continue;
-                    }
+        //            if (decisionMatch.Success)
+        //            {
+        //                eudecisionField.Value = decisionMatch.Groups[1].Value;   // "C(2014)6207"
+        //                decisiconDateField.Value = decisionMatch.Groups[2].Value;   // "05.09.2014"
+        //            }
+        //            else
+        //            {
+        //                errors.Add($"Row {rowNumber} can't parse {values[2]}");
+        //                continue;
+        //            }
 
-                    var administrationField = viewModel.FormFields.First(f => f.Name == "Administration");
-                    administrationField.Value = values[3].Trim().Replace("-", String.Empty);
+        //            var administrationField = viewModel.FormFields.First(f => f.Name == "Administration");
+        //            administrationField.Value = values[3].Trim().Replace("-", String.Empty);
 
-                    string returnedSum = values[4].Trim().Replace("-", String.Empty).Replace(",", ".").Replace(";", String.Empty);
+        //            string returnedSum = values[4].Trim().Replace("-", String.Empty).Replace(",", ".").Replace(";", String.Empty);
 
-                    var principalForRefundField = viewModel.FormFields.First(f => f.Name == "principalForRefund");
-                    var interestForRefundField = viewModel.FormFields.First(f => f.Name == "interestForRefund");
+        //            var principalForRefundField = viewModel.FormFields.First(f => f.Name == "principalForRefund");
+        //            var interestForRefundField = viewModel.FormFields.First(f => f.Name == "interestForRefund");
 
-                    principalForRefundField.Value = String.Empty;
-                    interestForRefundField.Value = String.Empty;
+        //            principalForRefundField.Value = String.Empty;
+        //            interestForRefundField.Value = String.Empty;
 
-                    string pattern =
-                        @"г[\p{L}]+?а[:\s]?\s*(?<principal>[\d\s]+[.,]?\d*)" +
-                        @"(?:\s*(?<interestPart>л[\p{L}]*?а|лихви)[:\s]?\s*(?<interest>[\d\s]+[.,]?\d*))?";
+        //            string pattern =
+        //                @"г[\p{L}]+?а[:\s]?\s*(?<principal>[\d\s]+[.,]?\d*)" +
+        //                @"(?:\s*(?<interestPart>л[\p{L}]*?а|лихви)[:\s]?\s*(?<interest>[\d\s]+[.,]?\d*))?";
 
-                    Match match = Regex.Match(returnedSum, pattern, RegexOptions.IgnoreCase);
+        //            Match match = Regex.Match(returnedSum, pattern, RegexOptions.IgnoreCase);
 
-                    if (match.Success)
-                    {
-                        string principalStr = match.Groups["principal"].Value;
+        //            if (match.Success)
+        //            {
+        //                string principalStr = match.Groups["principal"].Value;
 
-                        // Clean and parse principal (remove spaces)
-                        string principalClean = Regex.Replace(principalStr, @"\s+", "").Replace(",", ".");
-                        double principal = double.Parse(principalClean, NumberStyles.Any, CultureInfo.InvariantCulture);
+        //                // Clean and parse principal (remove spaces)
+        //                string principalClean = Regex.Replace(principalStr, @"\s+", "").Replace(",", ".");
+        //                double principal = double.Parse(principalClean, NumberStyles.Any, CultureInfo.InvariantCulture);
 
-                        double interest = 0;
-                        if (match.Groups["interest"].Success && match.Groups["interestPart"].Success)
-                        {
-                            string interestStr = match.Groups["interest"].Value;
-                            string interestClean = Regex.Replace(interestStr, @"\s+", "").Replace(",", ".");
-                            interest = double.Parse(interestClean, NumberStyles.Any, CultureInfo.InvariantCulture);
-                        }
-                        // If no лихва part → interest remains 0
+        //                double interest = 0;
+        //                if (match.Groups["interest"].Success && match.Groups["interestPart"].Success)
+        //                {
+        //                    string interestStr = match.Groups["interest"].Value;
+        //                    string interestClean = Regex.Replace(interestStr, @"\s+", "").Replace(",", ".");
+        //                    interest = double.Parse(interestClean, NumberStyles.Any, CultureInfo.InvariantCulture);
+        //                }
+        //                // If no лихва part → interest remains 0
 
-                        principalForRefundField.Value = "1:" + principal.ToString("F2", CultureInfo.InvariantCulture);
-                        interestForRefundField.Value = "1:" + interest.ToString("F2", CultureInfo.InvariantCulture);
-                    }
-                    else
-                    {
-                        errors.Add($"На ред {rowNumber} {returnedSum} е в неразпознавзем формат");
-                    }
+        //                principalForRefundField.Value = "1:" + principal.ToString("F2", CultureInfo.InvariantCulture);
+        //                interestForRefundField.Value = "1:" + interest.ToString("F2", CultureInfo.InvariantCulture);
+        //            }
+        //            else
+        //            {
+        //                errors.Add($"На ред {rowNumber} {returnedSum} е в неразпознавзем формат");
+        //            }
 
-                    var deadlineField = viewModel.FormFields.First(f => f.Name == "Deadline");
-                    deadlineField.Value = ReadExcelDate(values[5]);
+        //            var deadlineField = viewModel.FormFields.First(f => f.Name == "Deadline");
+        //            deadlineField.Value = ReadExcelDate(values[5]);
 
 
-                    var dateOfactField = viewModel.FormFields.First(f => f.Name == "dateOfact");
-                    dateOfactField.Value = ReadExcelDate(values[6]);
+        //            var dateOfactField = viewModel.FormFields.First(f => f.Name == "dateOfact");
+        //            dateOfactField.Value = ReadExcelDate(values[6]);
 
-                    string refundedSum = values[7].Trim().Replace("-", String.Empty).Replace(",", ".").Replace(";", String.Empty).Replace(" ", String.Empty); ;
+        //            string refundedSum = values[7].Trim().Replace("-", String.Empty).Replace(",", ".").Replace(";", String.Empty).Replace(" ", String.Empty); ;
 
-                    var principalRefundedField = viewModel.FormFields.First(f => f.Name == "principalRefunded");
-                    var interestRefundedField = viewModel.FormFields.First(f => f.Name == "interestRefunded");
-                    var taxesField = viewModel.FormFields.First(f => f.Name == "taxes");
+        //            var principalRefundedField = viewModel.FormFields.First(f => f.Name == "principalRefunded");
+        //            var interestRefundedField = viewModel.FormFields.First(f => f.Name == "interestRefunded");
+        //            var taxesField = viewModel.FormFields.First(f => f.Name == "taxes");
 
-                    principalRefundedField.Value = String.Empty;
-                    interestRefundedField.Value = String.Empty; ;
-                    taxesField.Value = String.Empty; ;
+        //            principalRefundedField.Value = String.Empty;
+        //            interestRefundedField.Value = String.Empty; ;
+        //            taxesField.Value = String.Empty; ;
 
-                    if (!string.IsNullOrWhiteSpace(refundedSum))
-                    {
-                        principalRefundedField.Value = "1:" + refundedSum;
-                    }
+        //            if (!string.IsNullOrWhiteSpace(refundedSum))
+        //            {
+        //                principalRefundedField.Value = "1:" + refundedSum;
+        //            }
 
-                    string statut = values[8].Trim();
-                    var entryReasonField = viewModel.FormFields.First(f => f.Name == "statut");
+        //            string statut = values[8].Trim();
+        //            var entryReasonField = viewModel.FormFields.First(f => f.Name == "statut");
 
-                    if (statut == "възстановява се")
-                    {
-                        entryReasonField.Value = "1";
-                    }
-                    else if (statut == "възстановена")
-                    {
-                        entryReasonField.Value = "2";
-                    }
-                    else if (statut is "невъзстановена")
-                    {
-                        entryReasonField.Value = "3";
-                    }
-                    else
-                    {
-                        errors.Add($"Непозната Номенклатурни стойности към Статут решения на ЕК {statut} ред {rowNumber}");
-                    }
+        //            if (statut == "възстановява се")
+        //            {
+        //                entryReasonField.Value = "1";
+        //            }
+        //            else if (statut == "възстановена")
+        //            {
+        //                entryReasonField.Value = "2";
+        //            }
+        //            else if (statut is "невъзстановена")
+        //            {
+        //                entryReasonField.Value = "3";
+        //            }
+        //            else
+        //            {
+        //                errors.Add($"Непозната Номенклатурни стойности към Статут решения на ЕК {statut} ред {rowNumber}");
+        //            }
 
-                    string remarks = values[9].Trim();
-                    var remarksField = viewModel.FormFields.First(f => f.Name == "Remark");
+        //            string remarks = values[9].Trim();
+        //            var remarksField = viewModel.FormFields.First(f => f.Name == "Remark");
                     
-                    //remarksField.Value = remarks.ReplaceLineEndings(String.Empty);
-                    remarksField.Value = remarks;
+        //            //remarksField.Value = remarks.ReplaceLineEndings(String.Empty);
+        //            remarksField.Value = remarks;
 
-                    string remarksConfidential = values[10].Trim();
-                    var ConfidentialNoteField = viewModel.FormFields.FirstOrDefault(f => f.Name == "ConfidentialNote");
+        //            string remarksConfidential = values[10].Trim();
+        //            var ConfidentialNoteField = viewModel.FormFields.FirstOrDefault(f => f.Name == "ConfidentialNote");
 
-                    if (ConfidentialNoteField != null)
-                    {
-                        //ConfidentialNoteField.Value = remarksConfidential.ReplaceLineEndings(String.Empty);
-                        ConfidentialNoteField.Value = remarksConfidential;
-                    }
+        //            if (ConfidentialNoteField != null)
+        //            {
+        //                //ConfidentialNoteField.Value = remarksConfidential.ReplaceLineEndings(String.Empty);
+        //                ConfidentialNoteField.Value = remarksConfidential;
+        //            }
 
-                    bool isViewModelValidationSuccess = await _formValidationService.ValidateViewModel(
-                            viewModel,
-                            _nomenclatureGrpcClient,
-                            await _registerService.GetCurrentRegisterId(),
-                            null,
-                            true);
+        //            bool isViewModelValidationSuccess = await _formValidationService.ValidateViewModel(
+        //                    viewModel,
+        //                    _nomenclatureGrpcClient,
+        //                    await _registerService.GetCurrentRegisterId(),
+        //                    null,
+        //                    true);
 
-                    if (!isViewModelValidationSuccess)
-                    {
-                        string validationError = string.Join(',',
-                            (await _formValidationService.GetValidatedFormFieldsErrors(viewModel)));
-                        errors.Add($"ред {rowNumber}, {validationError}");
-                        continue;
-                    }
+        //            if (!isViewModelValidationSuccess)
+        //            {
+        //                string validationError = string.Join(',',
+        //                    (await _formValidationService.GetValidatedFormFieldsErrors(viewModel)));
+        //                errors.Add($"ред {rowNumber}, {validationError}");
+        //                continue;
+        //            }
 
-                    var serviceStep = registerServiceVM.Steps.Where(x => x.StatusId == (int)ProcessStatus.Registered)
-                        .First();
-                    var stepVM = await _processService.ToProcessStepVM(Guid.Empty, null, registerServiceVM.Id,
-                        serviceStep.Id,
-                        serviceStep.OrderNum, null, null, viewModel, false);
-                    stepVM.ProcessInfo.PreferredResultDeliveryMethod = ChannelType.OnDesk;
-                    (ProcessStepVM addedStep, _) = await _processService.AddStep(
-                        stepVM,
-                        "000695406");
+        //            var serviceStep = registerServiceVM.Steps.Where(x => x.StatusId == (int)ProcessStatus.Registered)
+        //                .First();
+        //            var stepVM = await _processService.ToProcessStepVM(Guid.Empty, null, registerServiceVM.Id,
+        //                serviceStep.Id,
+        //                serviceStep.OrderNum, null, null, viewModel, false);
+        //            stepVM.ProcessInfo.PreferredResultDeliveryMethod = ChannelType.OnDesk;
+        //            (ProcessStepVM addedStep, _) = await _processService.AddStep(
+        //                stepVM,
+        //                "000695406");
 
-                    addedRows.Add(rowNumber);
-                }
-                catch (Exception e)
-                {
-                    _logger.LogError(e, nameof(ImportExcelFileForZZNNR0036));
-                    errors.Add($"ред {rowNumber}, {e.Message} {e.InnerException?.Message}. Стойности на реда: {string.Join("; ", row.Values)}");
-                }
+        //            addedRows.Add(rowNumber);
+        //        }
+        //        catch (Exception e)
+        //        {
+        //            _logger.LogError(e, nameof(ImportExcelFileForZZNNR0036));
+        //            errors.Add($"ред {rowNumber}, {e.Message} {e.InnerException?.Message}. Стойности на реда: {string.Join("; ", row.Values)}");
+        //        }
 
-                _processService.ClearTracker();
-            }
+        //        _processService.ClearTracker();
+        //    }
 
-            string errorMessage = string.Join(Environment.NewLine, errors);
-            string addedRowsString = string.Join(", ", addedRows);
+        //    string errorMessage = string.Join(Environment.NewLine, errors);
+        //    string addedRowsString = string.Join(", ", addedRows);
 
-            _logger.LogInformation($"Добавени редове в {nameof(ImportExcelFileForZZNNR0036)} {addedRowsString}");
+        //    _logger.LogInformation($"Добавени редове в {nameof(ImportExcelFileForZZNNR0036)} {addedRowsString}");
 
-            return new ContentResult
-            {
-                Content = $"Добавени {addedRows.Count} записи. Грешки: {Environment.NewLine}{errorMessage}",
-                ContentType = "text/plain",
-                StatusCode = 200
-            };
-        }
+        //    return new ContentResult
+        //    {
+        //        Content = $"Добавени {addedRows.Count} записи. Грешки: {Environment.NewLine}{errorMessage}",
+        //        ContentType = "text/plain",
+        //        StatusCode = 200
+        //    };
+        //}
     }
 }

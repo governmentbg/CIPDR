@@ -120,7 +120,15 @@ namespace URegister.Core.Services
                     repeaterParent.Repetitions!.Add(clonedParent);
                 }
 
-                var repeaterParentEquivalentSubfield = repeaterParent.Fields!.First(f => f.Name == $"{repeaterParentName}_{restOfName}");
+                string parentSubfieldForCloningName = $"{repeaterParentName}_{restOfName}";
+                var repeaterParentEquivalentSubfield = repeaterParent.Fields!.FirstOrDefault(f => f.Name == parentSubfieldForCloningName);
+
+                if (repeaterParentEquivalentSubfield == null)
+                {
+                    _logger.LogError($"Не е намерен елемент с име {parentSubfieldForCloningName} в конфигурацията в {nameof(HandleValueDistributionForRepeatingValues)}");
+                    return;
+                }
+
                 var clone = repeaterParentEquivalentSubfield.CreateRepeaterClone(postedName, postedValue);
                 clonedParent.Fields!.Add(clone);
             }

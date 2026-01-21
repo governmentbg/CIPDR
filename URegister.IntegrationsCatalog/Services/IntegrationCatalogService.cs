@@ -26,16 +26,19 @@ public class IntegrationCatalogService : IntegrationGrpc.IntegrationGrpcBase
     private readonly NomenclatureGrpc.NomenclatureGrpcClient _nomenclatureGrpcClient;
     private readonly ILogger<IntegrationCatalogService> _logger;
     private readonly IEDeliveryService edeliveryService;
+    private readonly IEMailService mailService;
 
     public IntegrationCatalogService(
         IRegixClient regixClient,
         NomenclatureGrpc.NomenclatureGrpcClient nomenclatureGrpcClient,
         IEDeliveryService edeliveryService,
+        IEMailService mailService,
         ILogger<IntegrationCatalogService> logger)
     {
         _regixClient = regixClient;
         _nomenclatureGrpcClient = nomenclatureGrpcClient;
         this.edeliveryService = edeliveryService;
+        this.mailService = mailService;
         _logger = logger;
     }
 
@@ -300,4 +303,20 @@ public class IntegrationCatalogService : IntegrationGrpc.IntegrationGrpcBase
         }
         return reply;
     }
+
+    public override async Task<Common.ResultStatus> SendEmailForSrok(EMailForSrokRequest request, ServerCallContext context)
+    {
+        var reply = CommonGrpcHelper.CreateStatusOK();
+        try
+        {
+            await mailService.SendEMailsForSrok(request.RegisterCode, request.TenantId, request.ProcessId, request.Subject, request.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            reply = CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+        return reply;
+    }
+
 }

@@ -42,6 +42,8 @@ namespace URegister.RegistersCatalog.Services
                 Code = r.Code,
                 LegalBasis = r.LegalBasis,
                 Name = r.Name,
+                NameEn = r.NameEn,
+                NameEDelivery = r.NameEDelivery,
                 Description = r.Description,
                 EntryType = r.TypeEntry,
                 IdentitySecurityLevel = r.IdentitySecurityLevel,
@@ -126,7 +128,8 @@ namespace URegister.RegistersCatalog.Services
                  {
                      Id = x.Register.Id,
                      Code = x.Register.Code,
-                     Name = x.Register.Name
+                     Name = x.Register.Name,
+                     NameEDelivery = x.Register.NameEDelivery
                  })
                  .GroupBy(x => x.Id)
                  .Select(g => g.First())
@@ -209,6 +212,8 @@ namespace URegister.RegistersCatalog.Services
                 Id = x.Id,
                 Code = x.Code,
                 Name = x.Name,
+                NameEn = x.NameEn,
+                NameEDelivery = x.NameEDelivery,
                 Description = x.Description,
                 LegalBasis = x.LegalBasis,
                 Type = x.Type,
@@ -220,7 +225,9 @@ namespace URegister.RegistersCatalog.Services
                 SoleAdministrationId = x.RegisterAdministrations.Count(r => r.IsActive) != 1 ?
                     null : x.RegisterAdministrations.Single(r => r.IsActive).AdministrationId.ToString(),
                 SoleAdministrationName = x.RegisterAdministrations.Count(r => r.IsActive) != 1 ?
-                null : x.RegisterAdministrations.Single(r => r.IsActive).Administration.Name
+                null : x.RegisterAdministrations.Single(r => r.IsActive).Administration.Name,
+                SoleAdministrationNameEn = x.RegisterAdministrations.Count(r => r.IsActive) != 1 ?
+                null : x.RegisterAdministrations.Single(r => r.IsActive).Administration.NameEn
             });
 
             var countAll = 0;
@@ -258,6 +265,7 @@ namespace URegister.RegistersCatalog.Services
                                   .Where(x => x.Id == request.Id)
                                   .FirstAsync();
             register.Name = request.Name;
+            register.NameEn = request.NameEn;
             register.Description = request.Description;
             register.LegalBasis = request.LegalBasis;
             register.Type = request.Type;
@@ -361,6 +369,7 @@ namespace URegister.RegistersCatalog.Services
             }
             SetBaseAddress(register);
             register.Name = request.Name;
+            register.NameEn = request.NameEn;
             register.Description = request.Description;
             register.LegalBasis = request.LegalBasis;
             register.Type = request.Type;
@@ -376,12 +385,14 @@ namespace URegister.RegistersCatalog.Services
                 {
                     Uic = administrationItem.Uic,
                     Name = administrationItem.Name,
+                    NameEn = administrationItem.NameEn,
                 };
                 await repo.AddAsync(administration);
             }
             else
             {
                 administration.Name = administrationItem.Name;
+                administration.NameEn = administrationItem.NameEn;
             }
             var registerAdministration = register.RegisterAdministrations.FirstOrDefault();
 
@@ -470,6 +481,8 @@ namespace URegister.RegistersCatalog.Services
                                 Id = x.Id.ToString(),
                                 Uic = x.Administration.Uic,
                                 Name = x.Administration.Name,
+                                NameEn = x.Administration.NameEn,
+                                NameEDelivery = x.Administration.NameEDelivery,
                                 LegalBasis = x.LegalBasis,
                                 AdministrationId = x.AdministrationId.ToString()
                             });
@@ -592,6 +605,7 @@ namespace URegister.RegistersCatalog.Services
                     Id = administration.Id.ToString(),
                     Uic = administration.Administration.Uic,
                     Name = administration.Administration.Name,
+                    NameEn = administration.Administration.NameEn,
                     LegalBasis = administration.LegalBasis,
                 };
                 administrationItem.Persons.AddRange(
@@ -773,14 +787,16 @@ namespace URegister.RegistersCatalog.Services
                 .Select(x => new
                 {
                     x.Id,
-                    x.Name
+                    x.Name,
+                    x.NameEDelivery
                 })
                 .ToListAsync();
 
             return administrations.Select(x => new AppAdministration()
             {
                 Id = x.Id.ToString(),
-                Name = x.Name
+                Name = x.Name,
+                NameEDelivery = x.NameEDelivery
             })
             .ToList();
         }
@@ -955,6 +971,7 @@ namespace URegister.RegistersCatalog.Services
                     AdministrationId = administration.Id.ToString(),
                     Name = administration.Name,
                     Uic = administration.Uic,
+                    NameEDelivery = administration.NameEDelivery
                 };
                 IList<int> registerIds = administration.RegisterAdministrations.Where(x => x.IsActive).Select(x => x.RegisterId).ToList();
                 adminictrationItem.RegisterIds.AddRange(registerIds);
@@ -974,7 +991,8 @@ namespace URegister.RegistersCatalog.Services
                                           EformCode = x.EFormCode,
                                           ServiceId = x.ServiceId,
                                           IsActive = x.IsActive,
-                                          RegisterCode = x.Register.Code
+                                          RegisterCode = x.Register.Code,
+                                          ServiceTypeId = x.ServiceTypeId,
                                       })
                                       .ToListAsync()
                 );
@@ -996,6 +1014,7 @@ namespace URegister.RegistersCatalog.Services
                 };
                 await repo.AddAsync(service);
             }
+            service.ServiceTypeId = request.ServiceTypeId;
             service.IsActive = request.IsActive;
             service.EFormCode = request.EformCode;
             service.ModifiedOn = DateTime.UtcNow;
@@ -1042,7 +1061,8 @@ namespace URegister.RegistersCatalog.Services
             {
                 Id = foundAdministration.Id.ToString(),
                 Name = foundAdministration.Name,
-                Uic = foundAdministration.Uic
+                NameEDelivery = foundAdministration.NameEDelivery,
+                Uic = foundAdministration.Uic,
             };
         }
 
@@ -1128,7 +1148,7 @@ namespace URegister.RegistersCatalog.Services
                     var calendarDay = calendarDays.Where(x => x.CurrentDate == dateFrom).FirstOrDefault();
                     if (calendarDay?.KindId == CalendarDayKind.WorkDay)
                         break;
-                    if (dateFrom.DayOfWeek != DayOfWeek.Saturday && dateFrom.DayOfWeek != DayOfWeek.Sunday)
+                    if (calendarDay == null && dateFrom.DayOfWeek != DayOfWeek.Saturday && dateFrom.DayOfWeek != DayOfWeek.Sunday)
                         break;
                 }
             }

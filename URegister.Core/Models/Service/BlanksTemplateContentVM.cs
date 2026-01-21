@@ -41,5 +41,9 @@ namespace URegister.Core.Models.Service
         /// </summary>
         public string? Content { get; set; }
 
+        /// <summary>
+        /// Генериране на регистров номер за бланката
+        /// </summary>
+        public bool HasRegisterNumber { get; set; }
     }
 }

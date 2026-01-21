@@ -404,7 +404,9 @@ namespace URegister.Core.Services
                               FormParentId = x.FormParentId,
                               SourceType = x.SourceType,
                               ServiceName = x.Service.Title,
-                              FormName = forms.Where(s => s.ParentId == x.FormParentId).Select(s => s.Title).FirstOrDefault()
+                              FormName = forms.Where(s => s.ParentId == x.FormParentId).Select(s => s.Title).FirstOrDefault(),
+                              HasRegisterNumber = x.HasRegisterNumber,
+                              HasStamp = x.HasStamp,
                           })
                           .TagWith(nameof(GetServiceList));
             var countAll = 0;
@@ -424,6 +426,7 @@ namespace URegister.Core.Services
             if (model.Id > 0)
             {
                 data = await Repo.All<BlanksTemplate>()
+                                 .Include(x => x.BlankSignatures)
                                  .Where(x => x.Id == model.Id)
                                  .FirstAsync();
             }
@@ -436,7 +439,31 @@ namespace URegister.Core.Services
             data.ServiceId = model.ServiceId;
             data.FormParentId = model.FormParentId;
             data.SourceType = model.SourceType;
+            data.HasRegisterNumber = model.HasRegisterNumber;
+            data.HasStamp = model.HasStamp;
             data.IsActive = true;
+            foreach (var signature in data.BlankSignatures)
+            {
+                signature.IsActive = model.BlankSignatures.Any(x => x.Id == signature.Id);
+            }
+            foreach (var from in model.BlankSignatures)
+            {
+                var signature = data.BlankSignatures.Where(x => x.Id == from.Id).FirstOrDefault();
+                if (signature == null)
+                {
+                    signature = new BlankSignature();
+                    data.BlankSignatures.Add(signature);
+                }
+                signature.SignByOperator = from.SignByOperator;
+                signature.RoleId = from.RoleId;
+                signature.OrderNum = from.OrderNum;
+            }
+            var orderNum = 1;
+            foreach (var signature in data.BlankSignatures.Where(x => x.IsActive).OrderBy(x => x.OrderNum))
+            {
+                signature.OrderNum = orderNum;
+                orderNum++;
+            }
             await Repo.SaveChangesAsync();
         }
 
@@ -460,8 +487,17 @@ namespace URegister.Core.Services
                               ServiceId = x.ServiceId,
                               FormParentId = x.FormParentId,
                               SourceType = x.SourceType,
+                              HasRegisterNumber = x.HasRegisterNumber,
+                              HasStamp = x.HasStamp,
+                              BlankSignatures = x.BlankSignatures.Select(s => new BlankSignatureVM
+                              {
+                                  Id = s.Id,
+                                  OrderNum = s.OrderNum,
+                                  RoleId = s.RoleId,
+                                  SignByOperator = s.SignByOperator,
+                              }).ToList()
                           })
-                          .TagWith(nameof(GetServiceList))
+                          .TagWith(nameof(GetBlankTemplate))
                           .FirstAsync();
         }
 
@@ -476,6 +512,7 @@ namespace URegister.Core.Services
                               FormParentId = x.FormParentId,
                               ServiceId = x.ServiceId,
                               SourceType= x.SourceType,
+                              HasRegisterNumber= x.HasRegisterNumber,
                               Content = x.Content
                           })
                           .TagWith(nameof(GetBlankTemplateContent))

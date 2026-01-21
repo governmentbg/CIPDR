@@ -121,6 +121,13 @@ namespace URegister.Infrastructure.Constants
         ForCoordination = 7,
         [Description("Съгласуван")]
         Coordination = 8,
+        [Description("В процес на подписване")]
+        Signing = 9,
+        [Description("Указания в процес на подписване")]
+        InstructionSigning = 10,
+        [Description("Отхвърлен в процес на подписване")]
+        RefusedSigning = 11,
+
     }
 
     public enum CodeableConceptStatus
@@ -803,7 +810,6 @@ namespace URegister.Infrastructure.Constants
         OutInstruction = 13,
         [Description("Вписване")]
         RegisterApplication = 14,
-
         [Description("Друго")]
         Other = 99,
     }
@@ -859,6 +865,11 @@ namespace URegister.Infrastructure.Constants
     }
     public static class CalendarDayKind
     {
+        public const string WorkDay = "1";
+        public const string NotWorkingDay = "2";
+    }
+    public static class DeadlineDayType
+    {
         public const string WorkDay = "1006-130001";
         public const string CalendarDay = "1006-130002";
     }
@@ -903,6 +914,33 @@ namespace URegister.Infrastructure.Constants
     {
         [Description("Нов/за изпращане")]
         ReceivedEForm = 1,
+        [Description("Предупрежедение за настъпил срок за вписване на заявление")]
+        SrokForApplication = 71,
+
+    }
+
+    public enum Currency
+    {
+        [Description("Български лев")]
+        BGN = 1,
+        [Description("Евро")]
+        EUR = 2,
+    }
+
+    public enum OpenDataPeriod
+    {
+        [Description("Не се изпраща")]
+        Not = -1,
+
+        [Description("Като администрацията")]
+        Administration = 0,
+
+        [Description("Ежедневно")]
+        Day = 1,
+        [Description("Седмично")]
+        Week = 2,
+        [Description("Седмично")]
+        Month = 3,
     }
 
     public enum Currency

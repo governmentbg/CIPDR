@@ -101,5 +101,9 @@ namespace URegister.Core.Models.User
         [DisplayName("Получаване имейл при грешка подадена е-форма")]
         public bool ReceiveEFormOnErrorNotification { get; set; }
 
+        [DisplayName("Получаване имейл при отговор на указания")]
+        public bool ReceiveInstructionResponseNotification { get; set; }
+
+
     }
 }

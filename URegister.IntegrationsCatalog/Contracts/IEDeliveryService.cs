@@ -18,5 +18,7 @@ namespace URegister.IntegrationsCatalog.Contracts
         /// <param name = "request" ></param >
         /// <returns></returns>
         Task<(List<EDeliveryProtoMessage>, int)> GetEDeliveryLogRecordsList(DatatableRequest request);
+        Task RetryEdeliveryMessages();
+        Task SendMessagesError();
     }
 }

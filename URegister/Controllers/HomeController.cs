@@ -25,6 +25,7 @@ public class HomeController : BaseController
     private readonly IProcessService processService;
     private readonly AppUserManager.AppUserManagerClient appUserManagerClient;
     private readonly IConfiguration configuration;
+    private readonly ICommonFileService commonFileService;
 
     public HomeController(
         ILogger<HomeController> logger,
@@ -33,6 +34,7 @@ public class HomeController : BaseController
         IRegisterService registerService,
         IProcessService processService,
         AppUserManager.AppUserManagerClient appUserManagerClient,
+        ICommonFileService commonFileService,
         IConfiguration configuration)
     {
         this.logger = logger;
@@ -42,6 +44,7 @@ public class HomeController : BaseController
         this.appUserManagerClient = appUserManagerClient;
         this.configuration = configuration;
         this.registerService = registerService;
+        this.commonFileService = commonFileService;
     }
 
     [Display(Name = "Преглед на начална страница")]
@@ -82,6 +85,8 @@ public class HomeController : BaseController
             var baseUrl = configuration["RegisterBaseURL"];
             model.RegisterBaseURL = baseUrl;
             model.UserAssignedProcessCount = await processService.GetUserAssignedProcessCount();
+            var userRoles = await commonFileService.UserRolesForSign();
+            model.UserAssignedProcessCount += (await commonFileService.GetFilesForSign(userRoles)).Count();
         }
         catch (Exception ex)
         {

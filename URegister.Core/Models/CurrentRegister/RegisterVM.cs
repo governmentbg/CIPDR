@@ -28,6 +28,16 @@ namespace URegister.Core.Models.CurrentRegister
         public string Name { get; set; } = null!;
 
         /// <summary>
+        /// Име на регистър
+        /// </summary>
+        [MaxLength(200, ErrorMessage = MessageConstant.StringMaxLengthValidation)]
+        [Display(Name = "Име на регистър за ССЕВ")]
+        public string? NameEDelivery { get; set; }
+
+
+
+
+        /// <summary>
         /// Описание
         /// </summary>
         [MaxLength(1000, ErrorMessage = MessageConstant.StringMaxLengthValidation)]

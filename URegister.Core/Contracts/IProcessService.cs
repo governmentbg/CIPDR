@@ -37,7 +37,7 @@ namespace URegister.Core.Contracts
         ///// <returns></returns>
         //public Task<JsonResult> GetFormData(Guid processId);
         Task<ProcessStepVM> GetFormViewModel(int serviceId, string? OldIncomingNumber, DateTime? OldIncomingDate, bool isOld);
-        Task<Process> Refuse(Guid processId, string reasonForRejection);
+        Task<(Process, BlanksTemplate?)> Refuse(Guid processId, string reasonForRejection);
         Task<ProcessStepVM> GetFormViewModelFrom(Guid fromProcessId, int serviceId);
 
         /// <summary>
@@ -77,11 +77,9 @@ namespace URegister.Core.Contracts
         Task<Process?> GetProcessForCertificate(List<FormField> formFields);
 
         Task<byte[]> GetCertificateFile(Guid id);
-        Task<bool> IsCertificateStep(int serviceStepId);
-        Task<Guid?> SaveCertificateFileDraft(Guid processId, byte[] filesAsBytes, int typeMessageId);
+        Task<Guid?> SaveCertificateFileDraft(Guid processId, byte[] filesAsBytes, int typeMessageId, int blanksTemplateId, Guid? sourceId);
         Task<byte[]> GetCertificateFileSigned(Guid processId);
         Task<List<RegisterItem>> AddRegisterItems(Process process, List<FormField> formFields, Guid processStepId, int userTimeZoneOffsetInMinutes);
-        Task SendMessageForProcess(Guid processId, byte[] filesAsBytes, int typeMessageId, string sourceId, string message);
         (string?, string?, string?) GetMPRIData(PersonRole roleId, List<FormField> formFields);
 
         /// <summary>
@@ -106,7 +104,7 @@ namespace URegister.Core.Contracts
         public Task<ProcessVM> GetProcessByOldIncomingNumber(string oldIncomingNumber);
         Task<string?> GetProcessLabel(Guid processId);
         Task<IActionResult> GetInstructionList(IDataTablesRequest request, InstructionFilterVM filter);
-        Task<(Process, Guid)> SaveInstruction(InstructionVM model);
+        Task<(Process, Guid, BlanksTemplate?)> SaveInstruction(InstructionVM model);
         Task ImportEDeliveryFile(EDeliveryMessageVM model);
         Task<InstructionResponseVM> GetInstructionResponses(Guid instructionId);
         Task<BlanksTemplate?> GetBlankOnRegister(int formParentId);
@@ -126,5 +124,13 @@ namespace URegister.Core.Contracts
         Task SetInstructionActive(Guid id);
         Task DeAssignUser(Guid processId);
         Task<IActionResult> GetProcessDeliveryList(IDataTablesRequest request, ProcessDeliveryFilterVM filter);
+
+        public Task<(ProcessStepVM, Process)> GetFormViewModel(string registerNumber);
+        Task<OutMessage> SaveMessageForProcess(Guid processId, Guid? metaFileId, int typeMessageId, Guid sourceId, string message, string? deliveryMethod, BlanksTemplate? blank);
+        Task<Process> GetProcessById(Guid id);
+        Task<BlanksTemplate?> GetBlankCertificate(int serviceIdCertificate);
+        Task SendMessageForProcess(OutMessage outMessage);
+        Task AddBlankOnRegisterNumber(Process process);
+        Task<Guid?> GetFromProcessId(string? registerNumber);
     }
 }

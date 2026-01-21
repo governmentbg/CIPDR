@@ -52,6 +52,7 @@ namespace URegister.Core.Contracts
         /// </summary>
         public bool IsGlobalAdmin { get; }
         List<Guid> CoordinationRoles { get; }
+        string CertificateNumber { get; }
 
         bool IsInRole(string role);
     }

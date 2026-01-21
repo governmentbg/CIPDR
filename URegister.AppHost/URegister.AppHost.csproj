@@ -33,8 +33,4 @@
     <ProjectReference Include="..\URegister\URegister.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Properties\" />
-  </ItemGroup>
-
 </Project>

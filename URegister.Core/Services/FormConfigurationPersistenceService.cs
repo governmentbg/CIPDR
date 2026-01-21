@@ -44,7 +44,7 @@ namespace URegister.Core.Services
             ILogger<FormConfigurationPersistenceService> logger,
             IFormFieldsLayoutService formFieldsLayoutService,
             IUserContext userContext,
-            NomenclatureGrpc.NomenclatureGrpcClient nomenclatureClient, 
+            NomenclatureGrpc.NomenclatureGrpcClient nomenclatureClient,
             IObjectStoreService objectStoreService,
             RegistersCatalogGrpc.RegistersCatalogGrpcClient registerGrpcClient,
             IRegisterService registerService) : base(repo, logger)
@@ -115,7 +115,7 @@ namespace URegister.Core.Services
                 {
                     filter = f => !f.IsActive && f.ApprovalStatus == (int)ApprovalStatus.Requested;
                 }
-                else 
+                else
                 {
                     filter = f => f.IsActive;
                 }
@@ -132,16 +132,16 @@ namespace URegister.Core.Services
                         purpose = f.Purpose,
                         waitingApproval = f.ApprovalStatus == (int)ApprovalStatus.Requested
                     });
-                        
 
-                 result.GroupBy(f => f.parentId) // Group by ParentId
-                    .Select(g => g
-                        .OrderByDescending(f => f.id)
-                        .FirstOrDefault())
-                    .Where(f => f != null);
+
+                result.GroupBy(f => f.parentId) // Group by ParentId
+                   .Select(g => g
+                       .OrderByDescending(f => f.id)
+                       .FirstOrDefault())
+                   .Where(f => f != null);
 
                 var countAll = 0;
-                (result, countAll) = request.GetResponseData(result);                
+                (result, countAll) = request.GetResponseData(result);
                 return request.GetResponseJson(result, countAll);
 
             }
@@ -149,9 +149,9 @@ namespace URegister.Core.Services
             {
                 Logger.LogError(ex, $"Проблем при зареждане на форми в {nameof(GetFormListDashboard)} за регистър с идентификатор {registerId}");
                 return null;
-            }           
+            }
         }
-        
+
         /// <summary>
         /// Връща модел на формата по родителски идентификатор
         /// </summary>
@@ -610,6 +610,29 @@ namespace URegister.Core.Services
 
                 DistributeRegisterItemValuesToFormViewModel(fieldValues, viewModel);
                 await ResolveFormFieldsValues(viewModel.FormFields, cachedNomenclatures, true);
+
+                if (!string.IsNullOrWhiteSpace(process.OldIncomingNumber))
+                {
+                    viewModel.FormFields.Add(new FormField()
+                    {
+                        Name = FormConstants.OldIncomingNumber,
+                        Value = process.OldIncomingNumber,
+                        Label = "Номер на старо вписване",
+                        Type = nameof(SimpleFormFieldType.Text)
+                    });
+                }
+
+                if (process.OldIncomingDate.HasValue)
+                {
+                    viewModel.FormFields.Add(new FormField()
+                    {
+                        Name = FormConstants.OldIncomingDate,
+                        Value = process.OldIncomingDate.Value.ConvertUtcToBGTime().ToString(FormattingConstant.NormalDateFormat),
+                        Label = "Дата на старо вписване",
+                        Type = nameof(SimpleFormFieldType.Text)
+                    });
+                }
+
                 return viewModel;
             }
             catch (Exception ex)
@@ -726,7 +749,7 @@ namespace URegister.Core.Services
                 foreach (FormField clone in originalField.Repetitions!)
                 {
                     int clonedFieldCorrectIndex = 0;
-                    for (int originalSubfieldIndex = 0; originalSubfieldIndex < originalField.Fields.Count; originalSubfieldIndex ++)
+                    for (int originalSubfieldIndex = 0; originalSubfieldIndex < originalField.Fields.Count; originalSubfieldIndex++)
                     {
                         var clonedSubfield = clone.Fields.FirstOrDefault((f =>
                             f.Label == originalField.Fields[originalSubfieldIndex].Label));
@@ -793,7 +816,7 @@ namespace URegister.Core.Services
             int take,
             string searchKey,
             string searchPattern, DateTime? toDate, DateTime? fromDate)
-        {            
+        {
             try
             {
                 bool historyNotPublic = (await _registerService.GetCurrentRegister()).HistoryNotPublic;
@@ -813,7 +836,7 @@ namespace URegister.Core.Services
 
                 Dictionary<string, FormField> valuesOfInterest = new Dictionary<string, FormField>();
 
-                AddValuesOfInterestToDictionary(formModel.FormFields, valuesOfInterest, true);
+                AddValuesOfInterestToDictionary(formModel.FormFields, valuesOfInterest, true, false, false, true);
 
                 var columnData = valuesOfInterest
                     .Select(v => new { label = v.Value.Label, fieldName = v.Key }).ToList();
@@ -847,170 +870,6 @@ namespace URegister.Core.Services
                 DateTime? toDateUTC = toDate.HasValue ? toDate.Value.ToUniversalTime().AddDays(1) : null;
                 DateTime? fromDateUTC = fromDate.HasValue ? fromDate.Value.ToUniversalTime() : null;
 
-                var processesOfInterest = 
-                    GetRegistrationProcessListQuery(administrationId, searchKey, toDateUTC, fromDateUTC, valuesOfInterest, searchPatterns);
-
-                int pageNumber;
-                int perPage;
-                if (take == 0)
-                {
-                    perPage = take = 20;
-                    skip = 0;
-                    pageNumber = 1;
-                }
-                else
-                {
-                    perPage = take;
-                    pageNumber = skip / take + 1;
-                }
-
-                var processesForPage = processesOfInterest
-                    .Skip(skip)
-                    .Take(take);
-
-                var fieldValues = await processesForPage
-                    .SelectMany(p => p.RegisterItems.Select(ri => new ProcessFieldValue
-                    {
-                        Value = ri.Value,
-                        Name = ri.Name,
-                        ProcessId = ri.ProcessId,
-                        IncomingDate = ri.Process.IncomingDate,
-                        RegisterNumber = ri.Process.RegisterNumber,
-                        ModifiedOn = ri.Process.ModifiedOn
-                    }))
-                    .Where(ri => valuesOfInterest.Keys.Contains(ri.Name))
-                    .GroupBy(ri => ri.ProcessId)
-                    .ToListAsync();
-
-                var result = await ResolveRegisterItemValues(fieldValues, valuesOfInterest, cachedNomenclatures, true);
-
-                result = result.OrderByDescending(d => (DateTime)d[nameof(Process.IncomingDate)]).ToList();
-
-                var combinedData = new
-                {
-                    searchOptions = searchOptions,
-                    columnData = columnData,
-                    data = result,
-                    metadata = new
-                    {
-                        totalRecordsFiltered = await processesOfInterest.CountAsync(), 
-                        pageNumber = pageNumber,
-                        perPage = perPage,
-                        historyNotPublic
-                    }
-                };
-
-                return new JsonResult(combinedData);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, $"Възникна грешка в {nameof(GetRegistrationProcessListWhereSubfieldsAreColumns)} за администрация с идентификатор {administrationId}");
-                var combinedData = new
-                {
-                    searchOptions = new object[]{},
-                    columnData = new object[] { },
-                    data = new object[] { },
-                    metadata = new { totalRecordsFiltered = 0 }
-                };
-
-                return new JsonResult(combinedData);
-            }
-        }
-
-        /// <summary>
-        /// Връща списък с приключени заявени услуги от тип Вписване, като стойностите на сложните полета са конкатинирани стойности на подполетата им
-        /// </summary>
-        /// ///
-        /// <param name="administrationId">Идентификатор на администрация</param>
-        /// <param name="skip">Колко записа да бъдат пропуснати</param>
-        /// <param name="take">Колко записа да бъдат взети</param>
-        /// <param name="searchKey"></param>
-        /// <param name="searchPattern"></param>
-        /// <param name="toDate">До дата на вписване, включително</param>
-        /// <param name="fromDate">От дата на вписване, включително</param>
-        /// <param name="searchToDate">До дата за търсене по критерии от тип дата</param>
-        /// <param name="searchFromDate">От дата за търсене по критерии от тип дата</param>
-        /// <returns></returns>
-        public async Task<(JsonResult, List<Dictionary<string, object>>, Dictionary<string, FormField>)> GetRegistrationProcessListWhereSubfieldsAreConcatenated(Guid administrationId, 
-            int skip,
-            int take, 
-            string searchKey,
-            string searchPattern, 
-            DateTime? toDate, 
-            DateTime? fromDate,
-            DateTime? searchToDate,
-            DateTime? searchFromDate)
-        {
-            try
-            {
-                bool historyNotPublic = (await _registerService.GetCurrentRegister()).HistoryNotPublic;
-
-                int? processFormParentId = (await Repo.AllReadonly<Service>()
-                .TagWith(nameof(GetRegistrationProcessListWhereSubfieldsAreConcatenated))
-                    .Where(p => p.ServiceTypeId == (int)ServiceTypes.Register)
-                    .SingleOrDefaultAsync())?.FormParentId;
-
-                if (processFormParentId == null)
-                {
-                    Logger.LogError($"Не намерена форма в {nameof(GetRegistrationProcessListWhereSubfieldsAreConcatenated)} за администрация с идентификатор {administrationId}");
-                    return (new JsonResult(new List<object>()), new List<Dictionary<string, object>>(), new Dictionary<string, FormField>());
-                }
-
-                FormViewModel formModel = await GetFormViewModel(processFormParentId.Value);
-
-                Dictionary<string, FormField> valuesOfInterest = new Dictionary<string, FormField>();
-                Dictionary<string, FormField> valuesOfInterestFinal = new Dictionary<string, FormField>();
-
-                AddValuesOfInterestToDictionary(formModel.FormFields, 
-                    valuesOfInterest, 
-                    true, 
-                    false, 
-                    false);
-
-                AddValuesOfInterestToDictionary(formModel.FormFields,
-                    valuesOfInterestFinal,
-                    true,
-                    false,
-                    true);
-
-                var columnData = valuesOfInterestFinal
-                    .Select(v => new { label = v.Value.Label, fieldName = v.Key }).ToList();
-                var searchOptions = valuesOfInterest
-                    .Select(v => new { label = v.Value.Label, fieldName = v.Key, type = v.Value.Type }).ToArray();
-
-                columnData.Insert(0, new { label = "Дата на последна промяна", fieldName = "ModifiedOn" });
-                columnData.Insert(0, new { label = "Номер на вписване", fieldName = "RegisterNumber" });
-               
-                var cachedNomenclatures = await CacheNomenclaturesForValuesOfInterest(valuesOfInterest);
-
-                List<string> searchPatterns = null;
-
-                bool isSearchPatternValid = (string.IsNullOrWhiteSpace(searchKey) && (searchFromDate != null || searchToDate != null)) || 
-                                            TryDetermineSearchPattern(searchKey,
-                                            searchPattern,
-                                            valuesOfInterest,
-                                            cachedNomenclatures,
-                                            out searchPatterns);
-
-                if (!isSearchPatternValid)
-                {
-                    var emptyData = new
-                    {
-                        searchOptions = new object[] { },
-                        columnData = new object[] { },
-                        data = new object[] { },
-                        metadata = new { totalRecordsFiltered = 0 }
-                    };
-
-                    return (new JsonResult(emptyData), new List<Dictionary<string, object>>(), valuesOfInterest);
-                }
-
-                DateTime? toDateUTC = toDate?.ToUniversalTime().AddDays(1);
-                DateTime? fromDateUTC = fromDate?.ToUniversalTime();
-                
-                DateTime? searchToDateUTC = searchToDate?.ToUniversalTime().AddDays(1);
-                DateTime? searchFromDateUTC = searchFromDate?.ToUniversalTime();
-
                 var processesOfInterest =
                     GetRegistrationProcessListQuery(administrationId, 
                         searchKey, 
@@ -1040,13 +899,15 @@ namespace URegister.Core.Services
                     .Take(take);
 
                 var fieldValues = await processesForPage
-                    .SelectMany(p => p.RegisterItems
-                        .Select(ri => new ProcessFieldValue { 
-                            Value = ri.Value, 
-                            Name = ri.Name, 
-                            ProcessId = ri.ProcessId, 
-                            RegisterNumber = ri.Process.RegisterNumber, 
-                            ModifiedOn = ri.Process.ModifiedOn.ConvertUtcToBGTime() }))
+                    .SelectMany(p => p.RegisterItems.Select(ri => new ProcessFieldValue
+                    {
+                        Value = ri.Value,
+                        Name = ri.Name,
+                        ProcessId = ri.ProcessId,
+                        IncomingDate = ri.Process.IncomingDate,
+                        RegisterNumber = ri.Process.RegisterNumber,
+                        RegisterDate = ri.Process.ModifiedOn
+                    }))
                     .Where(ri => valuesOfInterest.Keys.Contains(ri.Name))
                     .GroupBy(ri => ri.ProcessId)
                     .ToListAsync();
@@ -1054,6 +915,215 @@ namespace URegister.Core.Services
                 var result = await ResolveRegisterItemValues(fieldValues, valuesOfInterest, cachedNomenclatures, true);
 
                 result = result.OrderByDescending(d => (DateTime)d[nameof(Process.ModifiedOn)]).ToList();
+
+                var combinedData = new
+                {
+                    searchOptions = searchOptions,
+                    columnData = columnData,
+                    data = result,
+                    metadata = new
+                    {
+                        totalRecordsFiltered = await processesOfInterest.CountAsync(),
+                        pageNumber = pageNumber,
+                        perPage = perPage,
+                        historyNotPublic
+                    }
+                };
+
+                return new JsonResult(combinedData);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, $"Възникна грешка в {nameof(GetRegistrationProcessListWhereSubfieldsAreColumns)} за администрация с идентификатор {administrationId}");
+                var combinedData = new
+                {
+                    searchOptions = new object[] { },
+                    columnData = new object[] { },
+                    data = new object[] { },
+                    metadata = new { totalRecordsFiltered = 0 }
+                };
+
+                return new JsonResult(combinedData);
+            }
+        }
+
+        /// <summary>
+        /// Връща списък с приключени заявени услуги от тип Вписване, като стойностите на сложните полета са конкатинирани стойности на подполетата им
+        /// </summary>
+        /// ///
+        /// <param name="administrationId">Идентификатор на администрация</param>
+        /// <param name="skip">Колко записа да бъдат пропуснати</param>
+        /// <param name="take">Колко записа да бъдат взети</param>
+        /// <param name="searchKey"></param>
+        /// <param name="searchPattern"></param>
+        /// <param name="toDate">До дата на вписване, включително</param>
+        /// <param name="fromDate">От дата на вписване, включително</param>
+        /// <param name="searchToDate">До дата за търсене по критерии от тип дата</param>
+        /// <param name="searchFromDate">От дата за търсене по критерии от тип дата</param>
+        /// <returns></returns>
+        public async Task<(JsonResult, List<Dictionary<string, object>>, Dictionary<string, FormField>)> GetRegistrationProcessListWhereSubfieldsAreConcatenated(Guid administrationId,
+            int skip,
+            int take,
+            string searchKey,
+            string searchPattern,
+            DateTime? toDate,
+            DateTime? fromDate,
+            DateTime? searchToDate,
+            DateTime? searchFromDate)
+        {
+            try
+            {
+                bool historyNotPublic = (await _registerService.GetCurrentRegister()).HistoryNotPublic;
+
+                int? processFormParentId = (await Repo.AllReadonly<Service>()
+                .TagWith(nameof(GetRegistrationProcessListWhereSubfieldsAreConcatenated))
+                    .Where(p => p.ServiceTypeId == (int)ServiceTypes.Register)
+                    .SingleOrDefaultAsync())?.FormParentId;
+
+                if (processFormParentId == null)
+                {
+                    Logger.LogError($"Не намерена форма в {nameof(GetRegistrationProcessListWhereSubfieldsAreConcatenated)} за администрация с идентификатор {administrationId}");
+                    return (new JsonResult(new List<object>()), new List<Dictionary<string, object>>(), new Dictionary<string, FormField>());
+                }
+
+                FormViewModel formModel = await GetFormViewModel(processFormParentId.Value);
+
+                Dictionary<string, FormField> valuesOfInterestSearchCriteria = new Dictionary<string, FormField>();
+                Dictionary<string, FormField> valuesOfInterestFinal = new Dictionary<string, FormField>();
+
+                AddValuesOfInterestToDictionary(formModel.FormFields,
+                    valuesOfInterestSearchCriteria,
+                    true,
+                    false,
+                    false,
+                    true);
+
+                AddValuesOfInterestToDictionary(formModel.FormFields,
+                    valuesOfInterestFinal,
+                    true,
+                    false,
+                    true);
+
+                var columnData = valuesOfInterestFinal
+                    .Select(v => new { label = v.Value.Label, fieldName = v.Key }).ToList();
+                var searchOptions = valuesOfInterestSearchCriteria
+                    .Select(v => new { label = v.Value.Label, fieldName = v.Key, type = v.Value.Type });
+
+                bool includeOldRegisteredFilters = await Repo.AllReadonly<Process>()
+                    .AnyAsync(p => p.OldIncomingDate.HasValue || !string.IsNullOrWhiteSpace(p.OldIncomingNumber));
+
+                searchOptions =
+                    searchOptions.Append(new
+                    {
+                        label = "Номер на вписване",
+                        fieldName = FormConstants.RegisterNumber,
+                        type = nameof(SimpleFormFieldType.Text)
+                    });
+
+
+                if (includeOldRegisteredFilters)
+                {
+                   
+                    searchOptions = searchOptions.Append(new
+                    {
+                        label = "Стара дата на вписване",
+                        fieldName = FormConstants.OldIncomingDate,
+                        type = nameof(SimpleFormFieldType.Date)
+                    });
+
+                    searchOptions =
+                        searchOptions.Append(new
+                        {
+                            label = "Стар номер на вписване",
+                            fieldName = FormConstants.OldIncomingNumber,
+                            type = nameof(SimpleFormFieldType.Text)
+                        });
+                }
+
+                columnData.Insert(0, new { label = "Дата на последна промяна", fieldName = "ModifiedOn" });
+                columnData.Insert(0, new { label = "Номер на вписване", fieldName = "RegisterNumber" });
+
+                var cachedNomenclatures = await CacheNomenclaturesForValuesOfInterest(valuesOfInterestSearchCriteria);
+
+                List<string> searchPatterns = null;
+
+                bool isSearchPatternValid = (string.IsNullOrWhiteSpace(searchKey) && (searchFromDate != null || searchToDate != null)) ||
+                                            TryDetermineSearchPattern(searchKey,
+                                            searchPattern,
+                                            valuesOfInterestSearchCriteria,
+                                            cachedNomenclatures,
+                                            out searchPatterns);
+
+                if (!isSearchPatternValid)
+                {
+                    var emptyData = new
+                    {
+                        searchOptions = new object[] { },
+                        columnData = new object[] { },
+                        data = new object[] { },
+                        metadata = new { totalRecordsFiltered = 0 }
+                    };
+
+                    return (new JsonResult(emptyData), new List<Dictionary<string, object>>(), valuesOfInterestSearchCriteria);
+                }
+
+                DateTime? toDateUTC = toDate?.ToUniversalTime().AddDays(1);
+                DateTime? fromDateUTC = fromDate?.ToUniversalTime();
+
+                DateTime? searchToDateUTC = searchToDate?.ToUniversalTime().AddDays(1);
+                DateTime? searchFromDateUTC = searchFromDate?.ToUniversalTime();
+
+                var processesOfInterest =
+                    GetRegistrationProcessListQuery(administrationId,
+                        searchKey,
+                        toDateUTC,
+                        fromDateUTC,
+                        valuesOfInterestSearchCriteria,
+                        searchPatterns,
+                        searchToDateUTC,
+                        searchFromDateUTC);
+
+                int pageNumber;
+                int perPage;
+                if (take == 0)
+                {
+                    perPage = take = 20;
+                    skip = 0;
+                    pageNumber = 1;
+                }
+                else
+                {
+                    perPage = take;
+                    pageNumber = skip / take + 1;
+                }
+
+                var processesForPage = processesOfInterest
+                    .Skip(skip)
+                    .Take(take);
+
+                var fieldValues = await processesForPage
+                    .SelectMany(p => p.RegisterItems
+                        .Select(ri => new ProcessFieldValue
+                        {
+                            Value = ri.Value,
+                            Name = ri.Name,
+                            ProcessId = ri.ProcessId,
+                            RegisterNumber = ri.Process.RegisterNumber,
+                            RegisterDate = ri.Process.RegisterDate.HasValue ? ri.Process.RegisterDate.ConvertUtcToBGTime() : null,
+                            ServiceTypeId = ri.Process.Service.ServiceTypeId
+                        }))
+                    .Where(ri => valuesOfInterestSearchCriteria.Keys.Contains(ri.Name))
+                    .GroupBy(ri => ri.ProcessId)
+                    .ToListAsync();
+
+                var result = await ResolveRegisterItemValues(fieldValues, valuesOfInterestSearchCriteria, cachedNomenclatures, true);
+
+                result = result
+                    .OrderByDescending(d =>
+                        d.TryGetValue(nameof(Process.RegisterDate), out var val) && val is DateTime dt
+                            ? (DateTime?)dt
+                            : null)
+                    .ToList();
 
                 List<Dictionary<string, object>> concatenatedResult = new List<Dictionary<string, object>>();
                 foreach (Dictionary<string, object> dictionary in result)
@@ -1082,12 +1152,13 @@ namespace URegister.Core.Services
 
                     entry.Add(nameof(RegisterItem.ProcessId), dictionary[nameof(RegisterItem.ProcessId)]);
                     entry.Add(nameof(RegisterItem.Process.RegisterNumber), dictionary[nameof(RegisterItem.Process.RegisterNumber)]);
-                    entry.Add(nameof(RegisterItem.Process.ModifiedOn), dictionary[nameof(RegisterItem.Process.ModifiedOn)]);
+                    entry.Add(nameof(RegisterItem.Process.RegisterDate), dictionary[nameof(RegisterItem.Process.RegisterDate)]);
+                    entry.Add(nameof(RegisterItem.Process.Service.ServiceTypeId), dictionary[nameof(RegisterItem.Process.Service.ServiceTypeId)]);
                 }
 
                 var combinedData = new
                 {
-                    searchOptions = searchOptions,
+                    searchOptions = searchOptions.ToArray(),
                     columnData = columnData,
                     data = concatenatedResult,
                     metadata = new
@@ -1153,11 +1224,11 @@ namespace URegister.Core.Services
             }
         }
 
-        private IOrderedQueryable<Process> GetRegistrationProcessListQuery(Guid administrationId, 
-            string searchKey, 
+        private IOrderedQueryable<Process> GetRegistrationProcessListQuery(Guid administrationId,
+            string searchKey,
             DateTime? toDateUTC,
-            DateTime? fromDateUTC, 
-            Dictionary<string, FormField> valuesOfInterest, 
+            DateTime? fromDateUTC,
+            Dictionary<string, FormField> valuesOfInterest,
             List<string> searchPatterns,
             DateTime? searchToDateUTC = null,
             DateTime? searchFromDateUTC = null)
@@ -1165,34 +1236,66 @@ namespace URegister.Core.Services
 
             var query = Repo.AllReadonly<Process>()
                 .TagWith(nameof(GetRegistrationProcessListWhereSubfieldsAreColumns))
+                .Include(p => p.Service)
+                .Where(p => p.Service.ServiceTypeId == (int)ServiceTypes.Register ||
+                            p.Service.ServiceTypeId == (int)ServiceTypes.Change ||
+                            p.Service.ServiceTypeId == (int)ServiceTypes.AskForCorrectionError ||
+                            p.Service.ServiceTypeId == (int)ServiceTypes.Deletion)
                 .Where(p => p.StatusId == (int)ProcessStatus.Registered)
                 .Where(p => p.TenantId == administrationId)
-                .Where(p => !toDateUTC.HasValue || p.ModifiedOn < toDateUTC)
-                .Where(p => !fromDateUTC.HasValue || p.ModifiedOn >= fromDateUTC);
+                .Where(p => !toDateUTC.HasValue || !p.RegisterDate.HasValue || p.RegisterDate < toDateUTC)
+                .Where(p => !fromDateUTC.HasValue || !p.RegisterDate.HasValue || p.RegisterDate >= fromDateUTC);
 
             if (searchToDateUTC != null || searchFromDateUTC != null)
             {
-                query = query.Where(p => p.RegisterItems.Any(ri => valuesOfInterest.Keys.Contains(ri.Name) &&
-                                                                   ri.ProcessStepId == ri.Process.ProcessSteps
-                                                                       .OrderBy(s => s.OrderNum).LastOrDefault().Id
-                                                                   && (searchToDateUTC == null || ri.DateTimeValue < searchToDateUTC)
-                                                                   && (searchFromDateUTC == null || ri.DateTimeValue >= searchFromDateUTC)
-                ));
+                if (searchKey == FormConstants.OldIncomingDate)
+                {
+                    query = query.Where(p => p.RegisterItems.Any(ri => valuesOfInterest.Keys.Contains(ri.Name) &&
+                                                                       ri.ProcessStepId == ri.Process.ProcessSteps
+                                                                           .OrderBy(s => s.OrderNum).LastOrDefault().Id))
+                                .Where(p => p.OldIncomingDate.HasValue &&
+                                             ((!searchToDateUTC.HasValue || p.OldIncomingDate.Value < searchToDateUTC) &&
+                                              (!searchFromDateUTC.HasValue || p.OldIncomingDate.Value >= searchFromDateUTC)));
+                }
+                else
+                {
+
+                    query = query.Where(p => p.RegisterItems.Any(ri => valuesOfInterest.Keys.Contains(ri.Name) &&
+                                                                       ri.ProcessStepId == ri.Process.ProcessSteps
+                                                                           .OrderBy(s => s.OrderNum).LastOrDefault().Id
+                                                                       && (searchToDateUTC == null ||
+                                                                           ri.DateTimeValue < searchToDateUTC)
+                                                                       && (searchFromDateUTC == null ||
+                                                                           ri.DateTimeValue >= searchFromDateUTC)
+                    ));
+                }
             }
             else // searchPatterns != null
             {
-                query = query.Where(p => p.RegisterItems.Any(ri => valuesOfInterest.Keys.Contains(ri.Name) &&
-                                                                   ri.ProcessStepId == ri.Process.ProcessSteps
-                                                                       .OrderBy(s => s.OrderNum).LastOrDefault().Id
-                                                                   && (!searchPatterns.Any() || searchPatterns.Any(sp =>
-                                                                       ri.Name == searchKey &&
-                                                                       EF.Functions.ILike(ri.Value, sp)
-                                                                   ))
-                ));
+                if (searchKey == FormConstants.RegisterNumber)
+                {
+                    query = query.Where(p => searchPatterns.Any(sp => p.RegisterNumber == sp));
+                }
+                else if (searchKey == FormConstants.OldIncomingNumber)
+                {
+                    query = query.Where(p => searchPatterns.Any(sp => p.OldIncomingNumber == sp));
+                }
+                else
+                {
+                    query = query.Where(p => p.RegisterItems.Any(ri => valuesOfInterest.Keys.Contains(ri.Name) &&
+                                                                       ri.ProcessStepId == ri.Process.ProcessSteps
+                                                                           .OrderBy(s => s.OrderNum).LastOrDefault().Id
+                                                                       && (!searchPatterns.Any() ||
+                                                                           searchPatterns.Any(sp =>
+                                                                               ri.Name == searchKey &&
+                                                                               EF.Functions.ILike(ri.Value, sp)
+                                                                           ))
+                    ));
+                }
             }
 
             var processesOfInterest = query
-                .OrderByDescending(p => p.ModifiedOn);
+                .OrderByDescending(p => p.RegisterDate);
             return processesOfInterest;
         }
 
@@ -1316,6 +1419,7 @@ namespace URegister.Core.Services
 
                 form.IsActive = true;
                 form.ApprovalStatus = (int)ApprovalStatus.Approved;
+                form.ModifiedByUserId = _userContext.UserId;
 
                 List<Form> activeFormsWithSameParentId = await Repo.All<Form>()
                     .TagWith(nameof(ApproveConfiguration))
@@ -1335,29 +1439,50 @@ namespace URegister.Core.Services
         }
 
         internal static void AddValuesOfInterestToDictionary(
-            IEnumerable<FormField> formModelFields, 
-            Dictionary<string, FormField> valuesOfInterest, 
+            IEnumerable<FormField> formModelFields,
+            Dictionary<string, FormField> valuesOfInterest,
             bool onlyPublic = true,
             bool interestedInAll = false,
-            bool atComplexFieldLevel = false)
+            bool atComplexFieldLevel = false,
+            bool addParentName = false,           
+            string parentName = "")
         {
             foreach (FormField formModelFormField in formModelFields
-                         .Where(f => 
-                             (interestedInAll || f.IsColumnInDataTable) && 
+                         .Where(f =>
+                             (interestedInAll || f.IsColumnInDataTable) &&
                              (!onlyPublic || f.IsPublic)))
             {
                 if (atComplexFieldLevel || !formModelFormField.Fields.Any())
                 {
+                    if (addParentName)
+                    {
+                        AddParentLabelToFieldLabel(parentName, formModelFormField);
+                    }
+
                     valuesOfInterest.Add(formModelFormField.Name, formModelFormField);
                 }
 
                 if (!atComplexFieldLevel)
                 {
                     AddValuesOfInterestToDictionary(formModelFormField.Fields, valuesOfInterest, onlyPublic,
-                        interestedInAll, atComplexFieldLevel);
+                        interestedInAll, atComplexFieldLevel,  addParentName, formModelFormField.Label);
                 }
 
-                AddValuesOfInterestToDictionary(formModelFormField.Repetitions, valuesOfInterest, onlyPublic, interestedInAll, atComplexFieldLevel);
+                AddValuesOfInterestToDictionary(formModelFormField.Repetitions, 
+                    valuesOfInterest, 
+                    onlyPublic, 
+                    interestedInAll, 
+                    atComplexFieldLevel, 
+                    addParentName,
+                    parentName);
+            }
+        }
+
+        private static void AddParentLabelToFieldLabel(string parentLabel, FormField field)
+        {
+            if (!string.IsNullOrWhiteSpace(parentLabel))
+            {
+                field.Label = parentLabel + '➤' + field.Label;
             }
         }
 
@@ -1479,7 +1604,7 @@ namespace URegister.Core.Services
 
                 bool isSearchPatternValid = TryDetermineSearchPattern(filter.FieldName,
                     filter.SearchPattern,
-                    valuesOfInterest, 
+                    valuesOfInterest,
                     cachedNomenclatures,
                     out List<string> searchPatterns);
 
@@ -1491,7 +1616,7 @@ namespace URegister.Core.Services
                 bool isCurrentUserGlobalAdmin = _userContext.IsGlobalAdmin;
 
                 List<Guid> mprids = new List<Guid>();
-                
+
                 if (!string.IsNullOrWhiteSpace(filter.MprId))
                 {
                     var requestMPRI = new GetMasterPersonRecordIndexMessage();
@@ -1524,6 +1649,16 @@ namespace URegister.Core.Services
                     submitterIds.AddRange(responseMPRI.Items.Select(i => new Guid(i.Id)));
                 }
 
+                //Ако търсим по сложлно или повтаряемо поле в поле в справка, материализираме заявката
+                if (customViewId > 0 && filter.FieldName != null && valuesOfInterest.ContainsKey(filter.FieldName) &&
+                    !string.IsNullOrWhiteSpace(filter.SearchPattern) &&
+                    (valuesOfInterest[filter.FieldName].CanBeRepeated ||
+                    valuesOfInterest[filter.FieldName].Fields.Any()))
+                {
+                    var complexFieldSearchResult = await GetCustomViewResultsWhenSearchingForComplexField(serviceId, request, filter, isCurrentUserGlobalAdmin, mprids, submitterIds, valuesOfInterest, cachedNomenclatures);
+                    return complexFieldSearchResult;
+                }
+
                 var processesOfInterest = Repo.AllReadonly<Process>()
                     .TagWith(nameof(GetTableDataForService))
                     .Where(p => p.StatusId == (int)ProcessStatus.Registered)
@@ -1551,20 +1686,23 @@ namespace URegister.Core.Services
                 var fieldValues = await processesForPage
                     .SelectMany(p => p.RegisterItems.Select(ri => new ProcessFieldValue()
                     {
-                        Value = ri.Value, 
-                        Name = ri.Name, 
-                        ProcessId = ri.ProcessId, 
-                        ModifiedOn = ri.Process.ModifiedOn
+                        Value = ri.Value,
+                        Name = ri.Name,
+                        ProcessId = ri.ProcessId,
+                        RegisterDate = ri.Process.ModifiedOn
                     }))
-                    .Where(ri => valuesOfInterest.Keys.Contains(ri.Name) 
-                                 || valuesOfInterest.Keys.Any(k => ri.Name.StartsWith(k + "_") 
+                    .Where(ri => valuesOfInterest.Keys.Contains(ri.Name)
+                                 || valuesOfInterest.Keys.Any(k => ri.Name.StartsWith(k + "_")
                                                                    || valuesOfInterest.Keys.Any(k => ri.Name.StartsWith(k + "#"))))
                     .GroupBy(ri => ri.ProcessId)
                     .ToListAsync();
 
                 var result = await ResolveRegisterItemValues(fieldValues, valuesOfInterest, cachedNomenclatures, false);
 
-                result = result.OrderByDescending(d => (DateTime)d[nameof(Process.ModifiedOn)]).ToList();
+                result = result.OrderByDescending(d =>
+                    d.TryGetValue(nameof(Process.RegisterDate), out var val) && val is DateTime dt
+                        ? (DateTime?)dt
+                        : null).ToList();
 
                 return request.GetResponseServerPaging(result, await processesOfInterest.CountAsync());
             }
@@ -1573,6 +1711,58 @@ namespace URegister.Core.Services
                 Logger.LogError(ex, $"Възникна грешка в {nameof(GetTableDataForService)} за услуга с идентификатор {serviceId}");
                 return request.GetResponseServerPaging(new List<object>(), 0);
             }
+        }
+
+        private async Task<IActionResult> GetCustomViewResultsWhenSearchingForComplexField(int serviceId, IDataTablesRequest request,
+            CustomTableViewViewModel filter, bool isCurrentUserGlobalAdmin, List<Guid> mprids, List<Guid> submitterIds,
+            Dictionary<string, FormField> valuesOfInterest, Dictionary<string, Dictionary<string, string>> cachedNomenclatures)
+        {
+            var processesOfInterest = Repo.AllReadonly<Process>()
+                .TagWith(nameof(GetTableDataForService))
+                .Where(p => p.StatusId == (int)ProcessStatus.Registered)
+                .Where(p => isCurrentUserGlobalAdmin || p.TenantId == _userContext.AdministrationId)
+                .Where(p => serviceId == 0 || p.ServiceId == serviceId)
+                .Where(p => string.IsNullOrWhiteSpace(filter.IncomingNumber) || EF.Functions.ILike(p.IncomingNumber, "%" + filter.IncomingNumber + "%"))
+                .Where(p => string.IsNullOrWhiteSpace(filter.RegisterNumber) || EF.Functions.ILike(p.RegisterNumber, "%" + filter.RegisterNumber + "%"))
+                .Where(p => !filter.IncomingDateFrom.HasValue || p.IncomingDate >= filter.IncomingDateFrom.Value.ToUniversalTime())
+                .Where(p => !filter.IncomingDateTo.HasValue || p.IncomingDate <= filter.IncomingDateTo.Value.ToUniversalTime().AddDays(1))
+                .Where(p => string.IsNullOrWhiteSpace(filter.MprId) || mprids.Contains(p.MpriId))
+                .Where(p => string.IsNullOrWhiteSpace(filter.SubmitterId) || submitterIds.Contains(p.MpriApplicantId))
+                .Where(p => p.RegisterItems.Any(
+                    ri => valuesOfInterest.Keys.Contains(ri.Name) &&
+                          ri.ProcessStepId == ri.Process.ProcessSteps.OrderBy(s => s.OrderNum).LastOrDefault().Id
+                ))
+                .OrderByDescending(p => p.IncomingDate);
+
+            var fieldValues = await processesOfInterest
+                .SelectMany(p => p.RegisterItems.Select(ri => new ProcessFieldValue()
+                {
+                    Value = ri.Value,
+                    Name = ri.Name,
+                    ProcessId = ri.ProcessId,
+                    RegisterDate = ri.Process.ModifiedOn
+                }))
+                .Where(ri => valuesOfInterest.Keys.Contains(ri.Name)
+                             || valuesOfInterest.Keys.Any(k => ri.Name.StartsWith(k + "_")
+                                                               || valuesOfInterest.Keys.Any(k => ri.Name.StartsWith(k + "#"))))
+                .GroupBy(ri => ri.ProcessId)
+                .ToListAsync();
+
+            var result = await ResolveRegisterItemValues(fieldValues, valuesOfInterest, cachedNomenclatures, false);
+
+            result = result.Where(r => (r[filter.FieldName] as string)
+                .Contains(filter.SearchPattern, StringComparison.InvariantCultureIgnoreCase))
+                .OrderByDescending(d =>
+                    d.TryGetValue(nameof(Process.RegisterDate), out var val) && val is DateTime dt
+                        ? (DateTime?)dt
+                        : null).ToList();
+
+            var resultPage = result
+                .Skip(request.Start)
+                .Take(request.Length)
+                .ToList();
+
+            return request.GetResponseServerPaging(resultPage, result.Count);
         }
 
         private void AddValuesOfInterestToDictionary(List<FormField> formModelFormFields, Dictionary<string, FormField> valuesOfInterest, List<string> selectedColumns)
@@ -1590,8 +1780,8 @@ namespace URegister.Core.Services
         }
 
         private async Task<List<Dictionary<string, object>>> ResolveRegisterItemValues(
-            List<IGrouping<Guid, ProcessFieldValue>> fieldValues, 
-            Dictionary<string, FormField> valuesOfInterest, 
+            List<IGrouping<Guid, ProcessFieldValue>> fieldValues,
+            Dictionary<string, FormField> valuesOfInterest,
             Dictionary<string, Dictionary<string, string>> cachedNomenclatures,
             bool censorSensitiveData)
         {
@@ -1601,7 +1791,7 @@ namespace URegister.Core.Services
             List<Dictionary<string, object>> result = new List<Dictionary<string, object>>();
             foreach (var registerItems in fieldValues)
             {
-                Dictionary<string, object> jsonFields = 
+                Dictionary<string, object> jsonFields =
                     valuesOfInterest.Keys.ToDictionary(k => k, k => (object)string.Empty);
 
                 foreach (var valueOfInterestPair in valuesOfInterest)
@@ -1659,7 +1849,7 @@ namespace URegister.Core.Services
                                 displayValue.Append(Environment.NewLine);
                                 displayValue.Append(resolvedValue);
                                 i++;
-                                registerItemClone = 
+                                registerItemClone =
                                     registerItems.FirstOrDefault(ri => ri.Name == RepeatedFormFieldHelperService.InsertBeforeFirstUnderscore(currentField.Name, "#" + i));
                             }
                         }
@@ -1670,6 +1860,11 @@ namespace URegister.Core.Services
                     if (!jsonFields.ContainsKey(nameof(registerItem.ProcessId)))
                     {
                         jsonFields.Add(nameof(registerItem.ProcessId), registerItem.ProcessId.ToString());
+                    }
+
+                    if (!jsonFields.ContainsKey(nameof(registerItem.ServiceTypeId)))
+                    {
+                        jsonFields.Add(nameof(registerItem.ServiceTypeId), registerItem.ServiceTypeId.ToString());
                     }
 
                     if (lookForRegistryNumber)
@@ -1692,10 +1887,10 @@ namespace URegister.Core.Services
                     {
                         try
                         {
-                            if (!jsonFields.ContainsKey(nameof(registerItem.ModifiedOn)))
+                            if (!jsonFields.ContainsKey(nameof(registerItem.RegisterDate)))
                             {
-                                jsonFields.Add(nameof(registerItem.ModifiedOn),
-                                    registerItem.ModifiedOn);
+                                jsonFields.Add(nameof(registerItem.RegisterDate),
+                                    registerItem.RegisterDate);
                             }
                         }
                         catch (RuntimeBinderException)
@@ -1717,7 +1912,7 @@ namespace URegister.Core.Services
             StringBuilder complexFieldValue = new StringBuilder();
             foreach (FormField subField in currentField.Fields)
             {
-                var registerSubItem = repetitionIndex == 0 ? 
+                var registerSubItem = repetitionIndex == 0 ?
                     registerItems.FirstOrDefault(ri => ri.Name == subField.Name) :
                     registerItems.FirstOrDefault(ri => ri.Name == RepeatedFormFieldHelperService.InsertBeforeFirstUnderscore(subField.Name, "#" + repetitionIndex));
                 if (registerSubItem != null)
@@ -1811,7 +2006,7 @@ namespace URegister.Core.Services
             }
 
             //Pid
-            if(formField.Type == nameof(SimpleFormFieldType.PersonIdentifier))
+            if (formField.Type == nameof(SimpleFormFieldType.PersonIdentifier))
             {
                 if (string.IsNullOrWhiteSpace(registerItem.Value))
                 {
@@ -1823,7 +2018,7 @@ namespace URegister.Core.Services
 
                 string pidResult = ((PidTypes)int.Parse((string)splitValue[0])).GetDescription() + ":" + Enumerable.Last<string>(splitValue);
 
-                if(censorSensitiveData)
+                if (censorSensitiveData)
                 {
                     pidResult = FormFieldsLayoutService.MaskAfterColonKeepingFirstTwo(pidResult);//#401315
                 }
@@ -1850,7 +2045,7 @@ namespace URegister.Core.Services
             {
                 if (string.IsNullOrWhiteSpace(registerItem.Value))
                 {
-                    return registerItem.Value;                            
+                    return registerItem.Value;
                 }
 
                 return BGCurrencyService.RegistryItemValueToPublicText(registerItem.Value);
@@ -1872,33 +2067,69 @@ namespace URegister.Core.Services
 
         public static string FormatInvariantToBg(string invariantNumber)
         {
-            // Step 1: Parse using InvariantCulture (accepts "12345.678" or "12345,678")
+            if (string.IsNullOrWhiteSpace(invariantNumber))
+            {
+                return string.Empty;
+            }
+
+            // Step 1: Parse using InvariantCulture
             if (!decimal.TryParse(invariantNumber, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal value))
                 throw new FormatException($"Cannot parse '{invariantNumber}' as a number.");
 
-            // Step 2: Count how many digits were after the decimal point in the original string
-            int decimalPlaces = 0;
+            // Step 2: Split into integer and fractional parts based on original string separators
+            string integerPartStr;
+            string fractionalPartStr = "";
+
             int dotPos = invariantNumber.IndexOf('.');
-            if (dotPos >= 0 && dotPos < invariantNumber.Length - 1)
+            int commaPos = invariantNumber.IndexOf(',');
+
+            int decimalSeparatorPos = dotPos >= 0 ? dotPos : commaPos;
+
+            if (decimalSeparatorPos >= 0)
             {
-                // Count digits after the dot (ignore trailing zeros only if you want, here we keep them all)
-                decimalPlaces = invariantNumber.Length - dotPos - 1;
+                integerPartStr = invariantNumber.Substring(0, decimalSeparatorPos);
+                fractionalPartStr = invariantNumber.Substring(decimalSeparatorPos + 1);
             }
-            // If the source used comma as decimal separator (some invariant strings do), handle it too
             else
             {
-                int commaPos = invariantNumber.IndexOf(',');
-                if (commaPos >= 0 && commaPos < invariantNumber.Length - 1)
-                    decimalPlaces = invariantNumber.Length - commaPos - 1;
+                integerPartStr = invariantNumber;
             }
 
-            // Step 3: Format with Bulgarian culture using exactly that many decimal places
-            string format = "N" + decimalPlaces;               // N0, N1, N2, N3, ...
-            return value.ToString(format, new CultureInfo("bg-BG"));
+            // Step 3: Format integer part with Bulgarian culture (with grouping)
+            var bgCulture = new CultureInfo("bg-BG");
+            string formattedIntegerPart = long.Parse(integerPartStr).ToString("N0", bgCulture);
+
+            if (string.IsNullOrEmpty(fractionalPartStr))
+            {
+                return formattedIntegerPart;
+            }
+
+            // Step 4: Add thousand separators to fractional part in groups of 3 from left to right
+            string formattedFractionalPart = AddThousandSeparatorsToFractionalPart(fractionalPartStr, bgCulture);
+
+            // Step 5: Join with Bulgarian decimal separator (comma)
+            return formattedIntegerPart + bgCulture.NumberFormat.NumberDecimalSeparator + formattedFractionalPart;
+        }
+
+        private static string AddThousandSeparatorsToFractionalPart(string fractionalPart, CultureInfo culture)
+        {
+            // Remove any leading/trailing spaces
+            fractionalPart = fractionalPart.Trim();
+
+            // Group digits in sets of 3 from the left
+            List<string> groups = new List<string>();
+            for (int i = 0; i < fractionalPart.Length; i += 3)
+            {
+                int length = Math.Min(3, fractionalPart.Length - i);
+                groups.Add(fractionalPart.Substring(i, length));
+            }
+
+            // Join with the non-breaking space used in Bulgarian number formatting
+            return string.Join(culture.NumberFormat.NumberGroupSeparator, groups);
         }
 
         private async Task ResolveFormFieldsValues(
-            IEnumerable<FormField> fields, 
+            IEnumerable<FormField> fields,
             Dictionary<string, Dictionary<string, string>> cachedNomenclatures,
             bool censorSensitiveData)
         {
@@ -2076,6 +2307,12 @@ namespace URegister.Core.Services
                 return true;
             }
 
+            if (fieldName.StartsWith("_"))
+            {
+                result = new List<string>() { searchPattern };
+                return true;
+            }
+
             if (!valuesOfInterest.TryGetValue(fieldName, out FormField field))
             {
                 result = new List<string>();
@@ -2102,7 +2339,7 @@ namespace URegister.Core.Services
             if (field.Type == nameof(SimpleFormFieldType.City))
             {
                 result = cachedNomenclatures[NomenclatureTypes.Ekatte]
-                    .Where(n => 
+                    .Where(n =>
                         n.Value.Contains(searchPattern, StringComparison.InvariantCultureIgnoreCase))
                     .Select(v => v.Key).ToList();
 
@@ -2125,7 +2362,7 @@ namespace URegister.Core.Services
                 return result.Any();
             }
 
-            result = new List<string>() {$"%{searchPattern}%"};
+            result = new List<string>() { $"%{searchPattern}%" };
             return true;
         }
 
@@ -2346,7 +2583,7 @@ namespace URegister.Core.Services
                     {
                         result.Add(field.Name, field.Label);
                     }
-                    if(!includeComplexFields || !field.CanBeRepeated)//Първото условие гарантира, че е за "Справки"
+                    if (!includeComplexFields || !field.CanBeRepeated)//Първото условие гарантира, че е за "Справки"
                     {
                         foreach (FormField subField in field.Fields)
                         {
@@ -2377,7 +2614,7 @@ namespace URegister.Core.Services
                 List<string> unacceptableNames =
                     new List<string>();
 
-                Dictionary<string, string> flatListWithFieldNames = 
+                Dictionary<string, string> flatListWithFieldNames =
                     await GetFormFieldNamesInFlatList(formId);
 
                 string repetitionPattern = @"#\d+";
@@ -2391,7 +2628,7 @@ namespace URegister.Core.Services
                         unacceptableNames.Add(name);
                     }
                 }
-                 
+
                 return unacceptableNames;
             }
             catch (Exception e)
@@ -2524,7 +2761,7 @@ namespace URegister.Core.Services
             try
             {
                 int? processFormParentId = await GetFormParentIdOfTheRegisterService();
-                    
+
                 if (processFormParentId.HasValue)
                 {
                     return await GetFormFieldNamesInFlatListByParentId(processFormParentId.Value, true);
@@ -2722,28 +2959,28 @@ namespace URegister.Core.Services
                 .Where(c => c.FormParentId == formParentId)
                 .ToListAsync();
 
-        Dictionary<string, FieldConditions> tree = formConditions
-            .GroupBy(fc => fc.TriggeringFieldName)
-            .ToDictionary(
-                group => group.Key,
-                group => new FieldConditions
-                {
-                    FieldsToShow = new List<string>(),
-                    Conditions = group
-                        .GroupBy(fc => fc.TriggeringNomenclatureValue)
-                        .ToDictionary(
-                            innerGroup => innerGroup.Key,
-                            innerGroup => new ConditionDetails
-                            {
-                                FieldsToHide = innerGroup
-                                    .Select(fc => fc.FieldsToHide.Split(';', StringSplitOptions.RemoveEmptyEntries)
-                                        .Select(field => field.Trim())
-                                        .ToList())
-                                    .FirstOrDefault() ?? new List<string>()
-                            }
-                        )
-                }
-            );
+            Dictionary<string, FieldConditions> tree = formConditions
+                .GroupBy(fc => fc.TriggeringFieldName)
+                .ToDictionary(
+                    group => group.Key,
+                    group => new FieldConditions
+                    {
+                        FieldsToShow = new List<string>(),
+                        Conditions = group
+                            .GroupBy(fc => fc.TriggeringNomenclatureValue)
+                            .ToDictionary(
+                                innerGroup => innerGroup.Key,
+                                innerGroup => new ConditionDetails
+                                {
+                                    FieldsToHide = innerGroup
+                                        .Select(fc => fc.FieldsToHide.Split(';', StringSplitOptions.RemoveEmptyEntries)
+                                            .Select(field => field.Trim())
+                                            .ToList())
+                                        .FirstOrDefault() ?? new List<string>()
+                                }
+                            )
+                    }
+                );
 
             //Полетата за показване са комбинацция от всички полета, които някое услови крие
             foreach (var triggeringFieldPair in tree)
@@ -2848,7 +3085,7 @@ namespace URegister.Core.Services
                 {
                     return new OperationResult($"Условие с идентификатор {id} не е открито");
                 }
-               
+
                 await Repo.DeleteAsync<FormCondition>(id);
                 await Repo.SaveChangesAsync();
                 return new OperationResult();
@@ -2872,13 +3109,14 @@ namespace URegister.Core.Services
         }
 
         public class ProcessFieldValue
-{
-    public string Value { get; set; }
-    public string Name { get; set; }
-    public Guid ProcessId { get; set; }
-    public DateTime IncomingDate { get; set; }
-    public string RegisterNumber { get; set; }
-    public DateTime? ModifiedOn { get; set; }
-}
+        {
+            public string Value { get; set; }
+            public string Name { get; set; }
+            public Guid ProcessId { get; set; }
+            public DateTime IncomingDate { get; set; }
+            public string RegisterNumber { get; set; }
+            public DateTime? RegisterDate { get; set; }
+            public int ServiceTypeId { get; set; }
+        }
     }
 }

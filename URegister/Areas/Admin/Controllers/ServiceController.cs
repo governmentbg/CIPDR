@@ -118,6 +118,7 @@ namespace URegister.Areas.Admin.Controllers
                         RegisterId = registerId,
                         ServiceId = model.Id,
                         EformCode=model.EFormCode,
+                        ServiceTypeId = model.ServiceTypeId,
                         IsActive = true,
                     });
 
@@ -235,6 +236,7 @@ namespace URegister.Areas.Admin.Controllers
                     RegisterId = registerId,
                     ServiceId = id,
                     EformCode = model.EFormCode,
+                    ServiceTypeId = model.ServiceTypeId,
                     IsActive = false,
                 });
                 SetSuccessMessage("Услугата е изтрита успешно");

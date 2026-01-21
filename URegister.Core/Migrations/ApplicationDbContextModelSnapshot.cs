@@ -151,6 +151,68 @@ namespace URegister.Core.Migrations
                     b.ToTable("workflows", (string)null);
                 });
 
+            modelBuilder.Entity("URegister.Core.Data.Models.Common.BlankSignature", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id")
+                        .HasComment("Индентификатор");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BlankTemplateId")
+                        .HasColumnType("integer")
+                        .HasColumnName("blank_template_id")
+                        .HasComment("Идентификатор на бланка");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_on")
+                        .HasComment("Дата на изтриване");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active")
+                        .HasComment("Дали записът е активен");
+
+                    b.Property<Guid>("ModifiedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by_user_id")
+                        .HasComment("Идентификатор на потребителят променил последно записа");
+
+                    b.Property<DateTime>("ModifiedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("modified_on")
+                        .HasComment("Дата на последна промяна");
+
+                    b.Property<int>("OrderNum")
+                        .HasColumnType("integer")
+                        .HasColumnName("order_num")
+                        .HasComment("Поредност");
+
+                    b.Property<Guid?>("RoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_id")
+                        .HasComment("Идентификатор на роля");
+
+                    b.Property<bool>("SignByOperator")
+                        .HasColumnType("boolean")
+                        .HasColumnName("sign_by_operator")
+                        .HasComment("Подписва се от обработващия служител");
+
+                    b.HasKey("Id")
+                        .HasName("pk_blank_signature");
+
+                    b.HasIndex("BlankTemplateId")
+                        .HasDatabaseName("ix_blank_signature_blank_template_id");
+
+                    b.ToTable("blank_signature", null, t =>
+                        {
+                            t.HasComment("Поредност на подписване на бланка");
+                        });
+                });
+
             modelBuilder.Entity("URegister.Core.Data.Models.Common.BlanksTemplate", b =>
                 {
                     b.Property<int>("Id")
@@ -192,6 +254,16 @@ namespace URegister.Core.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("form_parent_id")
                         .HasComment("Идентификатор на тип форма");
+
+                    b.Property<bool>("HasRegisterNumber")
+                        .HasColumnType("boolean")
+                        .HasColumnName("has_register_number")
+                        .HasComment("Генериране на регистров номер за бланката");
+
+                    b.Property<bool>("HasStamp")
+                        .HasColumnType("boolean")
+                        .HasColumnName("has_stamp")
+                        .HasComment("Подпечатва ли се бланката");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
@@ -424,6 +496,16 @@ namespace URegister.Core.Migrations
                         .HasColumnName("id")
                         .HasComment("Идентификатор");
 
+                    b.Property<int?>("BlankSignatureId")
+                        .HasColumnType("integer")
+                        .HasColumnName("blank_signature_id")
+                        .HasComment("Идентификатор на подписване");
+
+                    b.Property<int?>("BlanksTemplateId")
+                        .HasColumnType("integer")
+                        .HasColumnName("blanks_template_id")
+                        .HasComment("Идентификатор на бланка");
+
                     b.Property<DateTime?>("DeletedOn")
                         .HasColumnType("timestamptz")
                         .HasColumnName("deleted_on")
@@ -431,7 +513,8 @@ namespace URegister.Core.Migrations
 
                     b.Property<string>("Description")
                         .HasColumnType("text")
-                        .HasColumnName("Oписание");
+                        .HasColumnName("description")
+                        .HasComment("Oписание");
 
                     b.Property<DateTime?>("EFormDateOfFill")
                         .HasColumnType("timestamptz")
@@ -477,6 +560,11 @@ namespace URegister.Core.Migrations
                         .HasColumnName("is_active")
                         .HasComment("Дали записът е активен");
 
+                    b.Property<bool>("IsStamped")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_stamped")
+                        .HasComment("Подпечатан");
+
                     b.Property<Guid>("ModifiedByUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("modified_by_user_id")
@@ -487,10 +575,30 @@ namespace URegister.Core.Migrations
                         .HasColumnName("modified_on")
                         .HasComment("Дата на последна промяна");
 
+                    b.Property<Guid?>("OutMessageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("out_message_id")
+                        .HasComment("Изпратен ли е към интегратион");
+
                     b.Property<Guid?>("ProcessId")
                         .HasColumnType("uuid")
                         .HasColumnName("process_id")
                         .HasComment("Идентификатор на заявена услуга, по-която е качен файла");
+
+                    b.Property<Guid?>("SignById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sign_by_id")
+                        .HasComment("Подписан от");
+
+                    b.Property<Guid?>("SignByRoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sign_by_role_id")
+                        .HasComment("Подписан от роля");
+
+                    b.Property<int>("SignOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sign_order")
+                        .HasComment("Поредност на подписанване");
 
                     b.Property<string>("Signature")
                         .HasMaxLength(50)
@@ -505,6 +613,15 @@ namespace URegister.Core.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_file_metadata");
+
+                    b.HasIndex("BlankSignatureId")
+                        .HasDatabaseName("ix_file_metadata_blank_signature_id");
+
+                    b.HasIndex("BlanksTemplateId")
+                        .HasDatabaseName("ix_file_metadata_blanks_template_id");
+
+                    b.HasIndex("OutMessageId")
+                        .HasDatabaseName("ix_file_metadata_out_message_id");
 
                     b.HasIndex("ProcessId")
                         .HasDatabaseName("ix_file_metadata_process_id");
@@ -1219,6 +1336,96 @@ namespace URegister.Core.Migrations
                         });
                 });
 
+            modelBuilder.Entity("URegister.Core.Data.Models.Process.OutMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasComment("Идентификатор");
+
+                    b.Property<string>("DeliveryMethod")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)")
+                        .HasColumnName("delivery_method")
+                        .HasComment("Начини на предоставяне на резултата");
+
+                    b.Property<int>("ErrorCountSend")
+                        .HasColumnType("integer")
+                        .HasColumnName("error_count_send")
+                        .HasComment("Брой повторения при грешно изпращане");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("text")
+                        .HasColumnName("error_message")
+                        .HasComment("Грешка");
+
+                    b.Property<string>("MessageText")
+                        .HasColumnType("text")
+                        .HasColumnName("message_text")
+                        .HasComment("Текст на съобщението при изпращане");
+
+                    b.Property<int>("MessageTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("message_type_id")
+                        .HasComment("Вид съобщение");
+
+                    b.Property<string>("Pid")
+                        .HasColumnType("text")
+                        .HasColumnName("pid")
+                        .HasComment("Идентификатор на получател");
+
+                    b.Property<string>("PidType")
+                        .HasColumnType("text")
+                        .HasColumnName("pid_type")
+                        .HasComment("Тип идентификатор на получател");
+
+                    b.Property<Guid?>("ProcessId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("process_id")
+                        .HasComment("Идентификатор на заявена услуга, по-която е качен файла");
+
+                    b.Property<int?>("RegisterId")
+                        .HasColumnType("integer")
+                        .HasColumnName("register_id")
+                        .HasComment("Идентификатор на регистър");
+
+                    b.Property<int?>("ServiceId")
+                        .HasColumnType("integer")
+                        .HasColumnName("service_id")
+                        .HasComment("Идентификатор на услуга");
+
+                    b.Property<Guid?>("SourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_id")
+                        .HasComment("Идентификатор на връзка");
+
+                    b.Property<int>("SourceType")
+                        .HasColumnType("integer")
+                        .HasColumnName("source_type")
+                        .HasComment("Вид връзка");
+
+                    b.Property<int>("StatusId")
+                        .HasColumnType("integer")
+                        .HasColumnName("status_id")
+                        .HasComment("Статус");
+
+                    b.Property<string>("SubjectText")
+                        .HasColumnType("text")
+                        .HasColumnName("subject_text")
+                        .HasComment("Subject на съобщението при изпращане");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id")
+                        .HasComment("Идентификатор на администрация");
+
+                    b.HasKey("Id")
+                        .HasName("pk_out_message");
+
+                    b.ToTable("out_message", (string)null);
+                });
+
             modelBuilder.Entity("URegister.Core.Data.Models.Process.Process", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1284,6 +1491,11 @@ namespace URegister.Core.Migrations
                         .HasColumnName("is_active")
                         .HasComment("Дали записът е активен");
 
+                    b.Property<bool>("IsSendEMailDeadlineDate")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_send_e_mail_deadline_date")
+                        .HasComment("Нотификация за настъпващ срок за изпълнение на услуга");
+
                     b.Property<int?>("LastServiceStepId")
                         .HasColumnType("integer")
                         .HasColumnName("last_service_step_id")
@@ -1341,6 +1553,22 @@ namespace URegister.Core.Migrations
                         .HasColumnType("text")
                         .HasColumnName("received_channel_id")
                         .HasComment("Начин на получаване на заявлението");
+
+                    b.Property<string>("RegisterCertificateNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("register_certificate_number")
+                        .HasComment("Номер на удостоверение при вписване");
+
+                    b.Property<DateTime?>("RegisterDate")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("register_date")
+                        .HasComment("Дата на вписване");
+
+                    b.Property<DateTime?>("RegisterInitDate")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("register_init_date")
+                        .HasComment("Дата на първоначално вписване");
 
                     b.Property<string>("RegisterNumber")
                         .HasMaxLength(20)
@@ -1453,6 +1681,11 @@ namespace URegister.Core.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("step_data")
                         .HasComment("Информация за стъпка");
+
+                    b.Property<int>("UserTimeZoneOffsetInMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_time_zone_offset_in_minutes")
+                        .HasComment("Минути отстъп на потребителстата времева зона от UTC");
 
                     b.HasKey("Id")
                         .HasName("pk_process_steps");
@@ -1663,6 +1896,13 @@ namespace URegister.Core.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("name")
                         .HasComment("Име на регистър");
+
+                    b.Property<string>("NameEn")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("name_en")
+                        .HasComment("Име на регистър на английски език");
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -1886,6 +2126,18 @@ namespace URegister.Core.Migrations
                         .HasConstraintName("fk_scoped_param_workflows_workflow_name");
                 });
 
+            modelBuilder.Entity("URegister.Core.Data.Models.Common.BlankSignature", b =>
+                {
+                    b.HasOne("URegister.Core.Data.Models.Common.BlanksTemplate", "BlanksTemplate")
+                        .WithMany("BlankSignatures")
+                        .HasForeignKey("BlankTemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_blank_signature_blanks_templates_blank_template_id");
+
+                    b.Navigation("BlanksTemplate");
+                });
+
             modelBuilder.Entity("URegister.Core.Data.Models.Common.BlanksTemplate", b =>
                 {
                     b.HasOne("URegister.Core.Data.Models.Common.Service", "Service")
@@ -1908,10 +2160,31 @@ namespace URegister.Core.Migrations
 
             modelBuilder.Entity("URegister.Core.Data.Models.Common.FileMetadata", b =>
                 {
-                    b.HasOne("URegister.Core.Data.Models.Process.Process", "Process")
+                    b.HasOne("URegister.Core.Data.Models.Common.BlankSignature", "BlankSignature")
                         .WithMany()
+                        .HasForeignKey("BlankSignatureId")
+                        .HasConstraintName("fk_file_metadata_blank_signature_blank_signature_id");
+
+                    b.HasOne("URegister.Core.Data.Models.Common.BlanksTemplate", "BlanksTemplate")
+                        .WithMany()
+                        .HasForeignKey("BlanksTemplateId")
+                        .HasConstraintName("fk_file_metadata_blanks_templates_blanks_template_id");
+
+                    b.HasOne("URegister.Core.Data.Models.Process.OutMessage", "OutMessage")
+                        .WithMany()
+                        .HasForeignKey("OutMessageId")
+                        .HasConstraintName("fk_file_metadata_out_message_out_message_id");
+
+                    b.HasOne("URegister.Core.Data.Models.Process.Process", "Process")
+                        .WithMany("FileMetadataList")
                         .HasForeignKey("ProcessId")
                         .HasConstraintName("fk_file_metadata_processes_process_id");
+
+                    b.Navigation("BlankSignature");
+
+                    b.Navigation("BlanksTemplate");
+
+                    b.Navigation("OutMessage");
 
                     b.Navigation("Process");
                 });
@@ -2087,6 +2360,11 @@ namespace URegister.Core.Migrations
                     b.Navigation("Rules");
                 });
 
+            modelBuilder.Entity("URegister.Core.Data.Models.Common.BlanksTemplate", b =>
+                {
+                    b.Navigation("BlankSignatures");
+                });
+
             modelBuilder.Entity("URegister.Core.Data.Models.Common.Service", b =>
                 {
                     b.Navigation("ServiceSteps");
@@ -2107,6 +2385,8 @@ namespace URegister.Core.Migrations
             modelBuilder.Entity("URegister.Core.Data.Models.Process.Process", b =>
                 {
                     b.Navigation("ChangeProcesses");
+
+                    b.Navigation("FileMetadataList");
 
                     b.Navigation("Instructions");
 

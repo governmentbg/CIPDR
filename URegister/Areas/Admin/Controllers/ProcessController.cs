@@ -3,6 +3,7 @@ using IO.HtmlToPdf.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.Routing;
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
 using URegister.Core.Contracts;
@@ -36,7 +37,8 @@ namespace URegister.Areas.Admin.Controllers
         IUserContext userContext,
         ILogger<ProcessController> logger,
         IDeadlineService deadlineService,
-        IFieldFormulaCalculationService fieldFormulaCalculationService
+        IFieldFormulaCalculationService fieldFormulaCalculationService,
+        ICommonFileService commonFileService
         ) : BaseController
     {
 
@@ -104,7 +106,7 @@ namespace URegister.Areas.Admin.Controllers
             };
             return View(nameof(Index), model);
         }
-        
+
 
         [Authorize(Roles = $"{UserRoles.Manager},{UserRoles.Editor}")]
         [Display(Name = "Зареждане на списък с указания за заявена услуга")]
@@ -162,6 +164,8 @@ namespace URegister.Areas.Admin.Controllers
             {
                 AssignedToUserId = userContext.UserId,
             };
+            var userRoles = await commonFileService.UserRolesForSign();
+            filter.ForSignProcessIds = (await commonFileService.GetFilesForSign(userRoles)).Select(x => x.ProcessId ?? Guid.Empty).ToList();
             return await processService.GetProcessList(request, filter);
         }
 
@@ -329,95 +333,53 @@ namespace URegister.Areas.Admin.Controllers
             (var model, _) = await processService.GetFormViewModel(processId, false);
             await SetViewBag(model.ServiceId);
             model.DontUploadFilesToStorage = false;
-            if (await processService.IsCertificateStep(model.ServiceStepId))
-            {
-                return RedirectToAction("Certificate", new { processId });
-            }
             return View(model);
         }
 
-        [Display(Name = "Зареждане на форма за създаване на удостоверение")]
-        public async Task<IActionResult> Certificate(Guid processId)
-        {
-            (var fileId, var message) = await MakeCertificateDraft(processId);
-            if (fileId == null)
-            {
-                SetErrorMessage($"Не намирам вписване за {message}");
-                return RedirectToAction("Index");
-            }
-            var modelVm = new CertificateVM
-            {
-                ProcessId = processId,
-                FileId = fileId ?? Guid.Empty
-            };
-            return View("Certificate", modelVm);
-        }
-
-        private async Task<(Guid?, string)> MakeCertificateDraft(Guid processId)
+        
+        private async Task<(Guid?, string, BlanksTemplate?)> MakeCertificateDraft(Guid processId)
         {
             (var modelCertificate, var processCertificate) = await processService.GetFormViewModel(processId, true);
             var process = await processService.GetProcessForCertificate(modelCertificate.FormFields);
-            if (process == null)
+            var blank = await processService.GetBlankCertificate(processCertificate.ServiceId);
+            if (process == null || blank == null)
             {
                 (var pidType, var pid, var name) = processService.GetMPRIData(PersonRole.Partida, modelCertificate.FormFields);
-                return (null, pid);
+                return (null, pid, null);
             }
             var registerItemsCertificate = await processService.AddRegisterItems(processCertificate, modelCertificate.FormFields, Guid.Empty, modelCertificate.UserTimeZoneOffsetInMinutes);
-            var html = await processTemplateService.GetProcessCertificateHtml(process, processCertificate, modelCertificate.ServiceId, registerItemsCertificate, process.RegisterItems);
+            var html = await processTemplateService.GetProcessCertificateHtml(process, processCertificate, blank, registerItemsCertificate, process.RegisterItems);
             var bytes = await (this.HttpContext.RequestServices.GetService<IIOHtmlToPdfService>() ?? throw new ArgumentNullException("pdfService")).ConvertHtmlToPdf(html, ControllerExtentions.GetPrintPDFOptions());
-            return (await processService.SaveCertificateFileDraft(processId, bytes, (int)EDeliveryMessageType.OutCertificate), string.Empty);
+            return (await processService.SaveCertificateFileDraft(processId, bytes, (int)EDeliveryMessageType.OutCertificate, blank.Id, null), string.Empty, blank);
         }
 
-        private async Task<(Guid?, string)> MakeCertificateDraftOnRegister(Guid processId, BlanksTemplate blanksTemplate)
+        private async Task<Guid?> MakeCertificateDraftOnRegister(Guid processId, BlanksTemplate blanksTemplate)
         {
             var process = await processService.GetProcessForCertificateOnRegister(processId);
-            if (process?.StatusId != (int)ProcessStatus.Registered)
+            if (process?.StatusId != (int)ProcessStatus.Registered && process?.StatusId != (int)ProcessStatus.Signing)
             {
-                return (null, string.Empty);
+                return null;
             }
             var html = await processTemplateService.GetProcessCertificateOnRegisterHtml(process, process.RegisterItems, blanksTemplate);
             var bytes = await (this.HttpContext.RequestServices.GetService<IIOHtmlToPdfService>() ?? throw new ArgumentNullException("pdfService")).ConvertHtmlToPdf(html, ControllerExtentions.GetPrintPDFOptions());
-            return (await processService.SaveCertificateFileDraft(processId, bytes, (int)EDeliveryMessageType.OutCertificate), string.Empty);
+            return await processService.SaveCertificateFileDraft(processId, bytes, (int)EDeliveryMessageType.OutCertificate, blanksTemplate.Id, null);
         }
 
-        private async Task<Guid?> MakeDraftBlankForNotRegistered(Guid processId, BlanksTemplate blanksTemplate, int typeMessageId)
+        private async Task<Guid?> MakeDraftBlankForNotRegistered(Guid processId, BlanksTemplate blanksTemplate, int typeMessageId,Guid? sourceId, string InstructionText)
         {
             (var model, var process) = await processService.GetFormViewModel(processId, true);
             var registerItems = await processService.AddRegisterItems(process, model.FormFields, Guid.Empty, model.UserTimeZoneOffsetInMinutes);
             var html = await processTemplateService.GetProcessCertificateOnRegisterHtml(process, registerItems, blanksTemplate);
+            if (string.IsNullOrEmpty(html))
+            {
+                return null;
+            }
+            html = html.Replace($"{{{{InstructionText}}}}", InstructionText);
             var bytes = await (this.HttpContext.RequestServices.GetService<IIOHtmlToPdfService>() ?? throw new ArgumentNullException("pdfService")).ConvertHtmlToPdf(html, ControllerExtentions.GetPrintPDFOptions());
-            return await processService.SaveCertificateFileDraft(processId, bytes, typeMessageId);
+            return await processService.SaveCertificateFileDraft(processId, bytes, typeMessageId, blanksTemplate.Id, sourceId);
         }
 
-        [HttpPost]
-        [Display(Name = "Подписване и запис на удостоверение")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SignCertificate(CertificateVM model)
-        {
-            (var modelStep, var process) = await processService.GetFormViewModel(model.ProcessId, false);
-            await processService.AddStep(modelStep);
-            (var fileId, var message) = await MakeCertificateDraft(model.ProcessId);
-            if (fileId == null)
-            {
-                SetErrorMessage($"Не намирам вписване за {message}");
-            }
-            else
-            {
-                var serviceModel = await service.GetService(process.ServiceId);
-                byte[] filesAsBytes = await processService.GetCertificateFile(fileId ?? Guid.Empty);
-                await processService.SendMessageForProcess(
-                    model.ProcessId, 
-                    filesAsBytes, 
-                    (int)EDeliveryMessageType.OutCertificate, 
-                    model.ProcessId.ToString(),
-                    $"По повод заявление с вх. № {process.IncomingNumber} от {process.IncomingDate:dd.MM.yyyy} г., " +
-                    $"Ви уведомяваме, че е издаден документ: {serviceModel.Name} № {process.RegisterNumber}"
-                );
-                SetSuccessMessage("Успешен запис");
-            }
-            return RedirectToAction("Index");
-        }
-
+      
         [Display(Name = "Извличане на файл на удостоверение")]
         public async Task<FileResult> GetCertificateFile(Guid fileId)
         {
@@ -455,6 +417,45 @@ namespace URegister.Areas.Admin.Controllers
             {
                 return View("PreView", model);
             }
+        }
+
+        private async Task<RedirectToActionResult?> SendOutMessageOrSign(
+            Guid processId,
+            Guid? fileId,
+            string message,
+            int messageTypeId,
+            BlanksTemplate? blank,
+            string? deliveryMethod,
+            Guid? sourceId)
+        {
+            var outMessage = await processService.SaveMessageForProcess(
+                            processId,
+                            fileId,
+                            messageTypeId,
+                            sourceId ?? processId,
+                            message,
+                            deliveryMethod,
+                            blank
+                        );
+            if (blank?.HasStamp == true && fileId != null)
+            {
+                fileId = await commonFileService.StampFile(fileId.Value);
+            }
+            if (fileId != null && blank?.BlankSignatures?.Any(x => x.SignByOperator) == true)
+            {
+                var url = Url.Action(
+                   "SendMessage",
+                   "Process",
+                    new { area = "Admin", outMessageId = outMessage.Id },
+                    Request.Scheme,
+                    Request.Host.Value);
+                return RedirectToAction("Preview", "Files", new { area = "", clearautosave = true, id = fileId, returnSignUrl = url });
+            }
+            if (fileId == null || blank?.BlankSignatures?.Any() != true)
+            {
+                await processService.SendMessageForProcess(outMessage);
+            }
+            return null;
         }
 
         /// <summary>
@@ -516,38 +517,67 @@ namespace URegister.Areas.Admin.Controllers
                         return View(model);
                     }
 
-                    (var savedModel,var process) = await processService.AddStep(model);
-                    var serviceModel = await service.GetRegisterService();
-                    if (serviceModel.Id == process.ServiceId && process.StatusId == (int)ProcessStatus.Registered)
+                    (var savedModel, var process) = await processService.AddStep(model);
+                    //var serviceModel = await service.GetRegisterService();
+                    var serviceModel = await service.GetService(process.ServiceId, true);
+                    if (serviceModel.IsForCertificateOnRegister() && (
+                          process.StatusId == (int)ProcessStatus.Registered ||
+                          process.StatusId == (int)ProcessStatus.Signing
+                        )
+                     )
                     {
                         var blankOnRegister = await processService.GetBlankOnRegister(formParentId);
-                        if (blankOnRegister != null)
+                        if (blankOnRegister?.HasRegisterNumber == true)
                         {
-                            (var fileId, var message) = await MakeCertificateDraftOnRegister(savedModel.ProcessId, blankOnRegister);
+                            await processService.AddBlankOnRegisterNumber(process);
+                        }
+                        var message1 = $"По повод заявление с вх. № {process.IncomingNumber} от {process.IncomingDate:dd.MM.yyyy} г., ";
+                        var message2 = $"Ви уведомяваме, че по заявлението е постановено вписване с регистров № {process.RegisterNumber}";
+                        Guid? fileId = null;
+                        if (!string.IsNullOrEmpty(blankOnRegister?.Content))
+                        {
+                            fileId = await MakeCertificateDraftOnRegister(savedModel.ProcessId, blankOnRegister);
                             if (fileId != null)
                             {
-                                byte[] filesAsBytes = await processService.GetCertificateFile(fileId ?? Guid.Empty);
-                                await processService.SendMessageForProcess(
-                                    savedModel.ProcessId,
-                                    filesAsBytes,
-                                    (int)EDeliveryMessageType.OutCertificate,
-                                    savedModel.ProcessId.ToString(),
-                                    $"По повод заявление с вх. № {process.IncomingNumber} от {process.IncomingDate:dd.MM.yyyy} г., " +
-                                    $"Ви уведомяваме, че е издаден документ № {process.RegisterNumber}"
-                                );
+                                message2 = $"Ви уведомяваме, че е издаден документ № {process.RegisterNumber}";
                             }
                         }
-                        else
+                        var action = await SendOutMessageOrSign(
+                            savedModel.ProcessId,
+                            fileId,
+                            message1 + message2,
+                            (int)EDeliveryMessageType.RegisterApplication,
+                            blankOnRegister,
+                            null,
+                            null
+                        );
+                        if (action != null)
                         {
-                            await processService.SendMessageForProcess(
-                                    savedModel.ProcessId,
-                                    new byte[0],
-                                    (int)EDeliveryMessageType.RegisterApplication,
-                                    savedModel.ProcessId.ToString(),
-                                    $"По повод заявление с вх. № {process.IncomingNumber} от {process.IncomingDate:dd.MM.yyyy} г., " +
-                                    $"Ви уведомяваме, че по заявлението е постановено вписване с регистров № {process.RegisterNumber}"
-                                );
+                            return action;
                         }
+                    }
+                    if (serviceModel.IsCertificate() && (
+                          process.StatusId == (int)ProcessStatus.Certificate ||
+                          process.StatusId == (int)ProcessStatus.Signing
+                        )
+                     )
+                    {
+                        (var fileId, var message, var blank) = await MakeCertificateDraft(processId);
+                        var action = await SendOutMessageOrSign(
+                            processId,
+                            fileId,
+                            $"По повод заявление с вх. № {process.IncomingNumber} от {process.IncomingDate:dd.MM.yyyy} г., " +
+                            $"Ви уведомяваме, че е издаден документ: {serviceModel.Name} № {process.RegisterNumber}",
+                            (int)EDeliveryMessageType.OutCertificate,
+                            blank,
+                            null,
+                            null
+                        );
+                        if (action != null)
+                        {
+                            return action;
+                        }
+                        
                     }
                     SetSuccessMessage("Успешен запис");
                     return RedirectToAction("Index");
@@ -586,27 +616,36 @@ namespace URegister.Areas.Admin.Controllers
 
             try
             {
-                var process = await processService.Refuse(id, reasonForRejection);
-                byte[] filesAsBytes = new byte[0];
-                var blankRefuse = await processService.GetBlankRefuse(process.Form.ParentId ?? 0);
-                if (blankRefuse != null)
+                (var process, var blankRefuse) = await processService.Refuse(id, reasonForRejection);
+                Guid? fileId = null;
+                if (!string.IsNullOrEmpty(blankRefuse?.Content))
                 {
-                    var fileId = await MakeDraftBlankForNotRegistered(process.Id, blankRefuse, (int)EDeliveryMessageType.OutRefuse);
-                    if (fileId != null)
-                    {
-                        filesAsBytes = await processService.GetCertificateFile(fileId ?? Guid.Empty);
-                    }
+                    fileId = await MakeDraftBlankForNotRegistered(process.Id, blankRefuse, (int)EDeliveryMessageType.OutRefuse, null, string.Empty);
                 }
-                await processService.SendMessageForProcess(
-                    process.Id, 
-                    filesAsBytes, 
-                    (int)EDeliveryMessageType.OutRefuse, 
-                    process.Id.ToString(),
-                    $"По повод заявление с вх. № {process.IncomingNumber} от {process.IncomingDate:dd.MM.yyyy} г., "+
-                    $"Ви уведомяваме, че по заявлението е постановен отказ за вписване на заявените обстоятелства, със следните мотиви: {reasonForRejection}");
-
+                var action = await SendOutMessageOrSign(
+                        process.Id,
+                        fileId,
+                    $"По повод заявление с вх. № {process.IncomingNumber} от {process.IncomingDate:dd.MM.yyyy} г., " +
+                    $"Ви уведомяваме, че по заявлението е постановен отказ за вписване на заявените обстоятелства" +
+                    fileId == null ? $", със следните мотиви: {reasonForRejection}." : ".",
+                    (int)EDeliveryMessageType.OutRefuse,
+                    blankRefuse,
+                    process.PreferredResultDeliveryMethod,
+                    null);
                 SetSuccessMessage("Успешно прекратяване на заявената услуга.");
-                return Json(new { success = true });
+                // Get the URL without executing the redirect
+                var urlHelper = HttpContext.RequestServices.GetRequiredService<IUrlHelperFactory>()
+                    .GetUrlHelper(ControllerContext);
+                string? redirect = null;
+                if (action != null)
+                {
+                    redirect = urlHelper.Action(
+                        action.ActionName,
+                        action.ControllerName,
+                        action.RouteValues
+                    );
+                }
+                return Json(new { success = true, redirect});
             }
             catch (Exception ex)
             {
@@ -728,7 +767,7 @@ namespace URegister.Areas.Admin.Controllers
             return null;
         }
 
-   
+
         /// <summary>
         /// Страница с табличен преглед на регистрациите по услуга
         /// </summary>
@@ -830,29 +869,29 @@ namespace URegister.Areas.Admin.Controllers
             {
                 try
                 {
-                    (var process, var sourceId) = await processService.SaveInstruction(model);
+                    (var process, var sourceId, var blankInstruction) = await processService.SaveInstruction(model);
                     byte[] filesAsBytes = new byte[0];
-                    var blankInstruction = await processService.GetBlankInstruction(process.Form.ParentId ?? 0);
-                    if (blankInstruction != null)
+                    
+                    Guid? fileId = null;
+                    if (!string.IsNullOrEmpty(blankInstruction?.Content))
                     {
-                        var fileId = await MakeDraftBlankForNotRegistered(process.Id, blankInstruction, (int)EDeliveryMessageType.OutInstruction);
-                        if (fileId != null)
-                        {
-                            filesAsBytes = await processService.GetCertificateFile(fileId ?? Guid.Empty);
-                        }
-
-                    }
-                    if (model.ResultDeliveryMethod == ChannelType.EDelivery)
-                    {
-                        await processService.SendMessageForProcess(
-                            process.Id,
-                            filesAsBytes,
-                            (int)EDeliveryMessageType.OutInstruction,
-                            sourceId.ToString(),
-                            $"По повод заявление с вх. № {process.IncomingNumber} от {process.IncomingDate:dd.MM.yyyy} г., " +
-                            $"Ви уведомяваме, че по заявлението са дадени указания, както следва: {model.Content}");
+                        fileId = await MakeDraftBlankForNotRegistered(process.Id, blankInstruction, (int)EDeliveryMessageType.OutInstruction, sourceId, model.Content);
                     }
                     await processService.SetInstructionActive(sourceId);
+                    var action = await SendOutMessageOrSign(
+                        process.Id,
+                        fileId,
+                        $"По повод заявление с вх. № {process.IncomingNumber} от {process.IncomingDate:dd.MM.yyyy} г., " +
+                        $"Ви уведомяваме, че по заявлението са дадени указания" +
+                        (fileId == null ? $", както следва: {model.Content}." : "."),
+                        (int)EDeliveryMessageType.OutInstruction,
+                        blankInstruction,
+                        model.ResultDeliveryMethod,
+                        sourceId);
+                    if (action != null)
+                    {
+                        return action;
+                    }
                     SetSuccessMessage("Успешен запис на указание.");
                     return RedirectToAction("InstructionIndex", new { processId = model.ProcessId });
                 }
@@ -1014,6 +1053,94 @@ namespace URegister.Areas.Admin.Controllers
         public async Task<IActionResult> GetProcessDeliveryList(IDataTablesRequest request, ProcessDeliveryFilterVM filter)
         {
             return await processService.GetProcessDeliveryList(request, filter);
+        }
+
+
+        /// <summary>
+        /// Изппращане на съобщение след подписване
+        /// </summary>
+        [HttpGet]
+        [Display(Name = "Изппращане на съобщение след подписване")]
+        public async Task<IActionResult> SendMessage(Guid outMessageId)
+        {
+            var outMessage = await commonFileService.GetOutMessage(outMessageId);
+            await processService.SendMessageForProcess(outMessage);
+            return RedirectToAction("Index", "Home", new { area = string.Empty });
+        }
+
+        /// <summary>
+        /// Изппращане на съобщение след подписване
+        /// </summary>
+        [HttpGet]
+        [Display(Name = "Подписване на файл към процес")]
+        public async Task<IActionResult> SignFileByProcessId(Guid processId)
+        {
+            var file = await commonFileService.GetFileForSignByProcess(processId);
+            if (file != null)
+            {
+                var url = Url.Action(
+                   "SendMessage",
+                   "Process",
+                    new { area = "Admin", outMessageId = file.OutMessageId },
+                    Request.Scheme,
+                    Request.Host.Value);
+                return RedirectToAction("Preview", "Files", new { area = "", id = file.Id, returnSignUrl = url });
+            }
+            return RedirectToAction("Index", "Home", new { area = string.Empty });
+        }
+
+        /// <summary>
+        /// Зарежданe на добавяне на стъпка към заявена услуга от autosave
+        /// </summary>
+        [HttpGet]
+        [Display(Name = "Зарежданe на добавяне на стъпка към заявена услуга от autosave")]
+        public async Task<IActionResult> LoadAutoSave()
+        {
+            return View();
+        }
+        /// <summary>
+        /// Зарежданe на добавяне на стъпка към заявена услуга от autosave
+        /// </summary>
+        [HttpPost]
+        [Display(Name = "Зарежданe на добавяне на стъпка към заявена услуга от autosave")]
+        // [ValidateAntiForgeryToken]
+        public async Task<IActionResult> LoadAutoSave(IFormCollection form)
+        {
+            bool isOldDataImport = !string.IsNullOrWhiteSpace(form["ProcessInfo.OldIncomingNumber"]);
+            var serviceId = 0;
+            ProcessStepVM model = null;
+            try
+            {
+                int formParentId = int.Parse(form[nameof(FormViewModel.FormParentId)]);
+                FormViewModel viewModel = await formConfigurationPersistenceService.GetFormViewModel(formParentId);
+                var processId = form[nameof(ProcessStepVM.ProcessId)].ToString().ToGuid() ?? Guid.Empty;
+                Guid? fromProcessId = form[nameof(ProcessStepVM.FromProcessId)].ToString().ToGuid();
+                var serviceStepId = int.Parse(form[nameof(ProcessStepVM.ServiceStepId)]);
+                serviceId = int.Parse(form[nameof(ProcessStepVM.ServiceId)]);
+                var orderNum = int.Parse(form[nameof(ProcessStepVM.OrderNum)]);
+                var oldIncomingNumber = form["ProcessInfo.OldIncomingNumber"].ToString();
+                DateTime? oldIncomingDate = null;
+                var oldIncomingDateStr = form["ProcessInfo.OldIncomingDate"].ToString();
+                if (!string.IsNullOrEmpty(oldIncomingDateStr))
+                {
+                    oldIncomingDate = DateTime.ParseExact(oldIncomingDateStr, FormattingConstant.NormalDateFormat, null);
+                }
+
+                formFieldsLayoutService.DistributePostedFieldValuesToViewModel(form, viewModel);
+
+                model = await processService.ToProcessStepVM(processId, fromProcessId, serviceId, serviceStepId, orderNum, oldIncomingNumber, oldIncomingDate, viewModel, false);
+                processService.FillProcessInfoVM(form, model.ProcessInfo);
+                model.DontUploadFilesToStorage = false;
+                await SetViewBag(serviceId);
+                return PartialView("AddStep", model);
+            }
+            catch (Exception ex)
+            {
+                await SetViewBag(serviceId);
+                logger.LogError(ex, ex.InnerException?.Message + $"Грешка в {nameof(AddStep)}");
+                SetErrorMessage("Проблем при зареждане на формата от autosave");
+                return View("AddStep", model);
+            }
         }
     }
 }

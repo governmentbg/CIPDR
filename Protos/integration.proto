@@ -14,6 +14,7 @@ service IntegrationGrpc {
   rpc SendMessage(OutboxMessage) returns (SendMessageResponse);
   rpc GetIntegrationFilesUrl(IntegrationFileRequest) returns (IntegrationFilesResponse);
   rpc GetEDeliveryLogRecordsList(common.DatatableRequest) returns (EDeliveryMessagesListReply);
+  rpc SendEmailForSrok(EMailForSrokRequest) returns (common.ResultStatus);
 }
 
 message GetPersonInfoRequest {
@@ -116,4 +117,12 @@ message EDeliveryMessagesListReply {
   common.ResultStatus status = 1;
   repeated EDeliveryProtoMessage edelivery_messages = 2;
   int32 count_all = 3;
+}
+
+message EMailForSrokRequest{ 
+   string registerCode = 1;
+   string tenantId = 2;
+   string process_id = 7;
+   string subject = 9; 
+   string message = 10; 
 }

@@ -49,7 +49,10 @@ namespace URegister.Infrastructure.Model.RegisterForms
                 CanBeRepeated = false, //original.CanBeRepeated,
                 Repetitions =
                     new List<FormField>(), //original.Repetitions?.Select(r => r.Clone()).ToList() // Recursively clone nested list
-                IsLastInRow = original.IsLastInRow
+                IsLastInRow = original.IsLastInRow,
+                IsBatchOwner = original.IsBatchOwner,
+                IsSubmitter = original.IsSubmitter,
+                IsColumnInDataTable = original.IsColumnInDataTable
             };
         }
     }

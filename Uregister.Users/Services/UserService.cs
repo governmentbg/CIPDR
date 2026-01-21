@@ -293,6 +293,7 @@ namespace Uregister.Users.Services
 
                         user.User.Roles.AddRange(roles);
                         user.User.ReceiveEFormNotification = await userManagerService.GetReceiveEFormNotification(request);
+                        user.User.ReceiveInstructionResponse = await userManagerService.GetReceiveInstructionResponse(request);
                     }
                 }
                 catch (Exception ex)
@@ -1029,7 +1030,57 @@ namespace Uregister.Users.Services
 
             try
             {
-                var users = await userManagerService.GetUserReceiveEmails(request);
+                var users = await userManagerService.GetUserReceiveEmails(request, true, false);
+                result.UserData.AddRange(users);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error getting roles");
+
+                result.Status = new ResultStatus
+                {
+                    Code = ResultCodes.InternalServerError,
+                    Message = "Error getting roles"
+                };
+            }
+            return result;
+        }
+
+        public override async Task<UserReceiveEmailsResponse> UserReceiveEmailsInstructionResponse(UserReceiveEmailsRequest request, ServerCallContext context)
+        {
+            var result = new UserReceiveEmailsResponse
+            {
+                Status = GetOkResult()
+            };
+
+            try
+            {
+                var users = await userManagerService.GetUserReceiveEmails(request, false, true);
+                result.UserData.AddRange(users);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error getting roles");
+
+                result.Status = new ResultStatus
+                {
+                    Code = ResultCodes.InternalServerError,
+                    Message = "Error getting roles"
+                };
+            }
+            return result;
+        }
+
+        public override async Task<UserReceiveEmailsResponse> UserReceiveEmailsForSrok(UserReceiveEmailsRequest request, ServerCallContext context)
+        {
+            var result = new UserReceiveEmailsResponse
+            {
+                Status = GetOkResult()
+            };
+
+            try
+            {
+                var users = await userManagerService.GetUserReceiveEmailsForSrok(request);
                 result.UserData.AddRange(users);
             }
             catch (Exception ex)

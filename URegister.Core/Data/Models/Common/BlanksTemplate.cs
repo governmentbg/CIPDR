@@ -54,6 +54,21 @@ namespace URegister.Core.Data.Models.Common
         [Comment("Код")]
         public string Code { get; set; } = null!;
 
+
+        /// <summary>
+        /// Генериране на регистров номер за бланката
+        /// </summary>
+        [Comment("Генериране на регистров номер за бланката")]
+        public bool HasRegisterNumber { get; set; }
+
+
+
+        /// <summary>
+        /// Подпечатва ли се бланката
+        /// </summary>
+        [Comment("Подпечатва ли се бланката")]
+        public bool HasStamp { get; set; }
+
         /// <summary>
         /// Име
         /// </summary>
@@ -82,5 +97,12 @@ namespace URegister.Core.Data.Models.Common
         /// </summary>
         [Comment("Създадена от")]
         public string? CreatedBy { get; set; }
+
+
+        /// <summary>
+        /// Подписи на бланка
+        /// </summary>
+        [Comment("Подписи на бланка")]
+        public List<BlankSignature> BlankSignatures { get; set; } = new();
     }
 }

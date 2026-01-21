@@ -38,6 +38,13 @@ namespace URegister.Core.Data.Models.Register
         public string Name { get; set; } = null!;
 
         /// <summary>
+        /// Име на регистър на английски език
+        /// </summary>
+        [MaxLength(500)]
+        [Comment("Име на регистър на английски език")]
+        public string NameEn { get; set; } = null;
+
+        /// <summary>
         /// Описание
         /// </summary>
         [MaxLength(1000)]

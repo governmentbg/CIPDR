@@ -121,6 +121,12 @@ function ProcessesColumns(addApplicant, hideHistoryButton) {
                                 <i class="angle double right icon"></i>
                            </a>`
             }
+
+            if (row.hasSigning) {
+                result += `<a href="/Admin/Process/SignFileByProcessId?processId=${data}" data-tooltip="Подписване" class="ui tertiary icon button">
+                                <i class="certificate icon"></i>
+                           </a>`
+            }
             if (row.hasClose) {
                 let deleteLink = `<a href="javascript:deleteProcess('${data}', '${row.incomingNumber}')"
                                                   type="button"
@@ -183,7 +189,11 @@ function deleteProcess(id, incomingNumber) {
                 post_async(url, data)
                     .then((result) => {
                         if (result.success) {
-                            window.location.reload();
+                            if (result.redirect) {
+                                window.location.href = result.redirect;
+                            } else {
+                                window.location.reload();
+                            }
                         }
                         else {
                             showToast('error', result.error);

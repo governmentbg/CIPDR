@@ -13,7 +13,7 @@ function LoadItems() {
         let columns = [];
 
         columns.push({
-            "data": "ModifiedOn",
+            "data": "RegisterDate",
             "title": "Дата на последна промяна",
             "sortable": false,
             "searchable": false,
@@ -33,7 +33,16 @@ function LoadItems() {
                     "title": text,
                     "sortable": false,
                     "searchable": false,
-                    "render": function (data) {
+                    "render": function (data, type) {                        
+                        if (type === 'excel') {
+                            let value = data ?? '';
+                            if (value.length > 0 && /^-?[\d,\u00A0]+$/.test(value)) { //число ли е
+                                value = value.replace(/\u00A0/g, '');
+                                value = value.replace(',', '.');
+                                return value;
+                            }
+                        }
+
                         if (data?.startsWith("https://objectstore")) {
                             return `<a href="${data}" type='button' class='ui tertiary icon button' data-tooltip='Свали файла'><i class="file download icon"></i></a>`;
                         }

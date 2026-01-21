@@ -160,6 +160,7 @@ namespace URegister.Areas.Admin.Controllers
                 model.AdministrationId = string.IsNullOrEmpty(administrationId) ? response.User.AdministrationId : administrationId;
                 model.AdministrationName = response.User.Administration;
                 model.ReceiveEFormNotification = response.User.ReceiveEFormNotification;
+                model.ReceiveInstructionResponseNotification = response.User.ReceiveInstructionResponse;
                 return View(model);
             }
             catch (Exception ex)
@@ -239,6 +240,7 @@ namespace URegister.Areas.Admin.Controllers
                     Pid = model.Pid,
                     UserName = model.Pid.Substring(0, 4) + model.LastName,
                     ReceiveEFormNotification = model.ReceiveEFormNotification,
+                    ReceiveInstructionResponse = model.ReceiveInstructionResponseNotification,
                     RegisterCode = register.Code,
                 };
                 var response = await appUserManagerClient.UpsertUserAsync(user);
@@ -296,6 +298,7 @@ namespace URegister.Areas.Admin.Controllers
                     AdministrationId = model.AdministrationId,
                     Administration = model.AdministrationName,
                     ReceiveEFormNotification = model.ReceiveEFormNotification,
+                    ReceiveInstructionResponse = model.ReceiveInstructionResponseNotification,
                     RegisterCode = register.Code,
                 };
 

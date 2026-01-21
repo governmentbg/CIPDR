@@ -25,6 +25,7 @@ namespace URegister.IntegrationsCatalog.Jobs
             logger.LogInformation("EDelivery send job executed: Time: {0}", context.FireTimeUtc);
             auditInfo.SetAuditInfoForQuartz("EMail", "Send");
             await eDeliveryService.SendMessagesInputNumber();
+            await eDeliveryService.SendMessagesError();
         }
 
     }

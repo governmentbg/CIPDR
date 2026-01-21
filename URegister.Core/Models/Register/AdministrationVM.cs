@@ -41,5 +41,19 @@ namespace URegister.Core.Models.Register
             set => _name = value?.Trim();
         }
         private string _name = null!;
+
+        /// <summary>
+        /// Наименование на административния орган на английски език
+        /// </summary>
+        [Display(Name = "Наименование на административния орган на английски език")]
+        [Required(ErrorMessage = MessageConstant.FieldIsRequired)]
+        [MaxLength(500, ErrorMessage = MessageConstant.StringMaxLengthValidation)]
+        [RegularExpression(RegexPatterns.NoCyrillicLetters, ErrorMessage = MessageConstant.ContainsCyrillic)]
+        public string NameEn
+        {
+            get => _nameEn;
+            set => _nameEn = value?.Trim();
+        }
+        private string _nameEn = null!;
     }
 }

@@ -83,7 +83,8 @@ namespace URegister.Admin.Controllers
             var model = new RegisterVM
             {
                 Id = registerId,
-                Name = response.Data.Name
+                Name = response.Data.Name,
+                NameEDelivery = response.Data.NameEDelivery,
             };
             return View(model);
         }

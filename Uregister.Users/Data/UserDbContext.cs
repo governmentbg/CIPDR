@@ -30,6 +30,7 @@ namespace Uregister.Users.Data
             builder.ApplyConfiguration(new DataProtectionKeysConfiguration());
         }
         public DbSet<UserEMailReceive>  UserEMailRecives { get; set; }
+        public DbSet<UserАbsence> UserAbsences { get; set; }
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
     }
 }

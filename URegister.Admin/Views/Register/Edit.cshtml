@@ -48,6 +48,11 @@
                         </div>
                     </div>
                     <div class="fields">
+                        <div class="sixteen wide field">
+                            @Html.EditorFor(model => model.Administration.NameEn, "String", new { @class = "company-name" })
+                        </div>
+                    </div>
+                    <div class="fields">
                         <div class='eight wide field'>
                             @Html.EditorFor(model => model.Manager.Phone, "String", new { @class = "phone" })
                         </div>
@@ -95,6 +100,11 @@
                         </div>
                         <div class='twelve wide field'>
                             @Html.EditorFor(model => model.Name, "String" + editorDisabled)
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.NameEn, "String" + editorDisabled)
                         </div>
                     </div>
                     <div class="fields">

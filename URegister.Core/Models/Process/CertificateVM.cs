@@ -16,6 +16,6 @@ namespace URegister.Core.Models.Process
         /// <summary>
         /// Идентификатор на файл
         /// </summary>
-        public Guid FileId { get; set; }
+        public Guid? FileId { get; set; }
     }
 }

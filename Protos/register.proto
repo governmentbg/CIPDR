@@ -97,6 +97,8 @@ message RegisterItem {
 	bool deployed = 12;
 	repeated RegisterFileItem register_files = 14;
 	bool historyNotPublic = 15;
+	google.protobuf.StringValue name_e_delivery = 16;
+	google.protobuf.StringValue name_en = 17;
 }
 
 message AdministrationItem {
@@ -105,6 +107,7 @@ message AdministrationItem {
 	string name = 3;
 	string legal_basis = 4;
 	repeated PersonItem persons = 5;
+	google.protobuf.StringValue name_en = 6;
 }
 
 message PersonItem {
@@ -148,6 +151,9 @@ message RegisterListItem {
 	bool deployed = 12;
 	google.protobuf.StringValue soleAdministrationId = 13;
 	google.protobuf.StringValue soleAdministrationName = 14;
+	google.protobuf.StringValue name_e_delivery = 15;
+	google.protobuf.StringValue name_en = 16;
+	google.protobuf.StringValue soleAdministrationNameEn = 17;
 }
 
 message RegisterListRequest{
@@ -177,6 +183,8 @@ message AdministrationListItem {
 	string name = 3;
 	string legal_basis = 4;
 	string administration_id = 5;
+	google.protobuf.StringValue name_e_delivery = 6;
+	google.protobuf.StringValue name_en = 7;
 }
 
 message AdministrationListResponse{
@@ -235,6 +243,7 @@ message AppAdministration{
 	string id = 1;
 	string name = 2;
 	optional string uic = 3;
+    google.protobuf.StringValue name_e_delivery = 4;
 }
 
 message AppAdministrations{
@@ -318,7 +327,8 @@ message AdministrationUicItem {
 	string administration_id = 1;
 	string uic = 2;
 	google.protobuf.StringValue name = 3;
-	repeated int32 register_ids = 4;
+	google.protobuf.StringValue name_e_delivery = 4;
+	repeated int32 register_ids = 5;
 }
 
 message AdministrationUicList {
@@ -332,6 +342,7 @@ message ServiceItem {
 	google.protobuf.StringValue eform_code = 3;
 	bool isActive = 4;
 	string register_code = 5;
+	int32 service_type_id = 6;
 }
 
 message ServiceList {

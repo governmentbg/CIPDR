@@ -114,7 +114,8 @@ async function mergetag_list_func() {
     const formParentId = $('#FormParentId').val();
     const serviceId = $('#ServiceId').val();
     const sourceType = $('#SourceType').val();
-    const templateParams = await post_fetch_json_async(`/Admin/BlanksTemplate/GetFormFields?formParentId=${formParentId}&serviceId=${serviceId}&sourceType=${sourceType}`, {});
+    const numberOnRegister = $('#HasRegisterNumber').val().toUpperCase() == 'TRUE';
+    const templateParams = await post_fetch_json_async(`/Admin/BlanksTemplate/GetFormFields?formParentId=${formParentId}&serviceId=${serviceId}&sourceType=${sourceType}&numberOnRegister=${numberOnRegister}`, {});
     return templateParams.map((x) => {
         if (x.templates) {
             menu_items = x.templates.map((i) => {

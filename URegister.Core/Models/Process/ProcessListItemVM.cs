@@ -137,6 +137,10 @@
         /// </summary>
         public string? RejectionNumber { get; set; }
 
+        /// <summary>
+        /// Има ли бутон за подписване
+        /// </summary>
+        public bool HasSigning { get; set; }
         public Guid? AssignedToUserId { get; set; }
     }
 }

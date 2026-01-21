@@ -1,0 +1,21 @@
+﻿<job-scheduling-data xmlns="http://quartznet.sourceforge.net/JobSchedulingData" version="2.0">
+	<schedule>
+		<job>
+			<name>ProcessEMailSendJob</name>
+			<group>ProcessEMailSendJobGroup</group>
+			<description>My Email Srok job</description>
+			<job-type>URegister.Jobs.ProcessEMailSendJob, URegister</job-type>
+		</job>
+		<trigger>
+			<cron>
+				<name>ProcessEMailSendJobTrigger</name>
+				<group>ProcessEMailSendJobTriggerGroup</group>
+				<job-name>ProcessEMailSendJob</job-name>
+				<job-group>ProcessEMailSendJobGroup</job-group>
+				<misfire-instruction>SmartPolicy</misfire-instruction>
+				<cron-expression>0 0/1 * * * ?</cron-expression>
+				<time-zone>UTC</time-zone>
+			</cron>
+		</trigger>
+	</schedule>
+</job-scheduling-data>

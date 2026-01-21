@@ -32,6 +32,8 @@ service AppUserManager {
   rpc UpsertRole(RoleData) returns (common.ResultStatus);
   rpc DeleteRole(RoleData) returns (common.ResultStatus);
   rpc UserReceiveEmails(UserReceiveEmailsRequest)  returns (UserReceiveEmailsResponse);
+  rpc UserReceiveEmailsForSrok(UserReceiveEmailsRequest)  returns (UserReceiveEmailsResponse);
+  rpc UserReceiveEmailsInstructionResponse(UserReceiveEmailsRequest)  returns (UserReceiveEmailsResponse);
 }
 
 message UserData {
@@ -51,6 +53,7 @@ message UserData {
 	optional bool receive_e_form_notification = 14;
 	optional string register_code = 15;
 	bool receive_email_on_error = 16;
+    optional bool receive_instruction_response = 17;
 }
 
 message UpsertUserResponse {
