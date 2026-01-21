@@ -214,6 +214,12 @@ namespace URegister.Infrastructure.Constants
         /// </summary>
         public const string NomenclatureNotAvailable = "Номенклатурата {0} не е достъпна";
 
+        /// <summary>
+        /// Необходим е един идентификатор за партида
+        /// </summary>
+        public const string MPRIdRequired = "Необходим е един валиден идентификатор за партида";
+
+        public const string? ContainsCyrillic = "Текстът съдържа символи на кирилица";
         public static class Values
         {
             /// <summary>

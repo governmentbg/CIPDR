@@ -14,9 +14,13 @@ var services = new ServiceCollection()
 services.ConfigureOpenDataClient(configuration);
 var provider = services.BuildServiceProvider();
 var client = provider.GetRequiredService<IOpenDataClientService>();
+//var categories = await client.ListDataCategoriesAsync();
+var organisations = await client.GetUserOrganisationsAsync();
+Console.WriteLine(organisations);
 var uri = await client.AddDatasetAsync(39, "Тест 4", "Test 4", 7, 1);
-Console.WriteLine(uri.ToString());
-var uri2 = await client.AddResourceAsync(uri, "Тест 3", "Test 3", [["Име", "Поле"], ["1", "2"]]);
+//Console.WriteLine(uri.ToString());
+//var uri2 = await client.AddResourceAsync(uri, "Тест 3", "Test 3", [["Име", "Поле"], ["1", "2"]]);
 
-Console.WriteLine(uri2.ToString());
+//Console.WriteLine(uri2.ToString());
 
+//fca4f95a-c4cc-42c6-b399-9a001088edc5

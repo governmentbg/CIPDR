@@ -9,5 +9,10 @@
         /// Списък с данни за полета
         /// </summary>
         public List<FormField> FormFields { get; set; }
+
+        /// <summary>
+        /// Json дърво с условия към формата
+        /// </summary>
+        public string ConditionTree { get; set; }
     }
 }

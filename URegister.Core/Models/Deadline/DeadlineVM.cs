@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel.DataAnnotations;
 using URegister.Infrastructure.Constants;
 
 namespace URegister.Core.Models.Deadline
@@ -20,7 +15,7 @@ namespace URegister.Core.Models.Deadline
         /// </summary>
         [Display(Name = "Услуга")]
         [Required(ErrorMessage = MessageConstant.FieldIsRequired)]
-        public int ServiceId { get; set; }
+        public int? ServiceId { get; set; }
 
         /// <summary>
         /// Име на услуга
@@ -56,6 +51,7 @@ namespace URegister.Core.Models.Deadline
         /// Дни за изпълнение на услуга
         /// </summary>
         [Display(Name ="Дни за изпълнение на услуга")]
+        [Range(0, int.MaxValue, ErrorMessage = MessageConstant.ValueBelowMinimum)]
         public int Days { get; set; }
 
     }

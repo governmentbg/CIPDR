@@ -1,0 +1,35 @@
+﻿@model URegister.Infrastructure.Model.RegisterForms.FormField
+@using URegister.Infrastructure.Constants
+@{   
+    bool isBeforeEuro = DateTime.Now < ValueConstants.EuroDate;
+    var displayValue = string.Empty;
+
+    if (!string.IsNullOrWhiteSpace(Model.Value))
+    {
+        int currencyValue = string.IsNullOrWhiteSpace(Model.Value) ? 0 : int.Parse(Model.Value.Split(':')[0]);
+        string amountValue = string.IsNullOrWhiteSpace(Model.Value) ? String.Empty : Model.Value.Split(':')[1];
+        displayValue = (!isBeforeEuro && currencyValue == (int)Currency.BGN) ? Math.Round((decimal.Parse(amountValue ?? "0") / ValueConstants.EURInBGN), 2).ToString("F2", System.Globalization.CultureInfo.InvariantCulture) : amountValue;
+    }
+    
+    var currencySymbol = isBeforeEuro ? "лв." : "€";
+    string placeHolder = string.IsNullOrEmpty(Model.Placeholder) ? string.Empty : Model.Placeholder;
+    string toolTip = string.IsNullOrEmpty(Model.Tooltip) ? string.Empty : Model.Tooltip;   
+}
+<input id="isBeforeEuro" type="hidden" value="@isBeforeEuro" />
+<div class="ui form currency">
+    <div class="field @(Model.IsRequired ? "required" : string.Empty)">
+        <label for="@Model.Identifier">@Model.Label</label>
+        <div class="@(Model.IsReadonly ? "ui right labeled disabled input" : "ui right labeled input")"
+             @if (!string.IsNullOrEmpty(toolTip))
+             {
+                        <text>data-tooltip="@toolTip"</text>
+            }>
+            <input type="number" step="0.01" min="0" placeholder="@placeHolder" value="@displayValue">
+            <label for="@Model.Identifier" class="ui label">@currencySymbol</label>
+            <input type="hidden" id="@Model.Identifier" name="@Model.Name" value="">
+        </div>
+    </div>
+    @{
+        await Html.RenderPartialAsync("ValidationErrorSpan", Model.ValidationError);
+    }
+</div>

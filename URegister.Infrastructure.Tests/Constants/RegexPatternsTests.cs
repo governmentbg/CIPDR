@@ -223,6 +223,28 @@ namespace URegister.Infrastructure.Tests.Constants
         }
 
         [Test]
+        [TestCase("ABV efg")]
+        [TestCase("$%^&%^%&^*&*^^^")]
+        [TestCase("")]
+        [TestCase("   ")]
+        [TestCase(".,.,")]
+        public void NonCyrillicLettersPattern_Valid(string input)
+        {
+            Assert.That(Regex.IsMatch(input, RegexPatterns.NoCyrillicLetters));
+        }
+
+        [Test]
+        [TestCase("Ивaн")]//a е латинско
+        [TestCase("Иван")]
+        [TestCase("ю")]
+        [TestCase("Ю")]
+        [TestCase("uyisudofsuoi898099Ю")]
+        public void NonCyrillicLettersPattern_Invalid(string input)
+        {
+            Assert.That(Regex.IsMatch(input, RegexPatterns.NoCyrillicLetters), Is.False);
+        }
+
+        [Test]
         [TestCase("Иван")]
         [TestCase("иван")]
         [TestCase("ИВАН")]

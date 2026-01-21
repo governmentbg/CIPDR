@@ -48,7 +48,8 @@ namespace URegister.Core.Models.User
         public string PhoneNumber { get; set; }
 
         [DisplayName("Администрация")]
-        public string AdministrationId { get; set; }
+        [Required(ErrorMessage = MessageConstant.FieldIsRequiredNoParam)]
+        public string? AdministrationId { get; set; }
 
         [DisplayName("Име на администрация")]
         public string? AdministrationName { get; set; }
@@ -94,8 +95,15 @@ namespace URegister.Core.Models.User
         public string Pid { get; set; }
 
         public bool IsGlobalAdmin { get; set; }
-        [DisplayName("Получаване майл при подадена е-форма")]
+        [DisplayName("Получаване имейл при подадена е-форма")]
         public bool ReceiveEFormNotification { get; set; }
+
+        [DisplayName("Получаване имейл при грешка подадена е-форма")]
+        public bool ReceiveEFormOnErrorNotification { get; set; }
+
+        [DisplayName("Получаване имейл при отговор на указания")]
+        public bool ReceiveInstructionResponseNotification { get; set; }
+
 
     }
 }

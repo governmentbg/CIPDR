@@ -61,6 +61,7 @@ namespace URegister.Core.Services
                         nameof(ProcessStepVM.IncomingDate) or
                         nameof(ProcessStepVM.OrderNum) or
                         nameof(FormViewModel.DontUploadFilesToStorage) or 
+                        nameof(FormViewModel.ConditionTree) or 
                         nameof(FormViewModel.UserTimeZoneOffsetInMinutes))
                 {
                     continue;
@@ -119,7 +120,15 @@ namespace URegister.Core.Services
                     repeaterParent.Repetitions!.Add(clonedParent);
                 }
 
-                var repeaterParentEquivalentSubfield = repeaterParent.Fields!.First(f => f.Name == $"{repeaterParentName}_{restOfName}");
+                string parentSubfieldForCloningName = $"{repeaterParentName}_{restOfName}";
+                var repeaterParentEquivalentSubfield = repeaterParent.Fields!.FirstOrDefault(f => f.Name == parentSubfieldForCloningName);
+
+                if (repeaterParentEquivalentSubfield == null)
+                {
+                    _logger.LogError($"Не е намерен елемент с име {parentSubfieldForCloningName} в конфигурацията в {nameof(HandleValueDistributionForRepeatingValues)}");
+                    return;
+                }
+
                 var clone = repeaterParentEquivalentSubfield.CreateRepeaterClone(postedName, postedValue);
                 clonedParent.Fields!.Add(clone);
             }
@@ -209,6 +218,59 @@ namespace URegister.Core.Services
                     formField.Name = namePathSoFar + formField.Name;
                 }
             }
+        }
+
+        /// <summary>
+        /// Заменя символите след ':' с '*', запазвайки пърия и последия
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        public static string MaskAfterColonKeepingFirstAndLast(string input)
+        {
+            // If input is null, empty, or does not contain ':', return as is
+            if (string.IsNullOrEmpty(input) || !input.Contains(":"))
+                return input;
+
+            int colonIndex = input.IndexOf(':');
+            string before = input.Substring(0, colonIndex + 1); // include ':'
+            string after = input.Substring(colonIndex + 1);
+
+            // If there's nothing after ':', return as is
+            if (string.IsNullOrEmpty(after))
+                return input;
+
+            // If after has only 1 or 2 characters, we just keep it as is (nothing to mask)
+            if (after.Length <= 2)
+                return input;
+
+            // Build masked part: keep first and last char, mask the middle with '*'
+            string masked = after[0] + new string('*', after.Length - 2) + after[^1];
+
+            return before + masked;
+        }
+
+        public static string MaskAfterColonKeepingFirstTwo(string input)
+        {
+            // If input is null, empty, or does not contain ':', return as is
+            if (string.IsNullOrEmpty(input) || !input.Contains(":"))
+                return input;
+
+            int colonIndex = input.IndexOf(':');
+            string before = input.Substring(0, colonIndex + 1); // include ':'
+            string after = input.Substring(colonIndex + 1);
+
+            // If there's nothing after ':', return as is
+            if (string.IsNullOrEmpty(after))
+                return input;
+
+            // If after has 2 or fewer characters, return as is (nothing to mask)
+            if (after.Length <= 2)
+                return input;
+
+            // Keep the first 2 characters, mask the rest
+            string masked = after.Substring(0, 2) + new string('*', after.Length - 2);
+
+            return before + masked;
         }
     }        
 }

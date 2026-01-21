@@ -64,6 +64,9 @@ namespace URegister.Core.Models.Process
         [Display(Name = "Мотиви")]
         public string? CoordinationMotive { get; set; }
 
+        [Display(Name = "Причина за прекратяване")]
+        public string? ReasonForRejection { get; set; }
+
         public FileVM? EFormFile { get; set; }
 
     }

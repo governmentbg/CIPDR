@@ -72,6 +72,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "URegister.AuditLog", "URegi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EDelivery", "EDelivery\EDelivery.csproj", "{FDA4819B-AD39-4C43-9B9C-4FF55E2F2A67}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EDeliveryTest", "EDeliveryTest\EDeliveryTest.csproj", "{FF2F09A7-0AC7-4BD5-9B9B-EA27D5606734}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "URegister.AppHost.Tests", "URegister.AppHost.Tests\URegister.AppHost.Tests.csproj", "{9FCA1882-3CE9-49F2-BED5-9254AADBAC7E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenDataClient", "OpenDataClient\OpenDataClient.csproj", "{8B8677BF-9EA9-4AB7-B323-FD07851DABDC}"

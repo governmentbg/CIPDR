@@ -10,7 +10,6 @@ using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Linq.Expressions;
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore.Query;
 using URegister.Common;
 using URegister.Core.Contracts;
 using URegister.Core.Data;
@@ -23,13 +22,13 @@ using URegister.Infrastructure.Contracts;
 using URegister.Infrastructure.Extensions;
 using URegister.Infrastructure.Model.EDelivery;
 using URegister.Infrastructure.Model.RegisterForms;
+using URegister.Infrastucture.Extensions;
 using URegister.IntegrationsCatalog;
 using URegister.NomenclaturesCatalog;
 using URegister.NumberGenerator;
 using URegister.ObjectsCatalog;
 using URegister.RegistersCatalog;
 using URegister.Users;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 using static URegister.ObjectsCatalog.ObjectsCatalogGrpc;
 using static URegister.Users.AppUserManager;
 using Process = URegister.Core.Data.Models.Process.Process;
@@ -151,6 +150,7 @@ namespace URegister.Core.Services
                 if (model.FromProcessId != null)
                 {
                     fromProcessId = await Repo.AllReadonly<Process>()
+                                              .IgnoreQueryFilters()
                                               .Where(x => x.Id == model.FromProcessId)
                                               .Select(x => x.FromProcessId)
                                               .FirstOrDefaultAsync();
@@ -202,12 +202,14 @@ namespace URegister.Core.Services
                 CoordinationStatusId = model.ProcessInfo.CoordinationStatusId,
                 CoordinationMotive = model.ProcessInfo.CoordinationMotive,
                 ModifiedOn = DateTime.UtcNow,
+                UserTimeZoneOffsetInMinutes = model.UserTimeZoneOffsetInMinutes,
             };
             process.LastServiceStepId = processStep.ServiceStepId;
             process.FormId = form.Id;
 
 
             var serviceStep = await Repo.AllReadonly<ServiceStep>()
+                                        .Include(x => x.Service)
                                         .Where(x => x.Id == model.ServiceStepId)
                                         .TagWith(nameof(AddStep))
                                         .FirstAsync();
@@ -226,13 +228,21 @@ namespace URegister.Core.Services
                 }
             }
             await Repo.AddAsync(processStep);
-            if (process.StatusId == (int)ProcessStatus.Registered)
+            var isCertificate = serviceStep.Service.ServiceTypeId == (int)ServiceTypes.Document;
+            if ((
+                process.StatusId == (int)ProcessStatus.Registered ||
+                process.StatusId == (int)ProcessStatus.Signing
+               )&& !isCertificate)
             {
                 await RegisterStep(processStep, process, model.UserTimeZoneOffsetInMinutes);
             }
-            if (process.StatusId == (int)ProcessStatus.Certificate)
+            if ((
+                  process.StatusId == (int)ProcessStatus.Certificate ||
+                  process.StatusId == (int)ProcessStatus.Signing
+                ) 
+                && isCertificate)
             {
-                await CertificateStep(processStep, process, model.FileId ?? Guid.Empty);
+                await CertificateStep(processStep, process);
             }
             await Repo.SaveChangesAsync();
 
@@ -357,7 +367,6 @@ namespace URegister.Core.Services
 
             if (filter.AssignedToUserId != null)
             {
-                queryWhere = queryWhere.Where(x => x.AssignedToUser == filter.AssignedToUserId);
                 var status = new int[]{
                     (int)ProcessStatus.Coordination,
                     (int)ProcessStatus.ForCoordination,
@@ -366,7 +375,19 @@ namespace URegister.Core.Services
                     (int)ProcessStatus.InWork,
                     (int)ProcessStatus.ForCoordination,
                 };
-                queryWhere = queryWhere.Where(x => status.Contains(x.StatusId));
+                if (filter.ForSignProcessIds?.Any() == true)
+                {
+                    var forSignProcessIds = filter.ForSignProcessIds ?? new List<Guid>();
+                    queryWhere = queryWhere.Where(x => (x.AssignedToUser == filter.AssignedToUserId &&
+                                                       status.Contains(x.StatusId)) ||
+                                                       (forSignProcessIds.Contains(x.Id) && 
+                                                        (x.StatusId == (int)ProcessStatus.Signing || x.StatusId == (int)ProcessStatus.InstructionSigning)));
+                } 
+                else
+                {
+                    queryWhere = queryWhere.Where(x => x.AssignedToUser == filter.AssignedToUserId &&
+                                                       status.Contains(x.StatusId));
+                }
             }
 
             if (!string.IsNullOrEmpty(filter.IncomingNumber))
@@ -405,8 +426,6 @@ namespace URegister.Core.Services
 
             queryWhere = await AddPersonIdentifierFilter(queryWhere, filter.PersonIdentifier, true);
             queryWhere = await AddPersonIdentifierFilter(queryWhere, filter.PersonIdentifierApplicant, false);
-            var queryMetaData = Repo.AllReadonly<FileMetadata>()
-                                     .Where(x => x.FileSourceTypeId == (int)FileSourceType.Certificate);
             var query = queryWhere.Select(x => new ProcessListItemVM
             {
                 Id = x.Id,
@@ -425,7 +444,7 @@ namespace URegister.Core.Services
                 FromName = x.FromProcess!.RegisterNumber,
                 RejectionNumber = x.RejectionNumber,
                 HasInstruction = x.Instructions.Any(),
-                HasCertificate = queryMetaData.Any(m => m.ProcessId == x.Id),
+                HasCertificate = x.FileMetadataList.Any(m => m.FileSourceTypeId == (int)FileSourceType.Certificate),
                 AssignedToUserId = x.AssignedToUser,
             })
             .TagWith(nameof(GetProcessList));
@@ -452,10 +471,10 @@ namespace URegister.Core.Services
 
             var serviceSteps = await Repo.AllReadonly<ServiceStep>()
                                         .ToListAsync();
-            var serviceId = await Repo.AllReadonly<Service>()
-                                      .Where(x => x.ServiceTypeId == (int)ServiceTypes.Register)
-                                      .Select(x => x.Id)
-                                      .FirstOrDefaultAsync();
+            var servicesInstruction = await Repo.AllReadonly<Service>()
+                                      .Where(x => x.ServiceTypeId == (int)ServiceTypes.Register ||
+                                                  x.ServiceTypeId == (int)ServiceTypes.Change)
+                                      .ToListAsync();
 
             foreach (var item in data)
             {
@@ -465,12 +484,22 @@ namespace URegister.Core.Services
                 item.Applicant = $"{mpri?.Pid} {mpri?.Name}";
                 item.Status = statusDDL.Where(x => x.Code == item.StatusId.ToString()).Select(x => x.Value).FirstOrDefault()
                               + (string.IsNullOrWhiteSpace(item.RejectionNumber) ? String.Empty : $" ({item.RejectionNumber})");
-                item.HasNextStep = item.StatusId != (int)ProcessStatus.Registered && item.StatusId != (int)ProcessStatus.Refused && item.StatusId != (int)ProcessStatus.Certificate;
+                item.HasNextStep = item.StatusId != (int)ProcessStatus.Registered && 
+                                   item.StatusId != (int)ProcessStatus.Refused &&
+                                   item.StatusId != (int)ProcessStatus.Signing && 
+                                   item.StatusId != (int)ProcessStatus.Certificate;
                 item.HasClose = item.StatusId != (int)ProcessStatus.Registered &&
                                 item.StatusId != (int)ProcessStatus.Refused &&
                                 item.StatusId != (int)ProcessStatus.Certificate;
                 item.HasDeletion = item.StatusId == (int)ProcessStatus.Registered;
                 item.HasChange = item.StatusId == (int)ProcessStatus.Registered;
+                item.HasCertificate = item.HasCertificate && (item.StatusId == (int)ProcessStatus.Registered || item.StatusId == (int)ProcessStatus.Certificate);
+                item.HasSigning = item.StatusId == (int)ProcessStatus.Signing || item.StatusId == (int)ProcessStatus.InstructionSigning || item.StatusId == (int)ProcessStatus.RefusedSigning;
+
+                if (filter.AssignedToUserId == null)
+                {
+                    item.HasSigning = false;
+                }
                 if (filter.AssignedToUserId == null || filter.AssignedToUserId != item.AssignedToUserId)
                 {
                     // item.HasNextStep = false;
@@ -484,9 +513,18 @@ namespace URegister.Core.Services
                     item.HasClose = false;
                     item.HasDeAssignUser = true;
                 }
+                if (filter.FromProcessId != null)
+                {
+                    item.HasNextStep = false;
+                    item.HasDeletion = false;
+                    item.HasChange = false;
+                    item.HasClose = false;
+
+                }
                 item.HasDelivery = item.StatusId == (int)ProcessStatus.Refused || item.HasInstruction || item.HasCertificate;
                 item.HasDelivery = false;
-                item.HasInstruction = item.HasInstruction || ((item.StatusId == (int)ProcessStatus.Send || item.StatusId == (int)ProcessStatus.InWork) && item.ServiceId == serviceId);
+                item.HasInstruction = item.HasInstruction || ((item.StatusId == (int)ProcessStatus.Send || item.StatusId == (int)ProcessStatus.InWork) && 
+                                                              servicesInstruction.Any(x => x.Id == item.ServiceId));
                 var serviceStep = serviceSteps.Where(x => x.ServiceId == item.ServiceId &&
                                                           x.Id == item.StepId)
                                               .OrderBy(x => x.OrderNum)
@@ -518,6 +556,10 @@ namespace URegister.Core.Services
 
         public async Task<IActionResult> GetInstructionList(IDataTablesRequest request, InstructionFilterVM filter)
         {
+            var queryFile = Repo.AllReadonly<FileMetadata>()
+                                 .Where(x => x.ProcessId == filter.ProcessId &&
+                                             x.IsActive &&  
+                                             x.FileSourceTypeId == (int)FileSourceType.Instruction);
             var queryWhere = Repo.AllReadonly<Instruction>()
                                  .IgnoreQueryFilters()
                                  .Where(x => x.IsActive)
@@ -531,6 +573,7 @@ namespace URegister.Core.Services
                 UserId = x.ModifiedByUserId,
                 HasResponse = x.InstructionResponses.Any(),
                 CanAdd = x.ClosedOn == null,
+                FileId = queryFile.Where(f => f.SourceId == x.Id.ToString()).Select(f => f.Id).FirstOrDefault()
             })
             .TagWith(nameof(GetInstructionList));
             var countAll = 0;
@@ -555,6 +598,10 @@ namespace URegister.Core.Services
                 foreach (var item in data)
                 {
                     item.UserName = userNameDict.TryGetValue(item.UserId.ToString(), out var userFullName) ? userFullName : string.Empty;
+                    if (item.FileId == Guid.Empty)
+                    {
+                        item.FileId = null;
+                    }
                 }
             }
 
@@ -597,6 +644,19 @@ namespace URegister.Core.Services
             }
         }
 
+        public async Task<(ProcessStepVM, Process)> GetFormViewModel(string registerNumber)
+        {
+            var process = await Repo.AllReadonly<Process>()
+                .IgnoreQueryFilters()
+                .Include(x => x.ProcessSteps)
+                .Include(x => x.Form)
+                .Include(x => x.LastServiceStep)
+                .Where(x => x.RegisterNumber == registerNumber)
+                .TagWith(nameof(GetFormViewModel))
+                .FirstAsync();
+            return await GetFormViewModel(process, true);
+        }
+
         public async Task<(ProcessStepVM, Process)> GetFormViewModel(Guid processId, bool preview)
         {
             var process = await Repo.AllReadonly<Process>()
@@ -607,6 +667,11 @@ namespace URegister.Core.Services
                         .Where(x => x.Id == processId)
                         .TagWith(nameof(GetFormViewModel))
                         .FirstAsync();
+            return await GetFormViewModel(process, preview);
+        }
+
+        private async Task<(ProcessStepVM, Process)> GetFormViewModel(Process process, bool preview)
+        {
             ServiceStep serviceStep;
             if (preview)
             {
@@ -615,26 +680,26 @@ namespace URegister.Core.Services
             else
             {
                 var orderNum = await Repo.AllReadonly<ServiceStep>()
-                                            .Where(x => x.ServiceId == process.ServiceId &&
-                                                        x.OrderNum > process.LastServiceStep.OrderNum)
-                                            .MinAsync(x => (int?)x.OrderNum) ?? 0;
+                    .Where(x => x.ServiceId == process.ServiceId &&
+                                x.OrderNum > process.LastServiceStep.OrderNum)
+                    .MinAsync(x => (int?)x.OrderNum) ?? 0;
                 serviceStep = await Repo.AllReadonly<ServiceStep>()
-                                        .Where(x => x.ServiceId == process.ServiceId &&
-                                                    x.OrderNum == orderNum)
-                                        .FirstAsync();
+                    .Where(x => x.ServiceId == process.ServiceId &&
+                                x.OrderNum == orderNum)
+                    .FirstAsync();
             }
             var service = await Repo.AllReadonly<Service>()
-                                    .Where(x => x.Id == process.ServiceId)
-                                    .FirstAsync();
+                .Where(x => x.Id == process.ServiceId)
+                .FirstAsync();
             var formModel = await formConfigurationPersistenceService.GetFormViewModelByFormId(process.FormId);
             var processStep = await Repo.AllReadonly<ProcessStep>()
-                                        .IgnoreQueryFilters()
-                                        .Where(x => x.ProcessId == processId)
-                                        .OrderByDescending(x => x.ServiceStep.OrderNum)
-                                        .TagWith(nameof(GetFormViewModel))
-                                        .FirstOrDefaultAsync();
+                .IgnoreQueryFilters()
+                .Where(x => x.ProcessId == process.Id)
+                .OrderByDescending(x => x.ServiceStep.OrderNum)
+                .TagWith(nameof(GetFormViewModel))
+                .FirstOrDefaultAsync();
             await SetViewModelFrom(processStep, formModel);
-            var processStepVM = await ToProcessStepVM(processId, null, service.Id, serviceStep.Id, serviceStep.OrderNum, process?.OldIncomingNumber, process?.OldIncomingDate, formModel, preview);
+            var processStepVM = await ToProcessStepVM(process.Id, null, service.Id, serviceStep.Id, serviceStep.OrderNum, process?.OldIncomingNumber, process?.OldIncomingDate, formModel, preview);
             return (processStepVM, process);
         }
 
@@ -670,7 +735,7 @@ namespace URegister.Core.Services
             return await ToProcessStepVM(Guid.Empty, null, serviceId, serviceStep.Id, serviceStep.OrderNum, OldIncomingNumber, OldIncomingDate, formModel, false);
         }
 
-        private FormField? FindMasterPerson(List<FormField> formFields, int roleId)
+        private FormField? FindMasterPerson(List<FormField> formFields, PersonRole roleId)
         {
             foreach (var formField in formFields)
             {
@@ -693,8 +758,19 @@ namespace URegister.Core.Services
             }
             return null;
         }
+
         private string[] ParsePidFieldValue(string value)
         {
+            if (value == null || !value.Contains(':'))
+            {
+                string errorMessage =
+                    $"Стойността {value} на идентификатор не е в правилния формат 'тип:идентификатор'";
+                Logger.LogError(errorMessage);
+
+                //TODO : Позволяваме засега празна партида. Редно е да хвърляме грешка
+                return ":".Split(":");
+            }
+
             return value.Split(":");
         }
 
@@ -702,7 +778,10 @@ namespace URegister.Core.Services
         {
             if (index < values.Length)
                 return values[index];
-            return string.Empty;
+
+            Logger.LogError($"Грешни параметри в {nameof(GetPidFieldValue)}. Values: {string.Join(';', values)}, index: {index}");
+            throw new ArgumentException(
+                $"Грешни параметри в {nameof(GetPidFieldValue)}. Values: {string.Join(';', values)}, index: {index}");
         }
 
         /// <summary>
@@ -712,36 +791,137 @@ namespace URegister.Core.Services
         /// <param name="formFields"></param>
         /// <returns>Тип идентификатор, Идентификатор, Наименование</returns>
         /// <exception cref="Exception"></exception>
-        public (string?, string?, string?) GetMPRIData(int roleId, List<FormField> formFields)
+        public (string?, string?, string?) GetMPRIData(PersonRole roleId, List<FormField> formFields)
         {
+            //TODO: да се премахте след установяване на проблема
+            //Logger.LogInformation($"Състояние на полета преди извличане на партида за роля {roleId.GetDescription()}: " + JsonSerializer.Serialize(formFields));
+
             var field = FindMasterPerson(formFields, roleId);
             if (field == null)
-                throw new Exception("Не намирам Партида/Заявител");
+            {
+                Logger.LogError($"Не е намерено поле Партида/Заявител, за роля {roleId.GetDescription()}");
+                throw new Exception("Не е намерено поле Партида/Заявител");
+            }
+
+            //Logger.LogInformation($"Сложно поле на партида за роля {roleId.GetDescription()}: " + JsonSerializer.Serialize(field));
+
             var pidType = string.Empty;
             var pid = string.Empty;
             var name = string.Empty;
-            if (field.Type == SimpleFormFieldType.Company.ToString() || field.Type == SimpleFormFieldType.CompanyWithAddress.ToString())
+
+            bool mprEntityIsCompany = false;
+            bool mprEntityIsPerson = false;
+
+            if(field.Type is nameof(SimpleFormFieldType.MPREntity))
             {
-                var pidValues = ParsePidFieldValue(field.Fields!.Where(x => x.Name.EndsWith("companyNumberImmutable")).Select(x => x.Value).FirstOrDefault() ?? string.Empty);
-                pidType = GetPidFieldValue(pidValues, 0);
-                pid = GetPidFieldValue(pidValues, 1);
-                name = field.Fields!.Where(x => x.Name.EndsWith("companyNameImmutable")).Select(x => x.Value).FirstOrDefault();
+                var companyIpField = field.Fields!
+                    .FirstOrDefault(x => x.Name.EndsWith(ComplexFieldsNameConstants.CompanyNumberImmutable));
+
+                if (companyIpField != null && !string.IsNullOrWhiteSpace(companyIpField.Value))
+                {
+                    mprEntityIsCompany = true;
+                }
+                else
+                {
+                    //NOTE : позволяваме засега празни партиди
+                    mprEntityIsPerson = true;
+                }
             }
-            if (field.Type == SimpleFormFieldType.Person.ToString())
+
+            if ((field.Type is nameof(SimpleFormFieldType.Company) or nameof(SimpleFormFieldType.CompanyWithAddress)) ||
+                mprEntityIsCompany)
             {
-                var pidValues = ParsePidFieldValue(field.Fields!.Where(x => x.Type == "PersonIdentifier").Select(x => x.Value).FirstOrDefault() ?? string.Empty);
-                pidType = GetPidFieldValue(pidValues, 0);
-                pid = GetPidFieldValue(pidValues, 1);
-                var firstName = field.Fields!.Where(x => x.Name.EndsWith("firstNameImmutable")).Select(x => x.Value).FirstOrDefault();
-                var middleName = field.Fields!.Where(x => x.Name.EndsWith("middleNameImmutable")).Select(x => x.Value).FirstOrDefault();
-                var lastName = field.Fields!.Where(x => x.Name.EndsWith("lastNameImmutable")).Select(x => x.Value).FirstOrDefault();
-                name = firstName ?? string.Empty;
-                if (!string.IsNullOrEmpty(middleName))
-                    name += $" {middleName}";
-                if (!string.IsNullOrEmpty(lastName))
-                    name += $" {lastName}";
+                var simpleMPRField = field.Fields!
+                    .FirstOrDefault(x => x.Name.EndsWith(ComplexFieldsNameConstants.CompanyNumberImmutable));
+
+                if (simpleMPRField == null)
+                {
+                    Logger.LogError($"Не е намерено просто подполе за Партида/Заявител, за роля {roleId.GetDescription()}, с име завършващо на {ComplexFieldsNameConstants.CompanyNumberImmutable}");
+                }
+
+                //Logger.LogInformation($"Просто подполе на партида за роля {roleId.GetDescription()}: " + JsonSerializer.Serialize(simpleMPRField));
+                pidType = GetMPRIForCompany(simpleMPRField, field, out pid, out name);
             }
+            else if ((field.Type is nameof(SimpleFormFieldType.Person) or nameof(SimpleFormFieldType.namePosition)) 
+                     || mprEntityIsPerson)
+            {
+                var simpleMPRField = field.Fields!
+                    .FirstOrDefault(x => x.Type == nameof(SimpleFormFieldType.PersonIdentifier))!;
+
+                if (simpleMPRField == null)
+                {
+                    Logger.LogError($"Не е намерено просто подполе за Партида/Заявител, за роля {roleId.GetDescription()}, от тип {nameof(SimpleFormFieldType.PersonIdentifier)}");
+                }
+
+                //Logger.LogInformation($"Просто подполе на партида за роля {roleId.GetDescription()}: " + JsonSerializer.Serialize(simpleMPRField));
+                pidType = GetMPRIForPerson(simpleMPRField, field, out pid, out name);
+
+            }
+            else if (field.Type == nameof(SimpleFormFieldType.authorizedOfficial))
+            {
+                var simpleMPRField = field.Fields!
+                    .FirstOrDefault(x => x.Name.EndsWith(ComplexFieldsNameConstants.CompanyNumberImmutable));
+
+                if (simpleMPRField != null && string.IsNullOrWhiteSpace(simpleMPRField.Value))
+                {
+                    pidType = GetMPRIForCompany(simpleMPRField, field, out pid, out name);
+                }
+                else
+                {
+                    simpleMPRField = field.Fields!
+                        .FirstOrDefault(x => x.Type == nameof(SimpleFormFieldType.PersonIdentifier))!;
+
+                    if (simpleMPRField != null && string.IsNullOrWhiteSpace(simpleMPRField.Value))
+                    {
+                        pidType = GetMPRIForPerson(simpleMPRField, field, out pid, out name);
+                    }
+                    else
+                    {
+                        Logger.LogError($"Не е намерено просто подполе за Партида/Заявител, за роля {roleId.GetDescription()}, за поле на {field.Name}");
+                    }
+                }
+            }
+            else
+            {
+                Logger.LogError($"Не е извлечен Партида/Заявител от поле {field.Name} тип {field.Type}, за роля {roleId.GetDescription()}");
+            }
+                
             return (pidType, pid, name);
+        }
+
+        private string GetMPRIForPerson(FormField? simpleMPRField, FormField field, out string pid, out string name)
+        {
+            string pidType;
+            var pidValues = ParsePidFieldValue(simpleMPRField.Value);
+
+            //Logger.LogInformation($"Стойности на просто подполе на партида за роля {roleId.GetDescription()}: " + JsonSerializer.Serialize(pidValues));
+
+            pidType = GetPidFieldValue(pidValues, 0);
+            pid = GetPidFieldValue(pidValues, 1);
+            var firstName = field.Fields!.Where(x => x.Name.EndsWith(ComplexFieldsNameConstants.FirstNameImmutable)).Select(x => x.Value).FirstOrDefault();
+            var middleName = field.Fields!.Where(x => x.Name.EndsWith(ComplexFieldsNameConstants.MiddleNameImmutable)).Select(x => x.Value).FirstOrDefault();
+            var lastName = field.Fields!.Where(x => x.Name.EndsWith(ComplexFieldsNameConstants.LastNameImmutable)).Select(x => x.Value).FirstOrDefault();
+            name = firstName ?? string.Empty;
+            if (!string.IsNullOrEmpty(middleName))
+                name += $" {middleName}";
+            if (!string.IsNullOrEmpty(lastName))
+                name += $" {lastName}";
+            return pidType;
+        }
+
+        private string GetMPRIForCompany(FormField? simpleMPRField, FormField field, out string pid, out string? name)
+        {
+            string pidType;
+            var pidValues = ParsePidFieldValue(simpleMPRField.Value);
+
+            //Logger.LogInformation($"Стойности на просто подполе на партида за роля {roleId.GetDescription()}: " + JsonSerializer.Serialize(pidValues));
+
+            pidType = GetPidFieldValue(pidValues, 0);
+            pid = GetPidFieldValue(pidValues, 1);
+            name = field.Fields!.Where(x => x.Name.EndsWith(ComplexFieldsNameConstants.CompanyNameImmutable))
+                .Select(x => x.Value)
+                .FirstOrDefault() ?? string.Empty;
+            return pidType;
         }
 
         /// <summary>
@@ -753,6 +933,15 @@ namespace URegister.Core.Services
         {
             try
             {
+                bool historyNotPublic = (await registerService.GetCurrentRegister()).HistoryNotPublic;
+
+                if (historyNotPublic)
+                {
+                    Logger.LogError($"Неоторизиран опит за достъп до не публична история в {nameof(GetProcessHistory)}");
+                    throw new AccessViolationException(
+                        $"Неоторизиран опит за достъп до не публична история в {nameof(GetProcessHistory)}");
+                }
+
                 var process = await Repo.AllReadonly<Process>()
                     .IgnoreQueryFilters()
                     .Where(x => x.Id == processId)
@@ -767,7 +956,7 @@ namespace URegister.Core.Services
                 {
                     Id = x.Id,
                     IncomingNumber = x.IncomingNumber,
-                    IncomingDate = x.IncomingDate.ConvertUtcToBGTime(),
+                    IncomingDate = x.RegisterDate.HasValue ? x.RegisterDate.Value.ConvertUtcToBGTime() : DateTime.MinValue,
                     RegisterNumber = x.RegisterNumber,
                     ServiceName = x.Service.Title,
                     StepName = x.LastServiceStep.Title,
@@ -858,7 +1047,7 @@ namespace URegister.Core.Services
             return char.ToLower(input[0]) + input.Substring(1);
         }
 
-        public async Task<Guid?> AddMPRI(int roleId, List<FormField> formFields)
+        public async Task<Guid?> AddMPRI(PersonRole roleId, List<FormField> formFields)
         {
             var register = await registerService.GetCurrentRegister();
             if (roleId == PersonRole.Applicant && register.TypeEntry != RegisterTypeEntry.Applicant)
@@ -872,9 +1061,24 @@ namespace URegister.Core.Services
                 Pid = pid,
                 Name = name,
                 RegisterId = register.Id,
-                RoleId = roleId
+                RoleId = (int)roleId
             });
-            return Guid.Parse(responseMpriAdd.Id);
+
+            if (responseMpriAdd.Status.Code != ResultCodes.Ok)
+            {
+                Logger.LogError($"Проблем при запис на партида. Pid: {pid}, PidType {pidType}. {responseMpriAdd.Status.Message}");
+                throw new ArgumentException($"Проблем при запис на партида. Pid: {pid}, PidType {pidType}. {responseMpriAdd.Status.Message}");
+            }
+
+            if (Guid.TryParse(responseMpriAdd.Id, out Guid result))
+            {
+                return result;
+            }
+            else
+            {
+                Logger.LogError($"Не може да парсне GUID {responseMpriAdd.Id}, за индетификатор {pid}");
+                throw new ArgumentException($"Не може да парсне GUID {responseMpriAdd.Id}, за индетификатор {pid}");
+            }
         }
 
         /// <summary>
@@ -892,7 +1096,7 @@ namespace URegister.Core.Services
             return await Repo.AllReadonly<Process>()
                              .Include(x => x.RegisterItems)
                              .Where(x => x.MpriId == mpriId &&
-                                         x.Service.ServiceTypeId == (int)ServiceTypes.Register
+                                         x.StatusId == (int)ProcessStatus.Registered
                              )
                              .FirstOrDefaultAsync();
         }
@@ -924,6 +1128,9 @@ namespace URegister.Core.Services
                     throw new Exception("Проблем при номериране " + response.Status.Message);
                 }
                 process.RegisterNumber = response.Number.ToString();
+                process.RegisterDate = DateTime.UtcNow;
+                process.RegisterInitDate = process.RegisterDate;
+
             }
             else
             {
@@ -931,9 +1138,12 @@ namespace URegister.Core.Services
                                           .IgnoreQueryFilters()
                                           .TagWith(nameof(RegisterStep))
                                           .Where(x => x.FromProcessId == process.FromProcessId &&
+                                                      x.StatusId == (int)ProcessStatus.Registered && 
                                                       x.Id != process.Id)
                                           .ToListAsync();
                 process.RegisterNumber = processes.First().RegisterNumber;
+                process.RegisterInitDate = processes.First().RegisterInitDate;
+                process.RegisterDate = DateTime.UtcNow;
                 processes.ForEach(x => x.IsActive = false);
             }
             var registerItems = await AddRegisterItems(process, formFields, processStep.Id, userTimeZoneOffsetInMinutes);
@@ -943,7 +1153,7 @@ namespace URegister.Core.Services
             }
         }
 
-        private async Task CertificateStep(ProcessStep processStep, Process process, Guid fileId)
+        private async Task CertificateStep(ProcessStep processStep, Process process)
         {
             var formFields = JsonSerializer.Deserialize<List<FormField>>(processStep.StepData)!;
             process.MpriId = (await AddMPRI(PersonRole.Partida, formFields)) ?? Guid.Empty;
@@ -1002,7 +1212,8 @@ namespace URegister.Core.Services
         }
         public async Task<List<RegisterItem>> AddRegisterItems(Process process, List<FormField> formFields, Guid processStepId, int userTimeZoneOffsetInMinutes)
         {
-            var response = await objectsCatalogGrpcClient.GetFieldsListAsync(new Google.Protobuf.WellKnownTypes.Empty());
+            CatalogFieldsListRequest request = new CatalogFieldsListRequest();
+            var response = await objectsCatalogGrpcClient.GetFieldsListAsync(request);
             var fieldTypes = response.FieldTypes.ToList();
             var registerItems = new List<RegisterItem>();
             foreach (var formField in formFields)
@@ -1107,6 +1318,26 @@ namespace URegister.Core.Services
                 case SimpleFormFieldType.Number:
                     string numberWithDotSeparator = formField.Value.Replace(',', '.');
                     registerItem.DecimalValue = decimal.Parse(numberWithDotSeparator, CultureInfo.InvariantCulture);
+                    return;
+                case SimpleFormFieldType.BulgarianCurrency:
+                    //Записваме винаги в евро
+                    if (string.IsNullOrWhiteSpace(formField.Value))
+                    {
+                        return;
+                    }
+                    var valuesArray = formField.Value.Split(':');
+
+                    if (int.Parse(valuesArray[0]) == (int)Currency.EUR)
+                    {
+                        registerItem.DecimalValue = decimal.Parse(valuesArray[1], CultureInfo.InvariantCulture);
+                        return;
+                    }
+
+                    if (int.Parse(valuesArray[0]) == (int)Currency.BGN)
+                    {                    
+                        var parsedDecimalValue = decimal.Parse(valuesArray[1], CultureInfo.InvariantCulture);
+                        registerItem.DecimalValue = parsedDecimalValue / ValueConstants.EURInBGN;
+                    }
                     return;
                 case SimpleFormFieldType.Date:
                     DateTime parsedDate = DateTime.ParseExact(registerItem.Value!,
@@ -1254,7 +1485,8 @@ namespace URegister.Core.Services
                 Purpose = formModel.Purpose,
                 SelectedType = formModel.SelectedType,
                 OrderNum = orderNum,
-                ProcessInfo = new ProcessInfoVM()
+                ProcessInfo = new ProcessInfoVM(),
+                ConditionTree = formModel.ConditionTree,
             };
             var serviceStep = await Repo.AllReadonly<ServiceStep>()
                                         .Where(x => x.Id == serviceStepId)
@@ -1269,6 +1501,9 @@ namespace URegister.Core.Services
                     DeadlineDay = process.DeadlineDay,
                     DeadlineId = process.DeadlineId,
                     ServiceStepId = serviceStep.StepId,
+                    OldIncomingNumber = process.OldIncomingNumber,
+                    OldIncomingDate = process.OldIncomingDate,
+                    ReasonForRejection = process.ReasonForRejection
                 };
                 result.ProcessInfo.EFormFile = await Repo.AllReadonly<FileMetadata>()
                                                          .Where(x => x.ProcessId == processId &&
@@ -1296,7 +1531,7 @@ namespace URegister.Core.Services
             }
             if (!string.IsNullOrEmpty(process?.IncomingNumber))
             {
-                result.FormTitle += $" Вх. № {process.IncomingNumber} от {process.IncomingDate: dd.MM.yyyy hh:mm}";
+                result.FormTitle += $" Вх. № {process.IncomingNumber} от {process.IncomingDate.ConvertUtcToBGTime().ToString(FormattingConstant.DateTimeFormat)}";
             }
             if (process?.IncomingDate != null)
             {
@@ -1375,13 +1610,14 @@ namespace URegister.Core.Services
         //    }
         //}
 
-        public async Task<Process> Refuse(Guid processId, string reasonForRejection)
+        public async Task<(Process, BlanksTemplate?)> Refuse(Guid processId, string reasonForRejection)
         {
             var process = await Repo.All<Process>()
                                    .IgnoreQueryFilters()
                                    .Include(x => x.Form)
                                    .Where(x => x.Id == processId)
                                    .FirstAsync();
+            var blankRefuse = await GetBlankRefuse(process.Form.ParentId ?? 0);
             if (process.StatusId == (int)ProcessStatus.Refused || process.StatusId == (int)ProcessStatus.Registered)
             {
                 throw new Exception("Неприложима стъпка");
@@ -1395,12 +1631,19 @@ namespace URegister.Core.Services
             {
                 throw new Exception("Проблем при номериране " + rejectionNumberResponse.Status.Message);
             }
-            process.StatusId = (int)ProcessStatus.Refused;
+            if (!string.IsNullOrEmpty(blankRefuse?.Content) && blankRefuse?.BlankSignatures.Any() == true)
+            {
+                process.StatusId = (int)ProcessStatus.RefusedSigning;
+            }
+            else
+            {
+                process.StatusId = (int)ProcessStatus.Refused;
+            }
             process.ReasonForRejection = reasonForRejection;
             process.RejectionNumber = rejectionNumberResponse.Number.ToString();
             process.AssignedToUser = null;
             await Repo.SaveChangesAsync();
-            return process;
+            return (process, blankRefuse);
         }
 
         /// <summary>
@@ -1628,8 +1871,9 @@ namespace URegister.Core.Services
             }
             return string.Empty;
         }
+     
 
-        public async Task<Guid?> SaveCertificateFileDraft(Guid processId, byte[] filesAsBytes, int typeMessageId)
+        public async Task<Guid?> SaveCertificateFileDraft(Guid processId, byte[] filesAsBytes, int typeMessageId, int blanksTemplateId, Guid? sourceId)
         {
             try
             {
@@ -1659,7 +1903,9 @@ namespace URegister.Core.Services
                 {
                     FileSourceTypeId = metaSourceTypeId,
                     FileName = fileName,
-                    ProcessId = processId
+                    ProcessId = processId,
+                    BlanksTemplateId = blanksTemplateId,
+                    SourceId = sourceId?.ToString()
                 };
                 filemetadata.FileId = Guid.Parse(await _objectStoreService.SaveObject(fileName, filesAsBytes, "application/pdf", null));
                 await Repo.AddAsync(filemetadata);
@@ -1673,123 +1919,7 @@ namespace URegister.Core.Services
             }
         }
 
-        public async Task SendMessageForProcess(Guid processId, byte[] filesAsBytes, int typeMessageId, string sourceId, string message)
-        {
-            var process = await Repo.AllReadonly<Process>()
-                                    .Include(x => x.ProcessSteps)
-                                    .IgnoreQueryFilters()
-                                    .Where(x => x.Id == processId)
-                                    .FirstAsync();
-            if (process.PreferredResultDeliveryMethod != ChannelType.EDelivery)
-                return;
-            var administration = await registerGrpcClient.GetAdministrationAsync(new GetAdministrationRequest { AdministrationId = _userContext.AdministrationId.ToString() });
-            var register = await registerService.GetCurrentRegister();
-            int fileSourceType = 0;
-            var subject = $"{administration.Data.Name} ({register.Name})";
-            var fileName = $"{process.RegisterNumber}.pdf";
-            int metaSourceTypeId = 0;
-            switch (typeMessageId)
-            {
-                case (int)EDeliveryMessageType.OutCertificate:
-                    fileName = $"Certificate_{process.RegisterNumber}.pdf";
-                    fileSourceType = (int)IntegrationSourceType.Certificate;
-                    metaSourceTypeId = (int)FileSourceType.Certificate;
-                    break;
-                case (int)EDeliveryMessageType.OutRefuse:
-                    fileName = $"Rejection_{process.RejectionNumber}.pdf";
-                    fileSourceType = (int)IntegrationSourceType.Refuse;
-                    metaSourceTypeId = (int)FileSourceType.Refuse;
-                    break;
-                case (int)EDeliveryMessageType.OutInstruction:
-                    fileName = $"Instruction_{process.IncomingNumber}.pdf";
-                    fileSourceType = (int)IntegrationSourceType.Instruction;
-                    metaSourceTypeId = (int)FileSourceType.Instruction;
-                    break;
-                default:
-                    break;
-            }
-
-            var service = await Repo.AllReadonly<Service>()
-                                    .IgnoreQueryFilters()
-                                    .Where(x => x.Id == process.ServiceId)
-                                    .FirstAsync();
-            var options = new IOStampOptions
-            {
-                DisplayText = administration.Data.Name,
-                Reason = service.Title,
-                Coordinates = new iText.Kernel.Geom.Rectangle(400, 800, 180, 28),
-                PageNum = 1,
-                PathToStamp = configuraion.GetValue<string>("Signer:CertificateFile"),
-                Password = configuraion.GetValue<string>("Signer:CertificatePassword"),
-                Font = "SignFonts/times.ttf"
-            };
-
-            string? pidType = null;
-            string? pid = null;
-            string? name = null;
-
-            if (process.MpriId == null || process.MpriId == Guid.Empty)
-            {
-                var processStep = process.ProcessSteps.OrderByDescending(x => x.ModifiedOn).First();
-                var formFields = JsonSerializer.Deserialize<List<FormField>>(processStep.StepData)!;
-                (pidType, pid, name) = GetMPRIData(PersonRole.Partida, formFields);
-            }
-            else
-            {
-                var requestMPRI = new GetMPRIListMessage();
-                requestMPRI.IdList.Add(process.MpriId.ToString());
-                var responseMPRI = await registerGrpcClient.GetMasterPersonRecordIndexListAsync(requestMPRI);
-                var mpri = responseMPRI.Items.First();
-                pidType = mpri.PidType;
-                pid = mpri.Pid;
-                name = mpri.Name;
-            }
-
-            var outMessage = new OutboxMessage
-            {
-                ProcessId = process.Id.ToString(),
-                RegisterId = await registerService.GetCurrentRegisterId(),
-                TenantId = process.TenantId.ToString(),
-                MessageTypeId = typeMessageId,
-                Subject = subject,
-                Message = message,
-                Rnu = process.Id.ToString(),
-                SourceType = fileSourceType,
-                SourceId = sourceId,
-                TemplateId = 1,
-                Uic = pid,
-                UicType = pidType
-            };
-            if (filesAsBytes.Length > 0)
-            {
-                var filemetadata = new FileMetadata
-                {
-                    FileSourceTypeId = metaSourceTypeId,
-                    FileName = fileName,
-                    ProcessId = process.Id,
-                    SourceId = sourceId,
-                };
-
-                filesAsBytes = signToolsService.StampIt(filesAsBytes, options);
-                using MemoryStream ms = new MemoryStream(filesAsBytes);
-                filesAsBytes = signToolsService.AddLTV(ms);
-
-                filemetadata.FileId = Guid.Parse(await _objectStoreService.SaveObject(fileName, filesAsBytes, "application/pdf", null));
-                await Repo.AddAsync(filemetadata);
-                await Repo.SaveChangesAsync();
-                var fileUrl = await _objectStoreService.GetPresignedUrl(filemetadata.FileId.ToString());
-                outMessage.OutboxFiles.Add(new OutboxFile
-                {
-                    FileName = filemetadata.FileName,
-                    FileUrl = fileUrl
-                });
-            }
-            var response = await integrationGrpcClient.SendMessageAsync(outMessage);
-            if (response.Status.Code != ResultCodes.Ok)
-            {
-                throw new Exception(response.Status.Message);
-            }
-        }
+        
 
         public async Task<byte[]> GetCertificateFile(Guid id)
         {
@@ -1824,14 +1954,7 @@ namespace URegister.Core.Services
             }
         }
 
-        public async Task<bool> IsCertificateStep(int serviceStepId)
-        {
-            return await Repo.AllReadonly<ServiceStep>()
-                    .TagWith(nameof(IsCertificateStep))
-                    .Where(x => x.Id == serviceStepId)
-                    .Select(x => x.StatusId == (int)ProcessStatus.Certificate)
-                    .FirstAsync();
-        }
+    
 
         /// <summary>
         /// Връща заявена услуга по номер на заявена услуга от е-форма
@@ -1858,6 +1981,16 @@ namespace URegister.Core.Services
             return null;
         }
 
+
+        /// <summary>
+        /// Връща заявена услуга по номер на заявена услуга от е-форма
+        /// </summary>
+        /// <param name="eFormRegisteredServiceNumber"></param>
+        /// <returns></returns>
+        public async Task<Process> GetProcessById(Guid id)
+        {
+            return await Repo.AllReadonly<Process>().Where(x => x.Id == id).FirstAsync();
+        }
         /// <summary>
         /// Връща заявена услуга по номер на стар запис
         /// </summary>
@@ -1893,14 +2026,22 @@ namespace URegister.Core.Services
 
             return process == null ? null : $"{process.IncomingNumber} {process.IncomingDate: dd.MM.yyyy}";
         }
-        public async Task<(Process, Guid)> SaveInstruction(InstructionVM model)
+        public async Task<(Process, Guid, BlanksTemplate?)> SaveInstruction(InstructionVM model)
         {
             var process = await Repo.All<Process>()
                                     .IgnoreQueryFilters()
                                     .Include(x => x.Form)
                                     .Where(x => x.Id == model.ProcessId)
                                     .FirstAsync();
-            process.StatusId = (int)ProcessStatus.Instruction;
+            var blankInstruction = await GetBlankInstruction(process.Form.ParentId ?? 0);
+            if (blankInstruction?.BlankSignatures.Any() == true)
+            {
+                process.StatusId = (int)ProcessStatus.InstructionSigning;
+            }
+            else
+            {
+                process.StatusId = (int)ProcessStatus.Instruction;
+            }
             process.AssignedToUser = null;
             var instruction = await Repo.All<Instruction>()
                                         .Where(x => x.Id == model.Id)
@@ -1921,7 +2062,7 @@ namespace URegister.Core.Services
 
             await SetInstructionResponseReceived(process.Id);
             await Repo.SaveChangesAsync();
-            return (process, instruction.Id);
+            return (process, instruction.Id, blankInstruction);
         }
 
         public async Task SetInstructionActive(Guid id)
@@ -1962,7 +2103,7 @@ namespace URegister.Core.Services
                         IsActive = true,
                         SourceId = instructionResponse.Id,
                         IntegrationFileId = edeliveryFile.Id,
-                        SourceType = (int)IntegrationSourceType.InstructionResponce,
+                        SourceType = (int)IntegrationSourceType.InstructionResponse,
                     };
                     await Repo.AddAsync(integrationFile);
                     var metaFile = new FileMetadata
@@ -2015,7 +2156,7 @@ namespace URegister.Core.Services
         public async Task<InstructionResponseVM> GetInstructionResponses(Guid instructionId)
         {
             var files = Repo.AllReadonly<IntegrationFile>()
-                            .Where(x => x.SourceType == (int)IntegrationSourceType.InstructionResponce);
+                            .Where(x => x.SourceType == (int)IntegrationSourceType.InstructionResponse);
             var result = await Repo.AllReadonly<Instruction>()
                              .Where(x => x.Id == instructionId)
                              .Select(x => new InstructionResponseVM
@@ -2031,7 +2172,7 @@ namespace URegister.Core.Services
         public async Task<InstructionResponseVM> GetInstructionResponsesOnProcess(Guid processId)
         {
             var files = Repo.AllReadonly<IntegrationFile>()
-                            .Where(x => x.SourceType == (int)IntegrationSourceType.InstructionResponce);
+                            .Where(x => x.SourceType == (int)IntegrationSourceType.InstructionResponse);
             var instructions = await Repo.AllReadonly<Instruction>()
                              .Where(x => x.ProcessId == processId)
                              .Select(x => new InstructionResponseVM
@@ -2053,7 +2194,8 @@ namespace URegister.Core.Services
         public async Task<BlanksTemplate?> GetBlankOnRegister(int formParentId)
         {
             return await Repo.AllReadonly<BlanksTemplate>()
-                             .Where(x => x.SourceType == (int)BlankSourceType.CerticicateOnRegister &&
+                             .Include(x => x.BlankSignatures)
+                             .Where(x => x.SourceType == (int)BlankSourceType.CertificateOnRegister &&
                                          x.FormParentId == formParentId)
                              .FirstOrDefaultAsync();
         }
@@ -2061,6 +2203,7 @@ namespace URegister.Core.Services
         public async Task<BlanksTemplate?> GetBlankRefuse(int formParentId)
         {
             return await Repo.AllReadonly<BlanksTemplate>()
+                             .Include(x => x.BlankSignatures)
                              .Where(x => x.SourceType == (int)BlankSourceType.Refuse &&
                                          x.FormParentId == formParentId)
                              .FirstOrDefaultAsync();
@@ -2068,8 +2211,17 @@ namespace URegister.Core.Services
         public async Task<BlanksTemplate?> GetBlankInstruction(int formParentId)
         {
             return await Repo.AllReadonly<BlanksTemplate>()
+                             .Include(x => x.BlankSignatures)
                              .Where(x => x.SourceType == (int)BlankSourceType.Instruction &&
                                          x.FormParentId == formParentId)
+                             .FirstOrDefaultAsync();
+        }
+
+        public async Task<BlanksTemplate?> GetBlankCertificate(int serviceIdCertificate)
+        {
+           return await Repo.AllReadonly<BlanksTemplate>()
+                             .Include(x => x.BlankSignatures)
+                             .Where(x => x.ServiceId == serviceIdCertificate)
                              .FirstOrDefaultAsync();
         }
         private Expression<Func<InstructionResponse, InstructionResponseItemVM>> InstructionResponseToItemVM()
@@ -2214,7 +2366,7 @@ namespace URegister.Core.Services
             {
                 return dateFrom;
             }
-            if (deadline.DayTypeId == CalendarDayKind.CalendarDay)
+            if (deadline.DayTypeId == DeadlineDayType.CalendarDay)
             {
                 return dateFrom.AddDays(deadline.Days);
             }
@@ -2259,6 +2411,214 @@ namespace URegister.Core.Services
             var data = await query.ToListAsync();
 
             return request.GetResponseJson(data.AsQueryable(), countAll);
+        }
+        public async Task<OutMessage> SaveMessageForProcess(
+            Guid processId, 
+            Guid? metaFileId, 
+            int typeMessageId, 
+            Guid sourceId, 
+            string message,
+            string? deliveryMethod,
+            BlanksTemplate? blank
+            )
+        {
+            var process = await Repo.All<Process>()
+                                    .Include(x => x.ProcessSteps)
+                                    .IgnoreQueryFilters()
+                                    .Where(x => x.Id == processId)
+                                    .FirstAsync();
+            if (blank?.BlankSignatures?.Any(x => x.SignByOperator) == true)
+            {
+                process.AssignedToUser = _userContext.UserId;
+            }
+            var administration = await registerGrpcClient.GetAdministrationAsync(new GetAdministrationRequest { AdministrationId = _userContext.AdministrationId.ToString() });
+            var register = await registerService.GetCurrentRegister();
+            int fileSourceType = 0;
+            var administrationName = !string.IsNullOrEmpty(administration.Data.NameEDelivery) ? administration.Data.NameEDelivery : administration.Data.Name;
+            var registerName = !string.IsNullOrEmpty(register.NameEDelivery) ? register.NameEDelivery : register.Name;
+            var subject = $"{administrationName} ({registerName})";
+            var fileName = $"{process.RegisterNumber}.pdf";
+            switch (typeMessageId)
+            {
+                case (int)EDeliveryMessageType.OutCertificate:
+                    fileName = $"Certificate_{process.RegisterNumber}.pdf";
+                    fileSourceType = (int)IntegrationSourceType.Certificate;
+                    break;
+                case (int)EDeliveryMessageType.OutRefuse:
+                    fileName = $"Rejection_{process.RejectionNumber}.pdf";
+                    fileSourceType = (int)IntegrationSourceType.Refuse;
+                    break;
+                case (int)EDeliveryMessageType.OutInstruction:
+                    fileName = $"Instruction_{process.IncomingNumber}.pdf";
+                    fileSourceType = (int)IntegrationSourceType.Instruction;
+                    break;
+                default:
+                    break;
+            }
+
+            var service = await Repo.AllReadonly<Service>()
+                                    .IgnoreQueryFilters()
+                                    .Where(x => x.Id == process.ServiceId)
+                                    .FirstAsync();
+
+            string? pidType = null;
+            string? pid = null;
+            string? name = null;
+
+            if (process.MpriId == null || process.MpriId == Guid.Empty)
+            {
+                var processStep = process.ProcessSteps.OrderByDescending(x => x.ModifiedOn).First();
+                var formFields = JsonSerializer.Deserialize<List<FormField>>(processStep.StepData)!;
+                (pidType, pid, name) = GetMPRIData(PersonRole.Partida, formFields);
+            }
+            else
+            {
+                var requestMPRI = new GetMPRIListMessage();
+                requestMPRI.IdList.Add(process.MpriId.ToString());
+                var responseMPRI = await registerGrpcClient.GetMasterPersonRecordIndexListAsync(requestMPRI);
+                var mpri = responseMPRI.Items.First();
+                pidType = mpri.PidType;
+                pid = mpri.Pid;
+                name = mpri.Name;
+            }
+
+            var outMessage = new OutMessage
+            {
+                ProcessId = process.Id,
+                RegisterId = await registerService.GetCurrentRegisterId(),
+                TenantId = process.TenantId,
+                MessageTypeId = typeMessageId,
+                SubjectText = subject,
+                MessageText = message,
+                SourceType = fileSourceType,
+                SourceId = sourceId,
+                Pid = pid,
+                PidType = pidType,
+                DeliveryMethod = string.IsNullOrEmpty(deliveryMethod) ? process.PreferredResultDeliveryMethod : deliveryMethod
+            };
+            await Repo.AddAsync(outMessage);
+            if (metaFileId != null)
+            {
+                var filemetadata = await Repo.All<FileMetadata>()
+                                              .Where(x => x.Id == metaFileId)
+                                              .FirstAsync();
+                filemetadata.OutMessageId = outMessage.Id;
+            }
+            await Repo.SaveChangesAsync();
+            return outMessage;
+        }
+        public async Task SendMessageForProcess(OutMessage outMessage)
+        {
+            var outboxMessage = new OutboxMessage
+            {
+                ProcessId = outMessage.ProcessId.ToString(),
+                RegisterId = outMessage.RegisterId ?? 0,
+                TenantId = outMessage.TenantId.ToString(),
+                MessageTypeId = outMessage.MessageTypeId,
+                Subject = outMessage.SubjectText,
+                Message = outMessage.MessageText,
+                Rnu = outMessage.ProcessId.ToString(),
+                SourceType = outMessage.SourceType,
+                SourceId = outMessage.SourceId?.ToString(),
+                TemplateId = 1,
+                Uic = outMessage.Pid,
+                UicType = outMessage.PidType
+            };
+            var filemetadataList = await Repo.AllReadonly<FileMetadata>()
+                                          .Include(x => x.BlankSignature)
+                                          .Where(x => x.OutMessageId == outMessage.Id)
+                                          .ToListAsync();
+            foreach (var filemetadata in filemetadataList)
+            {
+                var blankTemplate = await Repo.AllReadonly<BlanksTemplate>()
+                                          .Include(x => x.BlankSignatures)
+                                          .Where(x => x.Id == filemetadata.BlanksTemplateId)
+                                          .FirstAsync();
+                if (blankTemplate.BlankSignatures.Any())
+                {
+                    var lastSignature = blankTemplate.BlankSignatures.OrderByDescending(x => x.OrderNum).First();
+                    if (filemetadata.SignOrder != lastSignature.OrderNum)
+                        return;
+                }
+                var fileUrl = await _objectStoreService.GetPresignedUrl(filemetadata.FileId.ToString());
+                outboxMessage.OutboxFiles.Add(new OutboxFile
+                {
+                    FileName = filemetadata.FileName,
+                    FileUrl = fileUrl
+                });
+            }
+            var process = await Repo.All<Process>()
+                        .Include(x => x.Service)
+                        .Where(x => x.Id == outMessage.ProcessId)
+                        .FirstAsync();
+            var isCertificate = process.Service.ServiceTypeId  == (int)ServiceTypes.Document;
+            if (process.StatusId == (int)ProcessStatus.Signing)
+            {
+                process.StatusId = isCertificate ? (int)ProcessStatus.Certificate : (int)ProcessStatus.Registered;
+                await SignedToRegisterStep(process);
+            }
+            if (process.StatusId == (int)ProcessStatus.RefusedSigning)
+            {
+                process.StatusId = (int)ProcessStatus.Refused;
+                await Repo.SaveChangesAsync();
+            }
+            if (process.StatusId == (int)ProcessStatus.InstructionSigning)
+            {
+                process.StatusId = (int)ProcessStatus.Instruction;
+                await Repo.SaveChangesAsync();
+            }
+            if (outMessage.DeliveryMethod != ChannelType.EDelivery)
+                return;
+
+            var response = await integrationGrpcClient.SendMessageAsync(outboxMessage);
+            if (response.Status.Code != ResultCodes.Ok)
+            {
+                throw new Exception(response.Status.Message);
+            }
+            outMessage.StatusId = (int)EDeliveryStatus.Ready;
+            await Repo.SaveChangesAsync();
+        }
+        private async Task SignedToRegisterStep(Process process)
+        {
+            var processes = await Repo.All<Process>()
+                                      .IgnoreQueryFilters()
+                                      .TagWith(nameof(SignedToRegisterStep))
+                                      .Where(x => x.FromProcessId == process.FromProcessId &&
+                                                  x.StatusId == (int)ProcessStatus.Registered &&
+                                                  x.Id != process.Id)
+                                      .ToListAsync();
+            processes.ForEach(x => x.IsActive = false);
+            await Repo.SaveChangesAsync();
+        }
+        public async Task AddBlankOnRegisterNumber(Process process)
+        {
+            if (!string.IsNullOrEmpty(process.RegisterCertificateNumber))
+            {
+                return;
+            }
+            var response = await numberGeneratorClient.GetNumberAsync(new NumberRequest
+            {
+                InitialDocumentId = process.Id.ToString(),
+                Register = (await registerService.GetCurrentRegister()).Code,
+            });
+            if (response.Status.Code != ResultCodes.Ok)
+            {
+                throw new Exception("Проблем при номериране " + response.Status.Message);
+            }
+            process.RegisterCertificateNumber = response.Number.ToString();
+            await Repo.SaveChangesAsync();
+        }
+
+        public async Task<Guid?> GetFromProcessId(string? registerNumber)
+        {
+            if (string.IsNullOrEmpty(registerNumber))
+            {
+                return null;
+            }
+            return await Repo.AllReadonly<Process>()
+                             .Where(x => x.RegisterNumber == registerNumber)
+                             .Select(x => x.FromProcessId)
+                             .FirstOrDefaultAsync();
         }
     }
 }

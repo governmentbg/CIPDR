@@ -17,7 +17,7 @@ namespace Uregister.Users.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.10")
+                .HasAnnotation("ProductVersion", "8.0.19")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -243,6 +243,10 @@ namespace Uregister.Users.Migrations
                         .HasColumnType("text")
                         .HasColumnName("position");
 
+                    b.Property<bool>("ReceiveEmailOnError")
+                        .HasColumnType("boolean")
+                        .HasColumnName("receive_email_on_error");
+
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text")
                         .HasColumnName("security_stamp")
@@ -446,6 +450,10 @@ namespace Uregister.Users.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("receive_e_form_notification");
 
+                    b.Property<bool>("ReceiveInstructionResponse")
+                        .HasColumnType("boolean")
+                        .HasColumnName("receive_instruction_response");
+
                     b.Property<string>("RegisterCode")
                         .IsRequired()
                         .HasColumnType("text")
@@ -462,6 +470,70 @@ namespace Uregister.Users.Migrations
                         .HasDatabaseName("ix_user_e_mail_recives_user_id");
 
                     b.ToTable("user_e_mail_recives", (string)null);
+                });
+
+            modelBuilder.Entity("Uregister.Users.Data.Models.UserАbsence", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasComment("Идентификатор");
+
+                    b.Property<Guid>("AdministrationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("administration_id");
+
+                    b.Property<DateTime>("DateFrom")
+                        .HasColumnType("date")
+                        .HasColumnName("date_from")
+                        .HasComment("Отсъствие от дата");
+
+                    b.Property<DateTime>("DateTo")
+                        .HasColumnType("date")
+                        .HasColumnName("date_to")
+                        .HasComment("Отсъствие до дата");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("deleted_on")
+                        .HasComment("Дата на изтриване");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active")
+                        .HasComment("Дали записът е активен");
+
+                    b.Property<Guid>("ModifiedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("modified_by_user_id")
+                        .HasComment("Идентификатор на потребителят променил последно записа");
+
+                    b.Property<DateTime>("ModifiedOn")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("modified_on")
+                        .HasComment("Дата на последна промяна");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("text")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("RegisterCode")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("register_code");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_absences");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_user_absences_user_id");
+
+                    b.ToTable("user_absences", (string)null);
                 });
 
             modelBuilder.Entity("Uregister.Users.Data.Identity.ApplicationRoleClaim", b =>
@@ -541,6 +613,18 @@ namespace Uregister.Users.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_user_e_mail_recives_application_user_user_id");
+
+                    b.Navigation("ApplicationUser");
+                });
+
+            modelBuilder.Entity("Uregister.Users.Data.Models.UserАbsence", b =>
+                {
+                    b.HasOne("Uregister.Users.Data.Identity.ApplicationUser", "ApplicationUser")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_absences_application_user_user_id");
 
                     b.Navigation("ApplicationUser");
                 });

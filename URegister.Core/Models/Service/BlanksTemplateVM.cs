@@ -64,5 +64,23 @@ namespace URegister.Core.Models.Service
         /// Име на Тип бланка
         /// </summary>        
         public string? SourceTypeName { get; set; }
+
+
+        /// <summary>
+        /// Генериране на регистров номер за бланката
+        /// </summary>
+        [Display(Name = "Генериране на регистров номер за бланката")]
+        public bool HasRegisterNumber { get; set; }
+
+        /// <summary>
+        /// Бланката се подпечатва
+        /// </summary>
+        [Display(Name = "Бланката се подпечатва")]
+        public bool HasStamp { get; set; }
+
+
+
+
+        public List<BlankSignatureVM> BlankSignatures { get; set; } = new();
     }
 }

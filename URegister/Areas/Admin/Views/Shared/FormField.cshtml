@@ -1,4 +1,5 @@
 ﻿@using URegister.Areas.Admin.Controllers
+@using URegister.Core.Services
 @using URegister.Infrastructure.Model.RegisterForms
 @model FormField
 @inject ILogger<DesignerController> Logger
@@ -21,7 +22,8 @@
                         await Html.RenderPartialAsync(modelTemplateName, Model);
                         if (Model.Repetitions != null)
                         {
-                            foreach (FormField modelRepetition in Model.Repetitions)
+                            foreach (FormField modelRepetition in Model.Repetitions
+                                         .OrderBy(m => RepeatedFormFieldHelperService.GetRepetitionIndex(m.Name)))
                             {
                                 await Html.RenderPartialAsync(modelTemplateName, modelRepetition, new ViewDataDictionary(ViewData){ { "isClone", true } });
                             }

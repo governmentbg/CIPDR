@@ -6,8 +6,16 @@
 @{
     var register = await registerService.GetCurrentRegister();
     var htmlFieldPrefix = ViewData.TemplateInfo.HtmlFieldPrefix;
+    var showSegment =
+        Model.ServiceStepId == (int)ServiceSteps.Coordination ||
+        !string.IsNullOrEmpty(Model.OldIncomingNumber) ||
+        register.TypeEntry == RegisterTypeEntry.Applicant ||
+        Model.EFormFile != null;
 }
 @Html.HiddenFor(m => m.ServiceStepId)
+
+@if (showSegment)
+{
 <div class="ui green clearing segment">
     <div class="ui form">
         @if (Model.ServiceStepId == (int)ServiceSteps.Coordination)
@@ -15,7 +23,7 @@
 
             <div class="fields">
                 <div class="sixteen wide field">
-                    @Html.EditorFor(model => model.CoordinationStatusId, "DropDownInt", new { Ddl = ViewData[$"{InternalNomenclatureTypes.CooordinationStatusType}_ddl"]})
+                    @Html.EditorFor(model => model.CoordinationStatusId, "DropDownInt", new { Ddl = ViewData[$"{InternalNomenclatureTypes.CoordinationStatusType}_ddl"]})
                 </div>
             </div>
             <div class="fields">
@@ -65,3 +73,4 @@
         }
     </div>
 </div>
+}

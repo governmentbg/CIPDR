@@ -1,10 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Google.Protobuf.Collections;
+using Grpc.Core;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using System.ComponentModel;
+using Microsoft.IdentityModel.Tokens;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
 using URegister.Common;
 using URegister.Core.Contracts;
 using URegister.Core.Services;
@@ -13,6 +14,7 @@ using URegister.Infrastructure.Extensions;
 using URegister.Infrastructure.Model.RegisterForms;
 using URegister.NomenclaturesCatalog;
 using URegister.ObjectsCatalog;
+using URegister.RegistersCatalog;
 using static URegister.ObjectsCatalog.ObjectsCatalogGrpc;
 
 namespace URegister.Admin.Controllers
@@ -25,6 +27,7 @@ namespace URegister.Admin.Controllers
         private readonly ObjectsCatalogGrpcClient _objectCatalogGrpcClient;
         private readonly IFormValidationService _formValidationService;
         private readonly IFormFieldsLayoutService _formFieldsLayoutService;
+        private readonly RegistersCatalogGrpc.RegistersCatalogGrpcClient _registerGrpcClient;
         public readonly ILogger<DesignerController> Logger;
 
         public DesignerController(
@@ -32,12 +35,14 @@ namespace URegister.Admin.Controllers
             ObjectsCatalogGrpcClient objectCatalogGrpcClient,
             IFormValidationService formValidationService,
             IFormFieldsLayoutService formFieldsLayoutService,
+            RegistersCatalogGrpc.RegistersCatalogGrpcClient registerGrpcClient,
             ILogger<DesignerController> logger)
         {
             _nomenclatureGrpcClient = nomenclatureGrpcClient;
             _objectCatalogGrpcClient = objectCatalogGrpcClient;
             _formValidationService = formValidationService;
             _formFieldsLayoutService = formFieldsLayoutService;
+            _registerGrpcClient = registerGrpcClient;
             Logger = logger;
         }
 
@@ -344,63 +349,121 @@ namespace URegister.Admin.Controllers
         /// <returns></returns>
         [HttpGet]
         [Display(Name = "Зареждане на форма за добавяне на нов тип поле")]
-        public IActionResult AddFieldType()
+        public async Task<IActionResult> AddFieldType(string fieldType)
         {
+            if (!string.IsNullOrEmpty(fieldType))
+            {
+                try
+                {                  
+                    var reply = await FieldTypeCatalogService.GetFieldType(_objectCatalogGrpcClient, fieldType);
+                 
+                    if (reply == null)
+                    {
+                        SetErrorMessage("Проблем при зареждане на тип поле");
+                        Logger.LogError($"Проблем при зареждане на тип поле в {nameof(AddFieldType)}");
+                        return RedirectToAction(nameof(FieldTypeList));
+                    }
+
+                    var editModel = new AddFieldTypeViewModel
+                    {
+                        Label = reply.Label,
+                        Type = reply.Type,
+                        Id = reply.FieldTypeId,
+                        RegisterRestrictionCodes = reply.RegisterRestrictionCodes.ToList()
+                    };
+
+                    ViewData["Title"] = $"Редактиране на тип поле \"{editModel.Label}\"";
+                    await FillFieldTypeViewBags();
+                    return View(editModel);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, $"Проблем при извличане на данни в {nameof(AddFieldType)} за тип {fieldType}");
+                    SetErrorMessage($"Проблем при извличане на данни за тип поле.");
+                    return RedirectToAction(nameof(FieldTypeList));
+                }
+            }
+            ViewData["Title"] = "Добавяне на нов тип поле";
+            await FillFieldTypeViewBags();
             return View(new AddFieldTypeViewModel());
         }
 
+        private async Task FillFieldTypeViewBags()
+        {
+            RegisterListRequest request = new RegisterListRequest(){ DataTableRequest = new DatatableRequest { Length = -1 }, };
+            var response = await _registerGrpcClient.GetRegisterFullListAsync(request);
+
+            ViewBag.RegisterRestrictionCodes_ddl =
+                response.Data.Select(e => new SelectListItem(e.Name, e.Code)).ToList();
+        }
+
         /// <summary>
-        /// Добавяне на нов тип поле
+        /// Добавяне или редактиране на тип поле
         /// </summary>
         /// <returns></returns>
         [HttpPost]
-        [Display(Name = "Добавяне на нов тип поле")]
+        [Display(Name = "Добавяне или редактиране на тип поле")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddFieldType(AddFieldTypeViewModel model)
         {
             if (!ModelState.IsValid)
             {
+                await FillFieldTypeViewBags();
+                ViewData["Title"] = model.Id == 0 ? "Добавяне на нов тип поле" : $"Редактиране на тип поле \"{model.Label}\"";
                 return View(model);
             }
 
-            CatalogFieldType newType = new CatalogFieldType
+            CatalogFieldType fieldType = new CatalogFieldType
             {
                 IsComplex = true,
                 TemplateName = "FormFieldComplex",
                 Label = model.Label.Trim(),
-                Type = model.Type.Trim()
+                Type = model.Type.Trim(),
             };
 
-            if ((await FieldTypeCatalogService.GetAllFieldType(_objectCatalogGrpcClient))
-                .Any(t => t.Label.Equals(newType.Label, StringComparison.InvariantCultureIgnoreCase) ||
-                          t.Type.Equals(newType.Type, StringComparison.InvariantCultureIgnoreCase)))
+            if (model.RegisterRestrictionCodes != null)
             {
-                SetErrorMessage("Тип поле с това име или тип вече съществува.");
-                return View(model);
+                fieldType.RegisterRestrictionCodes.AddRange(model.RegisterRestrictionCodes);
             }
+
+            if (model.Id == 0)
+            {
+                var allFieldTypes = await FieldTypeCatalogService.GetAllFieldType(_objectCatalogGrpcClient);
+                if (allFieldTypes.Any(t => (t.Label.Equals(fieldType.Label, StringComparison.InvariantCultureIgnoreCase) ||
+                                   t.Type.Equals(fieldType.Type, StringComparison.InvariantCultureIgnoreCase))))
+                {
+                    SetErrorMessage("Тип поле с това име или тип вече съществува.");
+                    await FillFieldTypeViewBags();
+                    ViewData["Title"] = "Добавяне на нов тип поле";
+                    return View(model);
+                }
+            }           
 
             try
             {
-                ResultStatus reply = await _objectCatalogGrpcClient.SetFieldTypeAsync(newType);
+                ResultStatus reply = await _objectCatalogGrpcClient.SetFieldTypeAsync(fieldType);
                 if (reply.Code != ResultCodes.Ok)
-                {
+                {                   
                     Logger.LogError(
-                        $"Проблем при запис на тип поле {model.Type} в {nameof(AddFieldType)}. {reply.Message}");
-                    SetErrorMessage("Проблем при запис на тип");
+                     $"Проблем при {(model.Id > 0 ? "редактиране" : "запис")} на тип поле {model.Type} в {nameof(AddFieldType)}. {reply.Message}");
+                    SetErrorMessage($"Проблем при {(model.Id > 0 ? "редактиране" : "запис")} на тип поле.");
+                    await FillFieldTypeViewBags();
+                    ViewData["Title"] = model.Id > 0 ? $"Редактиране на тип поле \"{model.Label}\"" : "Добавяне на нов тип поле";
                     return View(model);
                 }
             }
             catch (Exception ex)
-            {
+            {                
                 Logger.LogError(
-                    $"Проблем при запис на тип поле {model.Type} в {nameof(AddFieldType)}.");
-                SetErrorMessage("Проблем при запис на тип");
+                 $"Проблем при {(model.Id > 0 ? "редактиране" : "запис")} на тип поле {model.Type} в {nameof(AddFieldType)}. {ex.Message}");
+                SetErrorMessage($"Проблем при {(model.Id > 0 ? "редактиране" : "запис")} на тип поле.");
+                await FillFieldTypeViewBags();
+                ViewData["Title"] = model.Id > 0 ? $"Редактиране на тип поле \"{model.Label}\"" : "Добавяне на нов тип поле";
                 return View(model);
             }
 
-            SetSuccessMessage($"Тип поле {model.Label} е успешно записан");
-
-            return RedirectToAction(nameof(ConfigureFields), new { preSelectedType = model.Type });
+            SetSuccessMessage($"Тип поле {model.Label} е успешно {(model.Id > 0 ? "редактиран" : "записан")}");
+            return RedirectToAction(nameof(FieldTypeList), new { preSelectedType = model.Type });
         }
       
         [HttpGet]

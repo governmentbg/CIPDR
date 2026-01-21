@@ -73,11 +73,6 @@ artifacts/
 # Certificates
 
 *.p12
-*.pfx
-*.crt
-*.cer
-*.key
-*.pem
 
 # Chutzpah Test files
 _Chutzpah*
@@ -269,7 +264,6 @@ paket-files/
 __pycache__/
 *.pyc
 
-**/wwwroot/**/prod/*
 /IOWebApplication/20190624141131_636969822917363937.json
 /IOWebApplication/20190624141130_636969822905708445.json
 /IOWebApplication/20190624140936_636969821769053850.json
@@ -293,3 +287,6 @@ __pycache__/
 /Адреси.txt
 /EDeliveryTest/appsettings.json
 /URegister.AppHost/Properties/launchSettings.json
+/EDeliveryTest/response.html
+/URegister.RegistersCatalog/stampit.bearer
+/URegister.IntegrationsCatalog/quartz_jobs.xml

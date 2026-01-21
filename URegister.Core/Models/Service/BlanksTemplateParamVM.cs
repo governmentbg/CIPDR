@@ -20,7 +20,7 @@ namespace URegister.Core.Models.Service
         public string? Label { get; set; }
 
         /// <summary>
-        /// Име на параметър
+        /// Тип на параметър
         /// </summary>
         public string? Type { get; set; }
 

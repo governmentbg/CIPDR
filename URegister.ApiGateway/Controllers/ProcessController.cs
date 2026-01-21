@@ -242,11 +242,13 @@ namespace URegister.ApiGateway.Controllers
         /// <param name="administrationId">Идентификатор на администрация</param>
         /// <param name="perPage">Колко записа са на страница</param>
         /// <param name="pageNumber">Номер на страницата, почващ от 1</param>
-        /// <param name="searchKey">Критерии за търсене</param>
-        /// <param name="searchPattern">Низ за търсене</param>
         /// <param name="registerId">Идентификатор на регистъра</param>
         /// <param name="fromDate">От дата на вписване, включително</param>
         /// <param name="toDate">До дата на вписване, включително</param>
+        /// <param name="toSearchDate">До дата за търсене по критерии от тип дата</param>
+        /// <param name="fromSearchDate">От дата за търсене по критерии от тип дата</param>
+        /// <param name="searchKey">Критерии за търсене</param>
+        /// <param name="searchPattern">Низ за търсене</param>
         /// <returns></returns>
         [HttpGet("get-registration-processes")]
         //[Authorize]
@@ -256,9 +258,25 @@ namespace URegister.ApiGateway.Controllers
             int registerId,
             DateTime? fromDate = null,
             DateTime? toDate = null,
+            DateTime? toSearchDate = null,
+            DateTime? fromSearchDate = null,
             string searchKey = "", 
             string searchPattern = "")
         {
+            _logger.LogInformation(
+                string.Format("Method: {0}, Parameters: administrationId={1}, perPage={2}, pageNumber={3}, registerId={4}, fromDate={5}, toDate={6}, searchKey={7}, searchPattern={8}, searchToDate={9}, searchFromDate={10}",
+                nameof(GetRegistrationProcessList),
+                administrationId,
+                perPage,
+                pageNumber,
+                registerId,
+                fromDate?.ToString("o") ?? "null",
+                toDate?.ToString("o") ?? "null",
+                searchKey,
+                searchPattern,
+                toSearchDate?.ToString("o") ?? "null",
+                fromSearchDate?.ToString("o") ?? "null"));
+
             var client = _httpFactory.CreateClient();
 
             var register = await _registerGrpcClient.GetRegisterAsync(new GetRegisterRequest
@@ -296,9 +314,21 @@ namespace URegister.ApiGateway.Controllers
                 parameters.Add(nameof(toDate), toDate.Value.ToString("o")); // ISO 8601 format
             }
 
+            if (fromSearchDate.HasValue)
+            {
+                parameters.Add(nameof(fromSearchDate), fromSearchDate.Value.ToString("o")); // ISO 8601 format
+            }
+
+            if (toSearchDate.HasValue)
+            {
+                parameters.Add(nameof(toSearchDate), toSearchDate.Value.ToString("o")); // ISO 8601 format
+            }
+
             var queryString = new FormUrlEncodedContent(parameters).ReadAsStringAsync().Result;
 
             var endpoint = $"Process/get-registration-processes?{queryString}";
+
+            _logger.LogInformation($"Извикване на ендпойнт: {endpoint}");
 
             try
             {

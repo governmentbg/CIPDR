@@ -5,7 +5,8 @@
         titleAttr: 'Excel',
         className: 'basic',
         exportOptions: {
-            "columns": "thead th:not(.noExport)"
+            "columns": "thead th:not(.noExport)",
+            orthogonal: 'excel'
         }
     };
 

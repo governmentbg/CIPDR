@@ -4,7 +4,7 @@
 @inject IRegisterService registerService;
 @model ProcessFilterVM
 @{
-    ViewData["Title"] = Model.ForDeAssignUser ? "Връщане на заявенa услуга за обработка" : "Заявени услуги";
+    ViewData["Title"] = Model.ForDeAssignUser ? "Връщане на заявена услуга за обработка" : "Заявени услуги";
     var register = await registerService.GetCurrentRegister();
     var addUrl = Model.ForDeAssignUser ? string.Empty : @Url.Action("Add", "Process");
     var canAddOldRecords = User.IsInRole(UserRoles.Admin) && !Model.ForDeAssignUser;
@@ -12,6 +12,7 @@
 @Html.Hidden("canAddOldRecords", canAddOldRecords)
 @Html.AntiForgeryToken()
 @Html.HiddenFor(x => x.ForDeAssignUser)
+@Html.HiddenFor(x => x.RegisterServiceHasJustOneStep)
 <div class="ui grid">
     <div class="column">
         <div class="ui fluid container basic clearing">
@@ -27,9 +28,12 @@
                                 <div class="three wide field">
                                     @Html.EditorFor(model => model.ServiceId, "DropDownInt")
                                 </div>
-                                <div class="three wide field">
-                                    @Html.EditorFor(model => model.StepId, "DropDownInt")
-                                </div>
+                                @if (!Model.RegisterServiceHasJustOneStep)
+                                {
+                                    <div class="three wide field">
+                                        @Html.EditorFor(model => model.StepId, "DropDownInt")
+                                    </div>
+                                }
                                 <div class="three wide field">
                                     @Html.EditorFor(model => model.IncomingDateFrom, "DateTime")
                                 </div>
@@ -41,10 +45,13 @@
                                 </div>
                             </div>
                             <div class="fields">
+                            @if (!Model.RegisterServiceHasJustOneStep)
+                            {
                                 <div class="three wide field">
                                     @Html.EditorFor(model => model.StatusId, "DropDownInt", new { Ddl = ViewData[$"{NomenclatureTypes.Status}_ddl"] })
                                 </div>
-                                <div class="three wide field">
+                            }
+                            <div class="three wide field">
                                     @Html.EditorFor(model => model.RegisterNumber)
                                 </div>
                                 <div class="three wide field">
@@ -103,4 +110,5 @@
     <script src="~/js/admin/process/processCommon.js" asp-append-version="true"></script>
     <script src="~/js/admin/process/processList.js" asp-append-version="true"></script>
     <script src="~/js/admin/process/processHistoryList.js" asp-append-version="true"></script>
+    <script src="~/js/admin/process/clearautosave.js" asp-append-version="true"></script>
 }

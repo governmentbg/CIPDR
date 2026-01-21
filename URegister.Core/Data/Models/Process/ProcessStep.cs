@@ -55,6 +55,12 @@ namespace URegister.Core.Data.Models.Process
         [Comment("Мотиви при съгласуване")]
         public string? CoordinationMotive { get; set; }
 
+
+        /// <summary>
+        /// Минути отстъп на потребителстата времева зона от UTC
+        /// </summary>
+        [Comment("Минути отстъп на потребителстата времева зона от UTC")]
+        public int UserTimeZoneOffsetInMinutes { get; set; } = 0;
         /// <summary>
         /// Информация за стъпка
         /// </summary>

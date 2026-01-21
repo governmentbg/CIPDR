@@ -26,6 +26,12 @@ namespace URegister.RegistersCatalog.Data.Models
         public int ServiceId { get; set; }
 
         /// <summary>
+        /// Идентификатор на тип услуга
+        /// </summary>
+        [Comment("Идентификатор на услуга")]
+        public int ServiceTypeId { get; set; }
+
+        /// <summary>
         /// Референтен номер на услуга (РНУ)
         /// </summary>
         [Comment("Референтен номер на услуга (РНУ)")]

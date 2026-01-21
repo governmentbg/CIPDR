@@ -152,9 +152,13 @@
         if (caller.val() === "BG") {
             caller.closest('.ui.form').parent().closest('.ui.form').find("[name*='birthPlaceBgImmutable']").closest('.ui.form').show();
             caller.closest('.ui.form').parent().closest('.ui.form').find("[name*='birthPlaceAbroadImmutable']").closest('.ui.form').hide();
-        } else {
+        } else if (caller.val() !== "") {
             caller.closest('.ui.form').parent().closest('.ui.form').find("[name*='birthPlaceBgImmutable']").closest('.ui.form').hide();
             caller.closest('.ui.form').parent().closest('.ui.form').find("[name*='birthPlaceAbroadImmutable']").closest('.ui.form').show();
+        }
+        else {
+            caller.closest('.ui.form').parent().closest('.ui.form').find("[name*='birthPlaceBgImmutable']").closest('.ui.form').hide();
+            caller.closest('.ui.form').parent().closest('.ui.form').find("[name*='birthPlaceAbroadImmutable']").closest('.ui.form').hide();
         }
     }
 
@@ -187,17 +191,26 @@
     });
 
     function loadRegionsByEkatte(settlementEkatte, changedElement) {
+        // Replace `/getStreets` with your backend endpoint
         $.ajax({
-            url: '/Nomenclature/GetNomenclatureValues', // Backend endpoint to fetch
+            url: '/Admin/Nomenclature/GetNomenclatureValues',
             method: 'GET',
-            data: { nomenclatureCode: 'EK007', holderCode: settlementEkatte }, // Pass the input value to the server
+            data: { nomenclatureCode: 'EK007', holderCode: settlementEkatte },
             success: function (data) {
-                if (data) {
-                    let populatableMenuElement = changedElement.closest('.ui.form').parent().closest('.ui.form').find("[name*='regionImmutable']").siblings('.menu');
-                    let dropdownElement = changedElement.closest('.ui.form').parent().closest('.ui.form').find("[name*='regionImmutable']");
+                let populatableMenuElement = changedElement.closest('.ui.form').parent().closest('.ui.form').find("[name*='regionImmutable']").siblings('.menu');
+                let dropdownElement = changedElement.closest('.ui.form').parent().closest('.ui.form').find("[name*='regionImmutable']");
+
+                if (data && data.length > 0) {
                     populateSelectOptions(populatableMenuElement, dropdownElement, data);
                 } else {
-                    return showToast('warning', 'Проблем при зареждане на райони');
+                    // Clear the dropdown and hidden input for cities without regions
+                    dropdownElement.dropdown('clear'); // Clear the dropdown
+                    dropdownElement.val(''); // Explicitly clear the hidden input
+                    dropdownElement.siblings('.text').text('Няма райони'); // Set placeholder text
+                    populatableMenuElement.empty(); // Clear the menu
+                    dropdownElement.dropdown('refresh'); // Refresh the dropdown
+                    // Disable the dropdown to prevent interaction
+                    dropdownElement.closest('.ui.dropdown').addClass('disabled');
                 }
             },
             error: function () {
@@ -316,13 +329,34 @@ function AddTrashIconToClone(element) {
 }
 
 function populateSelectOptions(menuElement, dropdownElement, data) {
-    menuElement.empty(); // Clear current options
+    // Store the current selected value before clearing
+    let currentValue = dropdownElement.val();
+
+    // Clear and repopulate the menu
+    menuElement.empty();
     data.forEach(d => {
         menuElement.append(
             `<div class="item" data-value="${d.value}">${d.text}</div>`
         );
     });
-    dropdownElement.dropdown('clear').dropdown('refresh');
+
+    // Enable the dropdown
+    dropdownElement.closest('.ui.dropdown').removeClass('disabled');
+
+    // Check if the current value is still valid in the new data
+    let selectedItem = data.find(d => d.value === currentValue);
+    if (selectedItem) {
+        // Restore the previous selection
+        dropdownElement.val(currentValue);
+        dropdownElement.siblings('.text').text(selectedItem.text);
+    } else {
+        // No valid previous selection, clear and set placeholder
+        dropdownElement.dropdown('clear');
+        dropdownElement.siblings('.text').text('Изберете район...');
+    }
+
+    // Refresh the dropdown to update its state
+    dropdownElement.dropdown('refresh');
 }
 
 //#region Person Identifier
@@ -572,6 +606,7 @@ function initializeFormFields() {
     fileUploadInitialize();
     autocompleteWithCategoriesInitialize();    
     addressInitialize();
+    currencyInitialize();
 }
 
 function addressInitialize() {
@@ -662,6 +697,7 @@ function uploadFile(sender, file, fieldName) {
 
 function clearFileInput(sender) {
     sender.find('.upload-file-input').val('');
+    sender.find('.upload-file-key').val('');
     sender.find('.selected-file').text('');
     sender.find('.selected-file').removeAttr('title');
 }
@@ -696,7 +732,7 @@ function fileUploadInitialize() {
             __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
         }
 
-        fileActionWithConfirmation('/designer/DeleteFile', fileData, "Сигурни ли сте, че искате да премахнете файла?", function () {
+        fileActionWithConfirmation("Сигурни ли сте, че искате да премахнете файла?", function () {
             clearFileInput($action);
         });
     });
@@ -734,7 +770,7 @@ function showAddressCountryDependent(caller) {
         addressForm.find("[name*='floorImmutable']").closest('.ui.form').show();
         addressForm.find("[name*='apartmentNumberImmutable']").closest('.ui.form').show();
         addressForm.find("[name*='addressAbroadImmutable']").closest('.ui.form').hide();
-    } else {
+    } else if (caller.val() !== "") {
         addressForm.find("[name*='settlementImmutable']").closest('.ui.form').hide();
         addressForm.find("[name*='postalCodeImmutable']").closest('.ui.form').hide();
         addressForm.find("[name*='regionImmutable']").closest('.ui.form').hide();
@@ -746,4 +782,49 @@ function showAddressCountryDependent(caller) {
         addressForm.find("[name*='apartmentNumberImmutable']").closest('.ui.form').hide();
         addressForm.find("[name*='addressAbroadImmutable']").closest('.ui.form').show();
     }
-}    
+    else {
+        addressForm.find("[name*='settlementImmutable']").closest('.ui.form').hide();
+        addressForm.find("[name*='postalCodeImmutable']").closest('.ui.form').hide();
+        addressForm.find("[name*='regionImmutable']").closest('.ui.form').hide();
+        //addressForm.find("[name*='districtImmutable']").closest('.ui.form').hide();
+        addressForm.find("[name*='streetImmutable']").closest('.ui.form').hide();
+        addressForm.find("[name*='buildingNumberImmutable']").closest('.ui.form').hide();
+        addressForm.find("[name*='entranceNumberImmutable']").closest('.ui.form').hide();
+        addressForm.find("[name*='floorImmutable']").closest('.ui.form').hide();
+        addressForm.find("[name*='apartmentNumberImmutable']").closest('.ui.form').hide();
+        addressForm.find("[name*='addressAbroadImmutable']").closest('.ui.form').hide();
+    }
+}
+
+//#region Currency initialize
+
+function currencyInitialize() {
+    let currencyContainers = $('.currency').find(':input[type=number]').closest('.currency');
+
+    if (currencyContainers.length == 0) {
+        return;
+    }
+
+    currencyContainers.each(function () {
+        generateCurrencyValue($(this));
+    });
+
+    $('.currency').find(':input[type=number]').on('input', function () {
+        generateCurrencyValue($(this).closest('.currency'));
+    });
+}
+
+//#endregion
+
+function generateCurrencyValue(currencyContainer) {
+    let isBeforeEuro = $('#isBeforeEuro').val();
+    //const switchDate = new Date('2026-01-01');
+    //const currentDate = new Date();
+    const currencyCode = isBeforeEuro ? '1' : '2';
+    let currencyValue = currencyContainer.find(':input[type=number]').val().trim();
+    let currencyResult = currencyCode + ':' + currencyValue;
+    if (!currencyValue) {
+        currencyResult = '';
+    }
+    currencyContainer.find("input[type='hidden']:not(.label input)").val(currencyResult);
+}

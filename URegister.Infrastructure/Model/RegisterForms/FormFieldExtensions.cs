@@ -48,7 +48,11 @@ namespace URegister.Infrastructure.Model.RegisterForms
                 //File = original.File, // Shallow copy; IFormFile is likely reference type managed outside this clone
                 CanBeRepeated = false, //original.CanBeRepeated,
                 Repetitions =
-                    new List<FormField>() //original.Repetitions?.Select(r => r.Clone()).ToList() // Recursively clone nested list
+                    new List<FormField>(), //original.Repetitions?.Select(r => r.Clone()).ToList() // Recursively clone nested list
+                IsLastInRow = original.IsLastInRow,
+                IsBatchOwner = original.IsBatchOwner,
+                IsSubmitter = original.IsSubmitter,
+                IsColumnInDataTable = original.IsColumnInDataTable
             };
         }
     }

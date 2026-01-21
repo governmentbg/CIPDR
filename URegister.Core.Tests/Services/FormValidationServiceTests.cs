@@ -2,6 +2,7 @@
 using Grpc.Core;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 using Moq;
 using URegister.Common;
 using URegister.Core.Services;
@@ -563,7 +564,133 @@ namespace URegister.Core.Tests.Services
         }
 
         [Test]
+        [TestCase("", "", true)]
+        [TestCase("1:1f23123123", "", true)]
+        [TestCase("", "1:1306172063", true)]
+        public async Task ValidateMPREntity_Invalid(string cid, string pid, bool isRequired = false)
+        {
+            var mockNomenclatureClient = new Mock<NomenclatureGrpc.NomenclatureGrpcClient>();
+            mockNomenclatureClient
+                .Setup(m => m.AreNomenclatureCodesAllowedAsync(
+                    It.IsAny<AreNomenclatureCodesAllowedRequest>(), null, null, CancellationToken.None))
+                .Returns((AreNomenclatureCodesAllowedRequest request, Metadata headers, DateTime? deadline, CancellationToken cancellationToken) =>
+                {
+                    var mockResponse = CreateMockAreNomenclatureCodesAllowedResponse(request);
+
+                    // Create a mock AsyncUnaryCall
+                    var asyncUnaryCall = new AsyncUnaryCall<AreNomenclatureCodesAllowedResponse>(
+                        Task.FromResult(mockResponse),         // Response
+                        Task.FromResult(new Metadata()),      // Response headers
+                        () => Status.DefaultSuccess,          // Status
+                        () => new Metadata(),                 // Trailers
+                        () => { }                             // Dispose action
+                    );
+
+                    return asyncUnaryCall;
+                });
+
+            FormField testSubject = new FormField()
+            {
+                Type = nameof(SimpleFormFieldType.MPREntity),
+                IsRequired = isRequired,
+                Name = "mpr",
+                Fields = new List<FormField>()
+                {
+                    new FormField()
+                    {
+                        Name = "mpr_" + ComplexFieldsNameConstants.CompanyNumberImmutable,
+                        Value = cid,
+                        Type = SimpleFormFieldType.CompanyIdentifier.ToString()
+                    },
+                    new FormField()
+                    {
+                        Name = "mpr_" + ComplexFieldsNameConstants.IdentifierImmutable,
+                        Value = pid,
+                        Type = SimpleFormFieldType.PersonIdentifier.ToString()
+                    },
+                }
+            };
+
+            bool result = await _formValidationService!.ValidateViewModel(new FormViewModel()
+            {
+                FormFields = new List<FormField>()
+                {
+                    testSubject
+                }
+            }, mockNomenclatureClient.Object, 0);
+
+            Assert.IsFalse(result);
+            Assert.IsFalse(string.IsNullOrEmpty(testSubject.ValidationError));
+        }
+
+        [Test]
+        [TestCase("", "", false)]
+        [TestCase("1:123123123", "", true)]
+        [TestCase("", "1:1306172062 ", true)]
+        public async Task ValidateMPREntity_Valid(string cid, string pid, bool isRequired = false)
+        {
+            var mockNomenclatureClient = new Mock<NomenclatureGrpc.NomenclatureGrpcClient>();
+            mockNomenclatureClient
+                .Setup(m => m.AreNomenclatureCodesAllowedAsync(
+                    It.IsAny<AreNomenclatureCodesAllowedRequest>(), null, null, CancellationToken.None))
+                .Returns((AreNomenclatureCodesAllowedRequest request, Metadata headers, DateTime? deadline, CancellationToken cancellationToken) =>
+                {
+                    var mockResponse = CreateMockAreNomenclatureCodesAllowedResponse(request);
+
+                    // Create a mock AsyncUnaryCall
+                    var asyncUnaryCall = new AsyncUnaryCall<AreNomenclatureCodesAllowedResponse>(
+                        Task.FromResult(mockResponse),         // Response
+                        Task.FromResult(new Metadata()),      // Response headers
+                        () => Status.DefaultSuccess,          // Status
+                        () => new Metadata(),                 // Trailers
+                        () => { }                             // Dispose action
+                    );
+
+                    return asyncUnaryCall;
+                });
+
+            FormField testSubject = new FormField()
+            {
+                Type = nameof(SimpleFormFieldType.MPREntity),
+                IsRequired = isRequired,
+                Name = "mpr",
+                Fields = new List<FormField>()
+                {
+                    new FormField()
+                    {
+                        Name = "mpr_" + ComplexFieldsNameConstants.CompanyNumberImmutable,
+                        Value = cid,
+                        Type = SimpleFormFieldType.CompanyIdentifier.ToString()
+                    },
+                    new FormField()
+                    {
+                        Name = "mpr_" + ComplexFieldsNameConstants.IdentifierImmutable,
+                        Value = pid,
+                        Type = SimpleFormFieldType.PersonIdentifier.ToString()
+                    },
+                }
+            };
+
+            bool result = await _formValidationService!.ValidateViewModel(new FormViewModel()
+            {
+                FormFields = new List<FormField>()
+                {
+                    testSubject
+                }
+            }, mockNomenclatureClient.Object, 0);
+
+            Assert.IsTrue(result);
+            Assert.IsTrue(string.IsNullOrEmpty(testSubject.ValidationError));
+
+            foreach (FormField field in testSubject.Fields)
+            {
+                Assert.IsTrue(string.IsNullOrEmpty(field.ValidationError));
+            }
+        }
+
+        [Test]
         [TestCase("1:123123123", "Компания", "", "", true)]//ЕИК
+        [TestCase("2:123123123", "Компания", "", "", true)]//ЕИК
         public async Task ValidateCompany_Invalid(string cid, string name, string eikForm, string bulstatForm, bool isRequired = false)
         {
             var mockNomenclatureClient = new Mock<NomenclatureGrpc.NomenclatureGrpcClient>();
@@ -614,7 +741,7 @@ namespace URegister.Core.Tests.Services
                     new FormField()
                     {
                         Name = "comp_companyNumberImmutable",
-                        Value = bulstatForm,
+                        Value = cid,
                         Type = SimpleFormFieldType.CompanyIdentifier.ToString()
                     },
                 }
@@ -634,6 +761,9 @@ namespace URegister.Core.Tests.Services
 
         [Test]
         [TestCase("1:123123123", "Компания", "", "", false)]//ЕИК
+        [TestCase("2:123123123", "Компания", "", "", false)]//ЕИК
+        [TestCase("3:ghfg", "Компания", "", "", true)]//ЕИК
+        [TestCase("1:123123123", "Компания", "1", "", true)]//ЕИК
         public async Task ValidateCompany_Valid(string cid, string name, string eikForm, string bulstatForm, bool isRequired = false)
         {
             var mockNomenclatureClient = new Mock<NomenclatureGrpc.NomenclatureGrpcClient>();
@@ -673,18 +803,20 @@ namespace URegister.Core.Tests.Services
                     {
                         Name = "comp_legalFormBulstatImmutable",
                         Value = bulstatForm,
-                        Type = SimpleFormFieldType.Autocomplete.ToString()
+                        Type = SimpleFormFieldType.Autocomplete.ToString(),
+                        NomenclatureType = "CL1000"
                     },
                     new FormField()
                     {
                         Name = "comp_legalFormEIKImmutable",
-                        Value = bulstatForm,
-                        Type = SimpleFormFieldType.Select.ToString()
+                        Value = eikForm,
+                        Type = SimpleFormFieldType.Select.ToString(),
+                        NomenclatureType = "CL0009"
                     },
                     new FormField()
                     {
                         Name = "comp_companyNumberImmutable",
-                        Value = bulstatForm,
+                        Value = cid,
                         Type = SimpleFormFieldType.CompanyIdentifier.ToString()
                     },
                 }
@@ -990,11 +1122,11 @@ namespace URegister.Core.Tests.Services
 
             if (allowPastDates)
             {
-                fieldValue = utcNow.AddMinutes(-1).AddMinutes(-userMinutesUtcOffset).Date.ToString("dd.MM.yyyy");
+                fieldValue = utcNow.AddMinutes(-1).AddMinutes(-userMinutesUtcOffset).Date.ToString(FormattingConstant.NormalDateFormat);
             }
             else if (allowFutureDates)
             {
-                fieldValue = utcNow.AddMinutes(10).AddMinutes(-userMinutesUtcOffset).Date.ToString("dd.MM.yyyy");
+                fieldValue = utcNow.AddMinutes(10).AddMinutes(-userMinutesUtcOffset).Date.ToString(FormattingConstant.NormalDateFormat);
             }
 
             FormField testSubject = new FormField()
@@ -1596,11 +1728,13 @@ namespace URegister.Core.Tests.Services
         }
 
         [Test]
-        [TestCase("BG", "PER", "", true)]
-        [TestCase("FIN", "", "Kotka", true)]
-        [TestCase("BG", "", "", false)]
-        [TestCase("FIN", "", "", false)]
-        public async Task ValidateFieldAddress_Valid(string countryCode, string cityBg, string addressAbroad, bool isRequired = false)
+        [TestCase("BG", "PER", "", "Желязо",true)]
+        [TestCase("FIN", "", "Kotka", "", true)]
+        [TestCase("BG", "", "", "", false)]
+        [TestCase("FIN", "", "", "", false)]
+        [TestCase("FIN", "", "", "", true)]
+        [TestCase("", "", "", "", false)]
+        public async Task ValidateFieldAddress_Valid(string countryCode, string cityBg, string addressAbroad, string street, bool isRequired = false)
         {
             var mockNomenclatureClient = new Mock<NomenclatureGrpc.NomenclatureGrpcClient>();
             mockNomenclatureClient
@@ -1675,6 +1809,13 @@ namespace URegister.Core.Tests.Services
                 });
             }
 
+            testSubject.Fields.Add(new FormField()
+            {
+                Type = SimpleFormFieldType.TextArea.ToString(),
+                Name = "streetImmutable",
+                Value = street
+            });
+
             bool result = await _formValidationService!.ValidateViewModel(new FormViewModel()
             {
                 FormFields = new List<FormField>()
@@ -1688,11 +1829,237 @@ namespace URegister.Core.Tests.Services
         }
 
         [Test]
-        [TestCase("BG", "", "PER", true)]
-        [TestCase("FIN", "Kotka", "", true)]
-        [TestCase("BG", "", "", true)]
-        [TestCase("FIN", "", "", true)]
-        public async Task ValidateFieldAddress_Invalid(string countryCode, string cityBg, string addressAbroad, bool isRequired = false)
+        [TestCase("BG", "", "PER", "", false)]
+        [TestCase("BG", "", "", "", false)]
+        [TestCase("BG", "PER", "", "", false)]
+        [TestCase("BG", "", "", "", false)]
+        //[TestCase("FIN", "", "", "", false)]
+        [TestCase("", "PER", "", "Желязо", false)]
+        public async Task ValidateFieldAddressStructure_Valid(string countryCode, string cityBg, string addressAbroad, string street, bool isRequired = false)
+        {
+            var mockNomenclatureClient = new Mock<NomenclatureGrpc.NomenclatureGrpcClient>();
+            mockNomenclatureClient
+                .Setup(m => m.AreNomenclatureCodesAllowedAsync(
+                    It.Is<AreNomenclatureCodesAllowedRequest>(req => req.NomenclatureType == "EK009"), null, null, CancellationToken.None))
+                .Returns((AreNomenclatureCodesAllowedRequest request, Metadata headers, DateTime? deadline, CancellationToken cancellationToken) =>
+                {
+                    var mockResponse = CreateMockCountryAreNomenclatureCodesAllowedResponse(request);
+
+                    // Create a mock AsyncUnaryCall
+                    var asyncUnaryCall = new AsyncUnaryCall<AreNomenclatureCodesAllowedResponse>(
+                        Task.FromResult(mockResponse),         // Response
+                        Task.FromResult(new Metadata()),      // Response headers
+                        () => Status.DefaultSuccess,          // Status
+                        () => new Metadata(),                 // Trailers
+                        () => { }                             // Dispose action
+                    );
+
+                    return asyncUnaryCall;
+                });
+
+            mockNomenclatureClient
+                .Setup(m => m.AreNomenclatureCodesAllowedAsync(
+                    It.Is<AreNomenclatureCodesAllowedRequest>(req => req.NomenclatureType == "EK006"), null, null, CancellationToken.None))
+                .Returns((AreNomenclatureCodesAllowedRequest request, Metadata headers, DateTime? deadline, CancellationToken cancellationToken) =>
+                {
+                    var mockResponse = CreateMockCityAreNomenclatureCodesAllowedResponseResponse(request);
+
+                    // Create a mock AsyncUnaryCall
+                    var asyncUnaryCall = new AsyncUnaryCall<AreNomenclatureCodesAllowedResponse>(
+                        Task.FromResult(mockResponse),         // Response
+                        Task.FromResult(new Metadata()),      // Response headers
+                        () => Status.DefaultSuccess,          // Status
+                        () => new Metadata(),                 // Trailers
+                        () => { }                             // Dispose action
+                    );
+
+                    return asyncUnaryCall;
+                });
+
+            FormField testSubject = new FormField()
+            {
+                Type = "Address",
+                IsRequired = isRequired,
+                Name = "address"
+            };
+
+            if (!string.IsNullOrWhiteSpace(countryCode))
+            {
+                testSubject.Fields.Add(new FormField()
+                {
+                    Type = SimpleFormFieldType.Autocomplete.ToString(),
+                    Name = "address_countryImmutable",
+                    Value = countryCode,
+                    IsRequired = false,
+                    NomenclatureType = "EK009"
+                });
+            }
+
+            if (!string.IsNullOrWhiteSpace(cityBg))
+            {
+                testSubject.Fields.Add(new FormField()
+                {
+                    //Type = SimpleFormFieldType.City.ToString(),
+                    Type = SimpleFormFieldType.Text.ToString(),
+                    Name = "settlementImmutable",
+                    Value = cityBg,
+                });
+            }
+
+            if (!string.IsNullOrWhiteSpace(street))
+            {
+                testSubject.Fields.Add(new FormField()
+                {
+                    Type = SimpleFormFieldType.TextArea.ToString(),
+                    Name = "streetImmutable",
+                    Value = street
+                });
+            }
+
+            if (!string.IsNullOrWhiteSpace(street))
+            {
+                testSubject.Fields.Add(new FormField()
+                {
+                    Type = SimpleFormFieldType.TextArea.ToString(),
+                    Name = "addressAbroadImmutable",
+                    Value = addressAbroad
+                });
+            }
+
+            bool result = await _formValidationService!.ValidateViewModel(new FormViewModel()
+            {
+                FormFields = new List<FormField>()
+                {
+                    testSubject
+                }
+            }, mockNomenclatureClient.Object, 0);
+
+            Assert.IsTrue(result);
+            Assert.IsNull(testSubject.ValidationError);
+        }
+
+        [Test]
+        [TestCase("BG", "", "PER", "", true)]
+        [TestCase("BG", "", "", "", true)]
+        [TestCase("BG", "PER", "", "", true)]
+        [TestCase("BG", "", "", "", true)]
+        //[TestCase("FIN", "", "", "", true)]
+        [TestCase("", "PER", "", "Желязо", true)]
+        public async Task ValidateFieldAddressStructure_Invalid(string countryCode, string cityBg, string addressAbroad, string street, bool isRequired = false)
+        {
+            var mockNomenclatureClient = new Mock<NomenclatureGrpc.NomenclatureGrpcClient>();
+            mockNomenclatureClient
+                .Setup(m => m.AreNomenclatureCodesAllowedAsync(
+                    It.Is<AreNomenclatureCodesAllowedRequest>(req => req.NomenclatureType == "EK009"), null, null, CancellationToken.None))
+                .Returns((AreNomenclatureCodesAllowedRequest request, Metadata headers, DateTime? deadline, CancellationToken cancellationToken) =>
+                {
+                    var mockResponse = CreateMockCountryAreNomenclatureCodesAllowedResponse(request);
+
+                    // Create a mock AsyncUnaryCall
+                    var asyncUnaryCall = new AsyncUnaryCall<AreNomenclatureCodesAllowedResponse>(
+                        Task.FromResult(mockResponse),         // Response
+                        Task.FromResult(new Metadata()),      // Response headers
+                        () => Status.DefaultSuccess,          // Status
+                        () => new Metadata(),                 // Trailers
+                        () => { }                             // Dispose action
+                    );
+
+                    return asyncUnaryCall;
+                });
+
+            mockNomenclatureClient
+                .Setup(m => m.AreNomenclatureCodesAllowedAsync(
+                    It.Is<AreNomenclatureCodesAllowedRequest>(req => req.NomenclatureType == "EK006"), null, null, CancellationToken.None))
+                .Returns((AreNomenclatureCodesAllowedRequest request, Metadata headers, DateTime? deadline, CancellationToken cancellationToken) =>
+                {
+                    var mockResponse = CreateMockCityAreNomenclatureCodesAllowedResponseResponse(request);
+
+                    // Create a mock AsyncUnaryCall
+                    var asyncUnaryCall = new AsyncUnaryCall<AreNomenclatureCodesAllowedResponse>(
+                        Task.FromResult(mockResponse),         // Response
+                        Task.FromResult(new Metadata()),      // Response headers
+                        () => Status.DefaultSuccess,          // Status
+                        () => new Metadata(),                 // Trailers
+                        () => { }                             // Dispose action
+                    );
+
+                    return asyncUnaryCall;
+                });
+
+            FormField testSubject = new FormField()
+            {
+                Type = "Address",
+                IsRequired = isRequired,
+                Name = "address"
+            };
+
+            if (!string.IsNullOrWhiteSpace(countryCode))
+            {
+                testSubject.Fields.Add(new FormField()
+                {
+                    Type = SimpleFormFieldType.Autocomplete.ToString(),
+                    Name = "address_countryImmutable",
+                    Value = countryCode,
+                    IsRequired = false,
+                    NomenclatureType = "EK009"
+                });
+            }
+
+            if (!string.IsNullOrWhiteSpace(cityBg))
+            {
+                testSubject.Fields.Add(new FormField()
+                {
+                    //Type = SimpleFormFieldType.City.ToString(),
+                    Type = SimpleFormFieldType.Text.ToString(),
+                    Name = "settlementImmutable",
+                    Value = cityBg,
+                });
+            }
+
+            if (!string.IsNullOrWhiteSpace(street))
+            {
+                testSubject.Fields.Add(new FormField()
+                {
+                    Type = SimpleFormFieldType.TextArea.ToString(),
+                    Name = "streetImmutable",
+                    Value = street
+                });
+            }
+
+            if (!string.IsNullOrWhiteSpace(street))
+            {
+                testSubject.Fields.Add(new FormField()
+                {
+                    Type = SimpleFormFieldType.TextArea.ToString(),
+                    Name = "addressAbroadImmutable",
+                    Value = addressAbroad
+                });
+            }
+
+            bool result = await _formValidationService!.ValidateViewModel(new FormViewModel()
+            {
+                FormFields = new List<FormField>()
+                {
+                    testSubject
+                }
+            }, mockNomenclatureClient.Object, 0);
+
+            Assert.IsFalse(result);
+
+            Assert.AreEqual(MessageConstant.InvalidFieldConfig,
+                testSubject.ValidationError);
+        }
+
+
+        [Test]
+        [TestCase("BG", "", "PER", "", true)]
+        //[TestCase("FIN", "Kotka", "", "", true)]
+        [TestCase("BG", "", "", "", true)]
+        [TestCase("BG", "PER", "", "", true)]
+        [TestCase("BG", "", "", "", true)]
+        [TestCase("", "PER", "", "Желязо", true)]
+        [TestCase("", "PER", "Адрес", "Желязо", true)]
+        public async Task ValidateFieldAddress_Invalid(string countryCode, string cityBg, string addressAbroad, string street, bool isRequired = false)
         {
             var mockNomenclatureClient = new Mock<NomenclatureGrpc.NomenclatureGrpcClient>();
             mockNomenclatureClient
@@ -1760,6 +2127,13 @@ namespace URegister.Core.Tests.Services
             testSubject.Fields.Add(new FormField()
             {
                 Type = SimpleFormFieldType.TextArea.ToString(),
+                Name = "streetImmutable",
+                Value = street
+            });
+
+            testSubject.Fields.Add(new FormField()
+            {
+                Type = SimpleFormFieldType.TextArea.ToString(),
                 Name = "addressAbroadImmutable",
                 Value = addressAbroad
             });
@@ -1775,12 +2149,26 @@ namespace URegister.Core.Tests.Services
             Assert.IsFalse(result);
             if (countryCode == "BG")
             {
-                Assert.AreEqual(MessageConstant.FieldIsRequired, 
-                    testSubject.Fields.Single(f => f.Name == "settlementImmutable").ValidationError);
+                if (string.IsNullOrWhiteSpace(cityBg))
+                {
+                    Assert.AreEqual(MessageConstant.FieldIsRequiredNoParam,
+                        testSubject.Fields.Single(f => f.Name == "settlementImmutable").ValidationError);
+                }
+
+                if (string.IsNullOrWhiteSpace(street))
+                {
+                    Assert.AreEqual(MessageConstant.FieldIsRequiredNoParam,
+                        testSubject.Fields.Single(f => f.Name == "streetImmutable").ValidationError);
+                }
+            }
+            else if(string.IsNullOrWhiteSpace(countryCode))
+            {
+                Assert.AreEqual(MessageConstant.FieldIsRequiredNoParam,
+                    testSubject.Fields.Single(f => f.Name == "address_countryImmutable").ValidationError);
             }
             else
             {
-                Assert.AreEqual(MessageConstant.FieldIsRequired,
+                Assert.AreEqual(MessageConstant.FieldIsRequiredNoParam,
                     testSubject.Fields.Single(f => f.Name == "addressAbroadImmutable").ValidationError);
             }
         }

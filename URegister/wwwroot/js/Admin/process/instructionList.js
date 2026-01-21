@@ -67,6 +67,11 @@ function LoadInstructions() {
                                 <i class="hand point left outline icon"></i>
                            </a>`;
                         }
+                        if (row.fileId) {
+                            result += `<a href="/Admin/Process/GetCertificateFile?fileId=${row.fileId}" data-tooltip="Преглед" class="ui tertiary icon button">
+                                <i class="file icon"></i>
+                           </a>`;
+                        }
                         return result;
                     }
                 }

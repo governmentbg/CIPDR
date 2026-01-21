@@ -88,6 +88,8 @@ namespace Uregister.Users.Services
         /// <returns></returns>
         Task<ResultStatus> DeleteRoleAsync(Guid roleId);
         Task<bool> GetReceiveEFormNotification(UserFilter request);
-        Task<List<UserListData>> GetUserReceiveEmails(UserReceiveEmailsRequest request);
+        Task<List<UserListData>> GetUserReceiveEmails(UserReceiveEmailsRequest request, bool eformNotification, bool instructionResponse);
+        Task<List<UserListData>> GetUserReceiveEmailsForSrok(UserReceiveEmailsRequest request);
+        Task<bool> GetReceiveInstructionResponse(UserFilter request);
     }
 }

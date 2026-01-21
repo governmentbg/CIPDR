@@ -166,7 +166,7 @@ namespace URegister.Areas.Admin.Controllers
                 return RedirectToAction("Login", new { ReturnUrl = returnUrl });
             }
 
-            var additionalClaims = await GetClaimsAsync(appUser, register.Id);
+            var additionalClaims = await GetClaimsAsync(appUser, register.Id, info);
             if (additionalClaims == null)
             {
                 SetErrorMessage("Няма активна администрация за потребителя");
@@ -241,7 +241,7 @@ namespace URegister.Areas.Admin.Controllers
             return LocalRedirect(returnUrl);
         }
 
-        private async Task<IList<Claim>?> GetClaimsAsync(AppUser appUser, int registerId)
+        private async Task<IList<Claim>?> GetClaimsAsync(AppUser appUser, int registerId, ExternalLoginInfo? info)
         {
             IList<Claim> claims = new List<Claim>();
             IList<string> availableAdministrations = new List<string>();
@@ -289,6 +289,14 @@ namespace URegister.Areas.Admin.Controllers
                 appUser.AdministrationId = administration.Id;
             }
             claims.Add(new Claim(CustomClaimType.AdministrationId, appUser.AdministrationId));
+            if (info != null)
+            {
+                var currentCertNoClaim = info.Principal.Claims.FirstOrDefault(c => c.Type == CustomClaimType.IdStampit.CertificateNumber);
+                if (currentCertNoClaim != null)
+                {
+                    claims.Add(new Claim(CustomClaimType.IdStampit.CertificateNumber, currentCertNoClaim.Value));
+                }
+            }
 
             return claims;
         }

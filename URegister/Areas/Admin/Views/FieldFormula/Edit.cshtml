@@ -1,0 +1,47 @@
+﻿@using URegister.Core.Models.Service
+@model FieldFormulaVM
+@{
+    ViewBag.Title = "Формули за изчисления";
+}
+<div class="ui grid">
+    <form id="submit" class="ui sixteen wide column" action="@Url.Action("Edit")" method="post" enctype="multipart/form-data">
+        @Html.HiddenFor(model => model.Id)
+        @Html.HiddenFor(model => model.FormParentId)
+        @Html.AntiForgeryToken()
+        <div class="content">
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.TargetField, "DropDown")
+                        </div>
+                    </div>
+                    @Html.HiddenFor(m => m.FormulaText)
+                    <div class="ui grid">
+                        <div class="ui sixteen wide column content">
+                            <div class="column ui segment green">
+                                <div class="ui form">
+                                    <div class="fields">
+                                        <div class='sixteen wide field'>
+                                            <textarea class="blank-editor" asp-for="@Model.FormulaText"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <br/>
+                    <label><i>Във формулите може да ползвате имена на полета избрани от падащото меню, числа с десетичен разделител '.' както и символи за скоби и операции</i></label>
+                </div>
+            </div>
+            <div class="ui fluid container basic clearing segment"></div>
+            @await Html.PartialAsync("_BackSubmitButton", @Url.Action("Index", "FieldFormula", new { formParentId = Model.FormParentId }))
+        </div>
+    </form>
+    @section Scripts
+    {
+        <script src="~/js/admin/field_formula/tinymce_init.js" asp-append-version="true"></script>
+    }
+</div>
+
+

@@ -5,6 +5,7 @@ using URegister.Core.Data.Models.Common;
 using URegister.Core.Data.Models.Process;
 using URegister.Core.Services;
 using URegister.Infrastructure.Model.RegisterForms;
+using static URegister.Core.Services.FormConfigurationPersistenceService;
 
 namespace URegister.Core.Contracts
 {
@@ -117,9 +118,18 @@ namespace URegister.Core.Contracts
         /// <param name="searchPattern"></param>
         /// <param name="toDate">До дата на вписване, включително</param>
         /// <param name="fromDate">От дата на вписване, включително</param>
+        /// <param name="searchToDate">До дата за търсене по критерии от тип дата</param>
+        /// <param name="searchFromDate">От дата за търсене по критерии от тип дата</param>
         /// <returns></returns>
-        public Task<JsonResult> GetRegistrationProcessListWhereSubfieldsAreConcatenated(Guid administrationId, int skip, int take, string searchKey,
-            string searchPattern, DateTime? toDate, DateTime? fromDate);
+        public Task<(JsonResult, List<Dictionary<string, object>>, Dictionary<string, FormField>)> GetRegistrationProcessListWhereSubfieldsAreConcatenated(Guid administrationId, 
+            int skip, 
+            int take, 
+            string searchKey,
+            string searchPattern, 
+            DateTime? toDate, 
+            DateTime? fromDate,
+            DateTime? searchToDate,
+            DateTime? searchFromDate);
 
         /// <summary>
         /// Връща списък със заявени услуги за лице
@@ -192,8 +202,9 @@ namespace URegister.Core.Contracts
         /// Връща колекция от имената на полета като ключ за дадена форма
         /// </summary>
         /// <param name="formParentId">Идентификатор на форма родител</param>
+        /// <param name="includeComplexFields">Дали да включва сложните полета в списъка</param>
         /// <returns></returns>
-        public Task<Dictionary<string, string>> GetFormFieldNamesInFlatListByParentId(int formParentId);
+        public Task<Dictionary<string, string>> GetFormFieldNamesInFlatListByParentId(int formParentId, bool includeComplexFields = false);
 
 
         /// <summary>
@@ -274,8 +285,57 @@ namespace URegister.Core.Contracts
         public void DistributeRegisterItemValuesToFormViewModel(List<RegisterItem> registerItems,
             FormViewModel viewModel);
 
+        /// <summary>
+        /// Извличане на условия към форма
+        /// </summary>
+        /// <param name="formParentId">Идентификатор на родителска форма</param>
+        /// <returns></returns>
+        public Task<List<FormCondition>> GetFormConditions(int formParentId);
+
         protected internal Task<Dictionary<string, Dictionary<string, string>>> CacheNomenclaturesForValuesOfInterest(
             Dictionary<string, FormField> valuesOfInterest,
             bool detailedEkatte = true);
+
+        /// <summary>
+        /// Връща модел на условие към форма по родителски идентификатор на форма
+        /// </summary>
+        /// <param name="formConditionId"></param>
+        /// <returns></returns>
+        public Task<AddConditionViewModel> GetFormConditionViewModel(int formConditionId);
+
+        /// <summary>
+        /// Записва условие за форма
+        /// </summary>
+        /// <param name="model">Модел на условие за форма</param>
+        /// <returns></returns>
+        Task<SaveOperationResult> SaveFormCondition(AddConditionViewModel model);
+
+        /// <summary>
+        /// Връща дървовиден модел на условия към форма по родителски идентификатор на форма
+        /// </summary>
+        /// <param name="formParentId"></param>
+        /// <returns></returns>
+        Task<Dictionary<string, FieldConditions>> GetConditionTreeForFormParentId(int formParentId);
+
+        /// <summary>
+        /// Прилава условията върху модел на форма
+        /// </summary>
+        /// <param name="model">Модела на формата</param>
+        /// <returns></returns>
+        Task ApplyConditionTreeOnFormModel(FormViewModel model);
+
+        /// <summary>
+        /// Извличане на условие по идентификатор
+        /// </summary>
+        /// <param name="id">Идентификатор на условие</param>
+        /// <returns></returns>
+        public Task<FormCondition> GetFormConditionById(int id);
+
+        /// <summary>
+        /// Изтриване на условие по идентификатор
+        /// </summary>
+        /// <param name="id">Идентификатор на условие</param>
+        /// <returns></returns>
+        public Task<OperationResult> DeleteFormCondition(int id);
     }
 }

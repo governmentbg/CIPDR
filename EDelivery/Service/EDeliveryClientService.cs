@@ -71,17 +71,18 @@ namespace EDelivery.Service
         public async Task<int?> GetProfileId(string uic, string uicType)
         {
             var miscinfo = await tokenService.GetMiscinfo();
-            for (int targetGroupId = 1; targetGroupId <= 3; targetGroupId++)
+            var targetGroups = await targetGroupsClient.ListAsync(miscinfo);
+            foreach (var targetGroup in targetGroups)
             {
                 try
                 {
-                    var model = await profilesClient.SearchAsync(miscinfo, uic, null, targetGroupId);
+                    var model = await profilesClient.SearchAsync(miscinfo, uic, null, targetGroup.TargetGroupId);
                     if (model?.ProfileId != null)
                        return model?.ProfileId;
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, ex.Message);
+                  //  logger.LogError(ex, ex.Message);
                 }
 
             }

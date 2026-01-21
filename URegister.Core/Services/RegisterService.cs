@@ -1,8 +1,4 @@
-﻿using DataTables.AspNet.Core;
-using Google.Protobuf.WellKnownTypes;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using URegister.Common;
 using URegister.Core.Contracts;
@@ -10,7 +6,6 @@ using URegister.Core.Data;
 using URegister.Core.Data.Models.Register;
 using URegister.Core.Models.CurrentRegister;
 using URegister.Infrastructure.Constants;
-using URegister.Infrastructure.Extensions;
 using URegister.NomenclaturesCatalog;
 using URegister.RegistersCatalog;
 
@@ -53,21 +48,6 @@ namespace URegister.Core.Services
 
         public async Task<RegisterVM> GetCurrentRegister()
         {
-            //return await Repo.AllReadonly<Register>()
-            //                 .Select(x => new RegisterVM
-            //                 {
-            //                     Id = x.Id,
-            //                     Type = x.Type,
-            //                     LegalBasis = x.LegalBasis,
-            //                     TypeEntry = x.TypeEntry,
-            //                     Code = x.Code,
-            //                     Description = x.Description,
-            //                     IdentitySecurityLevel = x.IdentitySecurityLevel,
-            //                     Name = x.Name,
-            //                 })
-            //                 .TagWith(nameof(GetCurrentRegister))
-            //                 .SingleAsync();
-
             var id = await GetCurrentRegisterId();
             var model = await registerClient.GetRegister(id, Guid.Empty);
             return new RegisterVM
@@ -80,20 +60,13 @@ namespace URegister.Core.Services
                 Description = model.Description,
                 IdentitySecurityLevel = model.IdentitySecurityLevel,
                 Name = model.Name,
+                NameEDelivery = model.NameEDelivery,
+                HistoryNotPublic = model.HistoryNotPublic
             };
         }
 
         public async Task SaveRegister(RegisterVM model)
         {
-            //var register = await Repo.All<Register>().SingleAsync();
-            //register.Type = model.Type;
-            //register.LegalBasis = model.LegalBasis;
-            //register.TypeEntry = model.TypeEntry;
-            //register.Code = model.Code;
-            //register.Description = model.Description;
-            //register.IdentitySecurityLevel = model.IdentitySecurityLevel;
-            //register.Name = model.Name;
-            //await Repo.SaveChangesAsync();
             var register = new Core.Models.Register.RegisterVM();
             register.Id = model.Id;
             register.Type = model.Type;
@@ -140,6 +113,7 @@ namespace URegister.Core.Services
                 Id = registerItem.Id,
                 Code = registerItem.Code,
                 Name = registerItem.Name,
+                NameEn = registerItem.NameEn,
                 Description = registerItem.Description,
                 LegalBasis = registerItem.LegalBasis,
                 TypeEntry = registerItem.EntryType,

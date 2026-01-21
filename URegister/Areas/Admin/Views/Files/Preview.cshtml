@@ -1,0 +1,34 @@
+﻿@using URegister.Components
+@using URegister.Core.Models.Previewer
+@using URegister.Infrastructure.Constants
+@model PreviewInfoViewModel
+
+
+@{
+    ViewData["Title"] = "Преглед на документ";
+}
+
+@if (Model.ContentType == PreviewConstants.ContentType.ImageTiff ||
+     Model.ContentType == PreviewConstants.ContentType.ImageTif)
+{
+    @(await Component.InvokeAsync<PreviewViewComponent>(new { info = Model, viewName = "Tiff" }))
+}
+else if (Model.ContentType == PreviewConstants.ContentType.PDF &&
+Model.SignatureType == PreviewConstants.SignatureType.Embeded)
+{
+    @(await Component.InvokeAsync<PreviewViewComponent>(new { info = Model, viewName = "PdfJsSigner" }))
+}
+else if (Model.ContentType == PreviewConstants.ContentType.PDF ||
+   Model.ContentType.StartsWith(PreviewConstants.ContentType.ImageStartsWith) ||
+   Model.ContentType == PreviewConstants.ContentType.Text)
+{
+    @(await Component.InvokeAsync<PreviewViewComponent>(new { info = Model, viewName = "Embeded" }))
+}
+else if (Model.ContentType == PreviewConstants.ContentType.Docx)
+{
+    @(await Component.InvokeAsync<PreviewViewComponent>(new { info = Model, viewName = "Docx" }))
+}
+else
+{
+    @(await Component.InvokeAsync<PreviewViewComponent>(new { info = Model }))
+}

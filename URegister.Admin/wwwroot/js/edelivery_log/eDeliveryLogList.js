@@ -67,6 +67,13 @@ function LoadEDeliveryLogRecords() {
                     searchable: false,                  
                 },
                 {
+                    name: 'messageId',
+                    data: 'messageId',
+                    title: 'Идентификатор на съобщение',
+                    sortable: false,
+                    searchable: false,
+                },
+                {
                     name: 'errorMessage',
                     data: 'errorMessage',
                     title: 'Грешка',

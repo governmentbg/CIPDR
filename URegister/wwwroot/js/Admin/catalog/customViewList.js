@@ -35,7 +35,7 @@ function LoadFieldTypes() {
                                 let executeLink = `<a href='/Admin/Process/CustomTableView?customViewId=${data}&customViewName=${row.customViewTitle}' type='button' class='ui tertiary icon button' data-tooltip='Изпълни'><i class="play icon"></i></a>`;                                                                
                                 let deleteLink = "<a href='javascript:actionWithConfirmation(\"/Admin/Catalog/DeleteCustomView\", " +
                                     data + ", \"Сигурни ли сте, че искате да изтриете " +
-                                    row.name +
+                                    row.customViewTitle +
                                     "?\", null)' type='button' class='ui tertiary icon button' data-tooltip='Изтрий'><i class='red trash alternate icon'></i></button>";
 
                                 return editLink + executeLink + deleteLink;

@@ -69,5 +69,17 @@ namespace URegister.Core.Tests.Services
 
             Assert.AreEqual(expectedOrderAfterSort, stringAfterSort);
         }
+
+        [Test]
+        [TestCase("100", "100")]
+        [TestCase("1000", "1 000")]//интервалът не е обикновен интервал а non-breaking space, копирайте за други случаи
+        [TestCase("1.001", "1,001")]
+        [TestCase("1.000", "1,000")]
+        [TestCase("1000000.0001112", "1 000 000,000 111 2")]
+        public void FormatInvariantToBgTest(string inputString, string expectedFormatting)
+        {
+            string result = FormConfigurationPersistenceService.FormatInvariantToBg(inputString);
+            Assert.AreEqual(expectedFormatting, result);
+        }
     }
 }

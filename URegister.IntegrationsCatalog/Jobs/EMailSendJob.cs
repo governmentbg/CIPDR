@@ -1,27 +1,30 @@
 ﻿using Quartz;
+using URegister.Infrastructure.Contracts;
 using URegister.IntegrationsCatalog.Contracts;
 
 namespace URegister.IntegrationsCatalog.Jobs
 {
     [DisallowConcurrentExecution]
-    public class EDeliverySendJob : IJob
+    public class EMailSendJob : IJob
     {
         private readonly ILogger logger;
 
-        private readonly IEDeliveryService eDeliveryService;
-
-        public EDeliverySendJob(ILogger<EDeliverySendJob> _logger,
-                         IEDeliveryService _eDeliveryService)
+        private readonly IEMailService eMailService;
+        private readonly IAuditInfo auditInfo;
+        public EMailSendJob(ILogger<EMailSendJob> _logger,
+                         IEMailService eMailService,
+                         IAuditInfo _auditInfo)
         {
             logger = _logger;
-            eDeliveryService = _eDeliveryService;
+            this.eMailService = eMailService;
+            auditInfo = _auditInfo;
         }
 
         public async Task Execute(IJobExecutionContext context)
         {
-            logger.LogInformation("EDelivery send job executed: Time: {0}", context.FireTimeUtc);
-
-            await eDeliveryService.SendMessagesInputNumber();
+            logger.LogInformation("EMail send job executed: Time: {0}", context.FireTimeUtc);
+            auditInfo.SetAuditInfoForQuartz("EDelivery", "Receive");
+            await eMailService.SendEMails();
         }
 
     }

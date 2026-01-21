@@ -27,8 +27,9 @@ namespace URegister.RegistersCatalog.Data.Models
         /// <summary>
         /// Идентификатор на лице
         /// </summary>
-        [MaxLength(20)]
         [Required]
+        //NOTE : решено е като временно решение да се позволяват празни PID
+        [StringLength(20/*, MinimumLength = 1*/)]
         [Comment("Идентификатор на лице")]
         public string Pid { get; set; } = null!;
 

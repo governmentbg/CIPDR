@@ -42,6 +42,11 @@ service RegistersCatalogGrpc {
   rpc SaveCalendarDay(CalendarDayItem) returns (common.ResultStatus);
   rpc GetCalendarDayList(CalendarDayListRequest) returns (CalendarDayList);
   rpc CalcWorkDays(CalendarDayCalcRequest) returns (CalendarDayCalcResponse);
+  rpc GetOpenDataParam(OpenDataParamRequest) returns (OpenDataParamResponse);
+  rpc SaveOpenDataRegister(OpenDataRegisterSaveRequest) returns (common.ResultStatus);
+  rpc SaveOpenDataAdministration(OpenDataAdministrationSaveRequest) returns (common.ResultStatus);
+  rpc SaveOpenDataRegisterAdministration(OpenDataRegisterAdministrationSaveRequest) returns (common.ResultStatus);
+  rpc SaveOpenDataRegisterAdministrationMeta(OpenDataRegisterAdministrationMetaSaveRequest) returns (common.ResultStatus);
 }
 
 // The response message containing the number.
@@ -91,6 +96,9 @@ message RegisterItem {
 	int32 status_id = 11;
 	bool deployed = 12;
 	repeated RegisterFileItem register_files = 14;
+	bool historyNotPublic = 15;
+	google.protobuf.StringValue name_e_delivery = 16;
+	google.protobuf.StringValue name_en = 17;
 }
 
 message AdministrationItem {
@@ -99,6 +107,7 @@ message AdministrationItem {
 	string name = 3;
 	string legal_basis = 4;
 	repeated PersonItem persons = 5;
+	google.protobuf.StringValue name_en = 6;
 }
 
 message PersonItem {
@@ -142,6 +151,9 @@ message RegisterListItem {
 	bool deployed = 12;
 	google.protobuf.StringValue soleAdministrationId = 13;
 	google.protobuf.StringValue soleAdministrationName = 14;
+	google.protobuf.StringValue name_e_delivery = 15;
+	google.protobuf.StringValue name_en = 16;
+	google.protobuf.StringValue soleAdministrationNameEn = 17;
 }
 
 message RegisterListRequest{
@@ -171,6 +183,8 @@ message AdministrationListItem {
 	string name = 3;
 	string legal_basis = 4;
 	string administration_id = 5;
+	google.protobuf.StringValue name_e_delivery = 6;
+	google.protobuf.StringValue name_en = 7;
 }
 
 message AdministrationListResponse{
@@ -229,6 +243,7 @@ message AppAdministration{
 	string id = 1;
 	string name = 2;
 	optional string uic = 3;
+    google.protobuf.StringValue name_e_delivery = 4;
 }
 
 message AppAdministrations{
@@ -312,7 +327,8 @@ message AdministrationUicItem {
 	string administration_id = 1;
 	string uic = 2;
 	google.protobuf.StringValue name = 3;
-	repeated int32 register_ids = 4;
+	google.protobuf.StringValue name_e_delivery = 4;
+	repeated int32 register_ids = 5;
 }
 
 message AdministrationUicList {
@@ -326,6 +342,7 @@ message ServiceItem {
 	google.protobuf.StringValue eform_code = 3;
 	bool isActive = 4;
 	string register_code = 5;
+	int32 service_type_id = 6;
 }
 
 message ServiceList {
@@ -370,3 +387,52 @@ message CalendarDayCalcResponse{
 	google.protobuf.Timestamp to_date = 3;
 }
 
+message OpenDataParamRequest{
+	string administration_id = 1;
+	int32 register_id = 2;
+}
+
+message OpenDataParam{
+	int32 category_id = 1;
+	google.protobuf.StringValue tags = 2;
+	int32 organisation_id = 3;
+	google.protobuf.StringValue api_key = 4;
+	google.protobuf.StringValue data_set_id = 5;
+	google.protobuf.StringValue resource_meta_id = 6;
+	int32 frequency_administration_id = 7;
+	int32 frequency_id = 8;
+	google.protobuf.StringValue administration_name = 9;
+}
+
+message OpenDataParamResponse {
+  common.ResultStatus status = 1;
+  OpenDataParam data = 2;
+}
+
+
+message OpenDataRegisterSaveRequest{
+	int32 register_id = 1;
+	int32 category_id = 2;
+	google.protobuf.StringValue tags = 3;
+}
+
+message OpenDataAdministrationSaveRequest{
+    int32 register_id = 1;
+	string administration_id = 2;
+	int32 organisation_id = 3;
+	google.protobuf.StringValue api_key = 4;
+	int32 frequency_id = 5;
+}
+
+message OpenDataRegisterAdministrationSaveRequest{
+	int32 register_id = 1;
+	string administration_id = 2;
+	int32 frequency_id = 5;
+}
+
+message OpenDataRegisterAdministrationMetaSaveRequest{
+	int32 register_id = 1;
+	string administration_id = 2;
+	string data_set_id = 3;
+	google.protobuf.StringValue resource_meta_id = 4;
+}

@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using URegister.Infrastructure.Constants;
 
 namespace URegister.Core.Models.Register
@@ -13,6 +14,7 @@ namespace URegister.Core.Models.Register
         private string _type = null!;
         private string? _identitySecurityLevel;
         private string _typeEntry = null!;
+        private string _nameEn = null;
 
         /// <summary>
         /// Идентификатор
@@ -41,12 +43,33 @@ namespace URegister.Core.Models.Register
         [Required(ErrorMessage = MessageConstant.FieldIsRequired)]
         [MaxLength(500, ErrorMessage = MessageConstant.StringMaxLengthValidation)]
         [Display(Name = "Име на регистър")]
+        //[RegularExpression(RegexPatterns.CyrillicTextPattern, ErrorMessage = MessageConstant.NotCyrillic)]
         public string Name
         {
             get => _name;
             set => _name = value?.Trim() ?? throw new ArgumentNullException(nameof(value));
         }
 
+        /// <summary>
+        /// Име на регистър на английски език
+        /// </summary>
+        [Required(ErrorMessage = MessageConstant.FieldIsRequired)]
+        [MaxLength(500, ErrorMessage = MessageConstant.StringMaxLengthValidation)]
+        [Display(Name = "Име на регистър на английски език")]
+        [RegularExpression(RegexPatterns.NoCyrillicLetters, ErrorMessage = MessageConstant.ContainsCyrillic)]
+        public string NameEn
+        {
+            get => _nameEn;
+            set => _nameEn = value?.Trim() ?? throw new ArgumentNullException(nameof(value));
+        }
+
+        /// <summary>
+        /// Име на регистър за ССЕВ
+        /// </summary>
+        [MaxLength(200, ErrorMessage = MessageConstant.StringMaxLengthValidation)]
+        [Display(Name = "Име на регистър за ССЕВ")]
+        public string? NameEDelivery { get; set; }
+        
         /// <summary>
         /// Описание
         /// </summary>
@@ -140,5 +163,11 @@ namespace URegister.Core.Models.Register
         };
 
         public RegisterFileListVM AdministrationFiles { get; set; } = new();
+
+        /// <summary>
+        /// Историята не е публична
+        /// </summary>
+        [DisplayName("Историята не е публична")]
+        public bool HistoryNotPublic { get; set; } = false;
     }
 }

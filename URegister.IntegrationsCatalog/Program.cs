@@ -1,11 +1,13 @@
 using IO.RegixClient;
 using Microsoft.Extensions.Configuration;
+using URegister.AuditLog;
 using URegister.Infrastructure.Constants;
 using URegister.IntegrationsCatalog.Services;
 using URegister.RegistersCatalog;
 using URegister.Infrastructure.Extensions;
 using URegister.NomenclaturesCatalog;
 using URegister.Users;
+using URegister.Infrastructure.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,7 +15,10 @@ builder.AddServiceDefaults();
 builder.Services.AddDbSupport(builder.Configuration);
 builder.Services.AddApplicationServices(builder.Configuration);
 // Add services to the container.
-builder.Services.AddGrpc();
+builder.Services.AddGrpc(options =>
+{
+    options.Interceptors.Add<ServerAuditLogInterceptor>();
+}); 
 builder.Services.AddGrpcClient<RegistersCatalogGrpc.RegistersCatalogGrpcClient>(o =>
 {
     o.Address = new(string.Format(builder.Configuration[ContainerNameConstants.ContainerAddressMask],
@@ -42,6 +47,11 @@ builder.Services.AddIoRegixClient(options =>
     options.Password = builder.Configuration.GetValue<string>("Regix:Password");
     options.ClientType = builder.Configuration.GetValue<bool>("Regix:IsInProduction") ? ClientType.Production : ClientType.Test;
     options.UseNewEndpoint = builder.Configuration.GetValue<bool>("Regix:UseNewEndpoint", true);
+});
+
+builder.Services.AddGrpcClient<AuditLogGrpc.AuditLogGrpcClient>(o =>
+{
+    o.Address = new(string.Format(builder.Configuration[ContainerNameConstants.ContainerAddressMask], ContainerNameConstants.AuditLog));
 });
 
 var app = builder.Build();

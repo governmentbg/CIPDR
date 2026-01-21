@@ -3,6 +3,7 @@ using IO.RegixClient;
 using IO.RegixClient.ServiceModels.RA;
 using Regix;
 using System.ComponentModel;
+using System.Text.Json;
 using URegister.Common;
 using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Helper;
@@ -25,16 +26,19 @@ public class IntegrationCatalogService : IntegrationGrpc.IntegrationGrpcBase
     private readonly NomenclatureGrpc.NomenclatureGrpcClient _nomenclatureGrpcClient;
     private readonly ILogger<IntegrationCatalogService> _logger;
     private readonly IEDeliveryService edeliveryService;
+    private readonly IEMailService mailService;
 
     public IntegrationCatalogService(
         IRegixClient regixClient,
         NomenclatureGrpc.NomenclatureGrpcClient nomenclatureGrpcClient,
         IEDeliveryService edeliveryService,
+        IEMailService mailService,
         ILogger<IntegrationCatalogService> logger)
     {
         _regixClient = regixClient;
         _nomenclatureGrpcClient = nomenclatureGrpcClient;
         this.edeliveryService = edeliveryService;
+        this.mailService = mailService;
         _logger = logger;
     }
 
@@ -45,6 +49,9 @@ public class IntegrationCatalogService : IntegrationGrpc.IntegrationGrpcBase
             var callContext = GetCallContext(request.ContextInfo);
 
             PersonDataResponseType response = await _regixClient.GetPersonAsync(request.Pid, callContext);
+
+            _logger.LogInformation($"Данни за лице с ИД {request.Pid} от Regix {JsonSerializer.Serialize(response)}");
+
             return new GetPersonInfoResponse
             {
                 FirstName = response.PersonNames.FirstName,
@@ -106,6 +113,8 @@ public class IntegrationCatalogService : IntegrationGrpc.IntegrationGrpcBase
                 ActualStateResponseV3 response =
                     await _regixClient.TR_GetActualStateV3Async(request.Cid, callContext);
 
+                _logger.LogInformation($"Данни за компания от Regix по ЕИК {request.Cid} {JsonSerializer.Serialize(response)}");
+
                 System.Xml.XmlNode[] companyAddress =
                     (response.Deed.Subdeeds.Subdeed
                         .SelectMany(s => s.Records
@@ -156,6 +165,8 @@ public class IntegrationCatalogService : IntegrationGrpc.IntegrationGrpcBase
             {
                 var response =
                     await _regixClient.Bulstat_GetStateOfPlay(request.Cid, callContext);
+
+                _logger.LogInformation($"Данни за компания от Regix по БУЛСТАТ {request.Cid} {JsonSerializer.Serialize(response)}");
 
                 var address = response.Subject.Addresses
                     .Single(a => a.AddressType.Code == RegixDataHelper.ManagementAddressTypeCodeBulstat.ToString());
@@ -292,4 +303,20 @@ public class IntegrationCatalogService : IntegrationGrpc.IntegrationGrpcBase
         }
         return reply;
     }
+
+    public override async Task<Common.ResultStatus> SendEmailForSrok(EMailForSrokRequest request, ServerCallContext context)
+    {
+        var reply = CommonGrpcHelper.CreateStatusOK();
+        try
+        {
+            await mailService.SendEMailsForSrok(request.RegisterCode, request.TenantId, request.ProcessId, request.Subject, request.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, ex.Message);
+            reply = CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+        return reply;
+    }
+
 }

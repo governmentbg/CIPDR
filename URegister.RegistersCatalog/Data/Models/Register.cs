@@ -35,6 +35,20 @@ namespace URegister.RegistersCatalog.Data.Models
         public string Name { get; set; } = null!;
 
         /// <summary>
+        /// Име на регистър на английски език
+        /// </summary>
+        [MaxLength(500)]
+        [Comment("Име на регистър на английски език")]
+        public string NameEn { get; set; } = null;
+
+        /// <summary>
+        /// Съкратено име на регистър ползва се при пращане на съобщение към ССЕВ
+        /// </summary>
+        [MaxLength(200)]
+        [Comment("Съкратено име на регистър ползва се при пращане на съобщение към ССЕВ")]
+        public string? NameEDelivery { get; set; } 
+
+        /// <summary>
         /// Описание
         /// </summary>
         [MaxLength(1000)]
@@ -120,8 +134,34 @@ namespace URegister.RegistersCatalog.Data.Models
         public string? OpenDataTags { get; set; }
 
         /// <summary>
+        /// AppId за Stampit
+        /// </summary>
+        [Comment("AppId за Stampit")]
+        [MaxLength(100)]
+        public string? AppId { get; set; }
+
+        /// <summary>
+        /// AppSecret за Stampit
+        /// </summary>
+        [Comment("AppSecret за Stampit")]
+        [MaxLength(100)]
+        public string? AppSecret { get; set; }
+
+        /// <summary>
+        /// Дата на старт deploy
+        /// </summary>
+        [Comment("Дата на старт на deploy")]
+        public DateTime? DateDeploy { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
         /// Администрации
         /// </summary>
         public List<RegisterAdministration> RegisterAdministrations { get; set; } = new ();
+
+        /// <summary>
+        /// Историята не е публична
+        /// </summary>
+        [Comment("Историята не е публична")]
+        public bool? HistoryNotPublic { get; set; } = false;
     }
 }

@@ -2,10 +2,8 @@
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
-using iText.Layout.Element;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Org.BouncyCastle.Asn1.Ocsp;
 using System.Text.RegularExpressions;
 using URegister.Common;
 using URegister.Core.Contracts;
@@ -15,7 +13,6 @@ using URegister.Infrastructure.Extensions;
 using URegister.NomenclaturesCatalog;
 using URegister.RegistersCatalog;
 using URegister.Users;
-using static FastExpressionCompiler.ExpressionCompiler;
 using static URegister.Users.AppUserManager;
 
 namespace URegister.Core.Services
@@ -33,17 +30,20 @@ namespace URegister.Core.Services
                 Id = register.Id,
                 Code = register.Code,
                 Name = register.Name,
+                NameEn = register.NameEn,
                 Description = register.Description,
                 LegalBasis = register.LegalBasis,
                 Type = register.Type,
                 EntryType = register.TypeEntry,
                 IdentitySecurityLevel = register.IdentitySecurityLevel,
+                HistoryNotPublic = register.HistoryNotPublic
             };
             var administration = new AdministrationItem
             {
                 Id = register.Administration.Id.ToString(),
                 Uic = register.Administration.Uic,
                 Name = register.Administration.Name,
+                NameEn = register.Administration.NameEn
             };
             request.Administrations.Add(administration);
             var persons = register.ContactPersons.ToList();
@@ -114,11 +114,13 @@ namespace URegister.Core.Services
                 Id = register.Id,
                 Code = register.Code,
                 Name = register.Name,
+                NameEn = register.NameEn,
                 Description = register.Description,
                 LegalBasis = register.LegalBasis,
                 Type = register.Type,
                 EntryType = register.TypeEntry,
                 IdentitySecurityLevel = register.IdentitySecurityLevel,
+                HistoryNotPublic = register.HistoryNotPublic
             };
             request.RegisterFiles.AddRange(RegisterFilesToItem(register));
             var result = await registerGrpcClient.AddRegisterAsync(request);
@@ -292,10 +294,13 @@ namespace URegister.Core.Services
                 Code = registerItem.Code,
                 LegalBasis = registerItem.LegalBasis,
                 Name = registerItem.Name,
+                NameEn = registerItem.NameEn ?? String.Empty,
+                NameEDelivery = registerItem.NameEDelivery,
                 Description = registerItem.Description,
                 TypeEntry = registerItem.EntryType,
                 IdentitySecurityLevel = registerItem.IdentitySecurityLevel,
                 StatusId = registerItem.StatusId,
+                HistoryNotPublic = registerItem.HistoryNotPublic
             };
             result.RegisterFiles.Files.AddRange(RegisterFilesToVmList(registerItem, (int)RegisterFileSourceType.Register));
             result.AdministrationFiles.Files.AddRange(RegisterFilesToVmList(registerItem, (int)RegisterFileSourceType.Administration));
@@ -318,6 +323,7 @@ namespace URegister.Core.Services
                     result.ContactPersons.Clear();
                     result.Administration.Id = Guid.Parse(administrationItem.Id);
                     result.Administration.Name = administrationItem.Name;
+                    result.Administration.NameEn = administrationItem.NameEn ?? String.Empty;
                     result.Administration.Uic = administrationItem.Uic;
                     foreach (var personItem in administrationItem.Persons)
                     {

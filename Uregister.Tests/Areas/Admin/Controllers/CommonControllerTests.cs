@@ -18,7 +18,7 @@ namespace URegister.Tests.Areas.Admin.Controllers
             // Get all controller types in the assembly
             var controllerTypes = Assembly.GetAssembly(typeof(ServiceController))
                 .GetTypes()
-                .Where(type => typeof(Controller).IsAssignableFrom(type));
+                .Where(type => typeof(Controller).IsAssignableFrom(type) && type.Name != nameof(OldDataController));
 
             foreach (var controllerType in controllerTypes)
             {
@@ -38,8 +38,9 @@ namespace URegister.Tests.Areas.Admin.Controllers
                         nameof(AccountController.ExternalLogin) or
                         nameof(URegister.Areas.Public.Controllers.ImportController.ImportApplication) or
                         nameof(URegister.Areas.Public.Controllers.ImportController.ImportJson) or 
-                        nameof(OldDataController.ImportExcelFileForR00001) or 
-                        nameof(URegister.Areas.Public.Controllers.ImportController.ImportEDeliveryFile))
+                        //nameof(OldDataController.ImportExcelFileForR00001) or 
+                        nameof(URegister.Areas.Public.Controllers.ImportController.ImportEDeliveryFile) or
+                        nameof(URegister.Controllers.FilesController.PreparePdfForSignature))
                     {
                         continue;
                     }

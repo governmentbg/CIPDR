@@ -9,9 +9,10 @@ namespace URegister.Infrastructure.Model.AuditLog
 {
     public class AuditLogFilterVM
     {
-        private string _actionType;
+        //private string _actionType;
         private string _ipAddress;
         private string _userName;
+        private string _action;
         /// <summary>
         /// От дата на извършване на действие
         /// </summary>
@@ -24,12 +25,12 @@ namespace URegister.Infrastructure.Model.AuditLog
         [Display(Name = "До дата")]
         public DateTime? DateTo { get; set; }
 
-        [Display(Name = "Тип на действие")]
-        public string ActionType
-        {
-            get => _actionType;
-            set => _actionType = value?.Trim();
-        }
+        //[Display(Name = "Тип на действие")]
+        //public string ActionType
+        //{
+        //    get => _actionType;
+        //    set => _actionType = value?.Trim();
+        //}
 
         [Display(Name = "IP адрес")]
         public string IpAddress
@@ -43,6 +44,13 @@ namespace URegister.Infrastructure.Model.AuditLog
         {
             get => _userName;
             set => _userName = value?.Trim();
+        }
+
+        [Display(Name = "Действие")]
+        public string Action
+        {
+            get => _action;
+            set => _action = value?.Trim();
         }
     }
 }

@@ -2,37 +2,45 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Text.RegularExpressions;
 using URegister.Core.Contracts;
 using URegister.Core.Data;
 using URegister.Core.Data.Models.Common;
 using URegister.Core.Data.Models.Process;
+using URegister.Core.Models.OpenData;
 using URegister.Core.Models.Service;
 using URegister.Infrastructure.Constants;
+using URegister.Infrastructure.Extensions;
 using URegister.Infrastructure.Model.RegisterForms;
 using URegister.ObjectsCatalog;
+using static iText.IO.Codec.TiffWriter;
 using static URegister.ObjectsCatalog.ObjectsCatalogGrpc;
 
 namespace URegister.Core.Services
 {
-    public class ProcessTemplateService: BaseService, IProcessTemplateService
+    public class ProcessTemplateService : BaseService, IProcessTemplateService
     {
         private readonly ObjectsCatalogGrpcClient objectsCatalogGrpcClient;
         private readonly IServiceService serviceService;
         private readonly IPublicFieldTemplateService publicFieldTemplateService;
         private readonly IFormConfigurationPersistenceService formConfigurationPersistenceService;
+        private readonly IRegisterService _registerService;
+
         public ProcessTemplateService(
          IApplicationRepository repo,
          ILogger<ProcessTemplateService> logger,
          ObjectsCatalogGrpcClient objectsCatalogGrpcClient,
          IServiceService serviceService,
          IPublicFieldTemplateService publicFieldTemplateService,
-         IFormConfigurationPersistenceService formConfigurationPersistenceService
+         IFormConfigurationPersistenceService formConfigurationPersistenceService,
+         IRegisterService registerService
         ) : base(repo, logger)
         {
             this.objectsCatalogGrpcClient = objectsCatalogGrpcClient;
             this.serviceService = serviceService;
             this.publicFieldTemplateService = publicFieldTemplateService;
             this.formConfigurationPersistenceService = formConfigurationPersistenceService;
+            _registerService = registerService;
         }
 
         public string ReplaceFormFieldsInFieldTemplate(string blank, List<RegisterItem> registerItems, string prefix, int index)
@@ -50,7 +58,23 @@ namespace URegister.Core.Services
         {
             foreach (var registerItem in registerItems)
             {
+                //NOTE : възможни неочаквани или не актуални стойности, особено при номенклатури. За валути ще показва стойности в лева, ако така са записани
+                //TODO : Взимането на данни да става чрез ResolveRegisterItemValues(IEnumerable<dynamic> fieldValues, Dictionary<string, FormField> valuesOfInterest, Dictionary<string, Dictionary<string, string>> cachedNomenclatures)
                 var value = string.IsNullOrEmpty(registerItem.ClValue) ? registerItem.Value : registerItem.ClValue;
+
+                if (registerItem.FieldTypeId == (int)SimpleFormFieldType.PersonIdentifier)//#401315
+                {
+                    value = FormFieldsLayoutService.MaskAfterColonKeepingFirstTwo(value);
+                }
+                else if (registerItem.FieldTypeId == (int)SimpleFormFieldType.BulgarianCurrency)//Временно решение #402707
+                {
+                    value = BGCurrencyService.RegistryItemValueToPublicText(registerItem.Value);
+                }
+                else if (registerItem.FieldTypeId == (int)SimpleFormFieldType.Number)//Временно решение #402707
+                {
+                    value = FormConfigurationPersistenceService.FormatInvariantToBg(registerItem.Value);
+                }
+
                 blank = blank.Replace($"{{{{{prefix}{registerItem.Name}}}}}", value);
                 if (!string.IsNullOrEmpty(value))
                 {
@@ -92,6 +116,7 @@ namespace URegister.Core.Services
             blank = blank.Replace($"{{{{{prefix}Process_IncomingNumber}}}}", process.IncomingNumber);
             blank = blank.Replace($"{{{{{prefix}Process_RegisterNumber}}}}", process.RegisterNumber);
             blank = blank.Replace($"{{{{{prefix}Process_IncomingDate}}}}", process.IncomingDate.ToString(FormattingConstant.DateFormat));
+            blank = blank.Replace($"{{{{{prefix}Process_RegisterCertificateNumber}}}}", process.RegisterCertificateNumber);
             return blank;
         }
 
@@ -104,7 +129,8 @@ namespace URegister.Core.Services
                 {
                     blank = blank.Replace($"{{{{{prefix}{item.Name}}}}}", string.Empty);
                     templateParamsErr.Add(item);
-                } else
+                }
+                else
                 {
                     if (item.Templates?.Any() == true)
                     {
@@ -116,14 +142,11 @@ namespace URegister.Core.Services
             }
             return (blank, templateParamsErr);
         }
-        public async Task<string> GetProcessCertificateHtml(Process process, Process processCertificate, int serviceIdCertificate, List<RegisterItem> registerItemsCertificate, List<RegisterItem> registerItems)
+        public async Task<string> GetProcessCertificateHtml(Process process, Process processCertificate, BlanksTemplate? blankTemplate, List<RegisterItem> registerItemsCertificate, List<RegisterItem> registerItems)
         {
             var response = await objectsCatalogGrpcClient.GetFieldTemplateContentListAsync(new Google.Protobuf.WellKnownTypes.Empty());
             var fieldTemplates = response.FieldTemplates.ToList();
-            var blank = await Repo.AllReadonly<BlanksTemplate>()
-                                               .Where(x => x.ServiceId == serviceIdCertificate)
-                                               .Select(x => x.Content)
-                                               .FirstAsync() ?? string.Empty;
+            var blank = blankTemplate?.Content ?? string.Empty;
             blank = ReplaceFormFields(blank, registerItems, string.Empty, fieldTemplates, false);
             blank = ReplaceFormFields(blank, registerItemsCertificate, "certificate.", fieldTemplates, false);
             blank = ReplaceProcessParam(string.Empty, process, blank);
@@ -153,19 +176,25 @@ namespace URegister.Core.Services
         /// <param name="searchPattern"></param>
         /// <param name="toDate">До дата на вписване, включително</param>
         /// <param name="fromDate">От дата на вписване, включително</param>
+        /// <param name="searchToDate">До дата за търсене по критерии от тип дата</param>
+        /// <param name="searchFromDate">От дата за търсене по критерии от тип дата</param>
         /// <returns></returns>
-        public async Task<JsonResult?> GetRegistrationProcessList(
-            Guid administrationId, 
+        public async Task<(JsonResult?, List<Dictionary<string, object>>, List<PublicFieldTemplate>)> GetRegistrationProcessList(
+            Guid administrationId,
             int skip,
-            int take, 
+            int take,
             string searchKey,
-            string searchPattern, 
-            DateTime? toDate, 
-            DateTime? fromDate)
+            string searchPattern,
+            DateTime? toDate,
+            DateTime? fromDate,
+            DateTime? searchToDate,
+            DateTime? searchFromDate)
         {
             var templates = await publicFieldTemplateService.GetTemplates();
-            if (!templates.Any()) {
-                return null;
+            List<Dictionary<string, object>> result = new();
+            if (!templates.Any())
+            {
+                return (null, result, templates);
             }
             var registerService = await serviceService.GetRegisterService();
             var formModel = await formConfigurationPersistenceService.GetFormViewModel(registerService.FormParentId);
@@ -188,14 +217,17 @@ namespace URegister.Core.Services
                 valuesOfInterest,
                 true,
                 false,
-                false);
+                false,
+                true);
 
             var processesOfInterest = await GetRegistrationProcessListEntity(
                 administrationId,
                 searchKey,
                 searchPattern,
-                toDate?.ToUniversalTime(),
+                toDate?.AddDays(1).ToUniversalTime(),
                 fromDate?.ToUniversalTime(),
+                searchToDate?.AddDays(1).ToUniversalTime(),
+                searchFromDate?.ToUniversalTime(),
                 valuesOfInterest
             );
             var processesForPage = processesOfInterest
@@ -203,21 +235,44 @@ namespace URegister.Core.Services
                 .Take(take);
             var columnData = templates
                  .Select(v => new { label = v.Label, fieldName = v.FieldName }).ToList();
+            columnData.Insert(0, new { label = "Дата на последна промяна", fieldName = "RegisterDate" });
+            columnData.Insert(0, new { label = "Номер на вписване", fieldName = "RegisterNumber" });
 
             var response = await objectsCatalogGrpcClient.GetFieldTemplateContentListAsync(new Google.Protobuf.WellKnownTypes.Empty());
             var templateParams = await publicFieldTemplateService.GetTemplateParam(formModel, string.Empty);
             var fieldTemplates = response.FieldTemplates.ToList();
 
-            List<Dictionary<string, object>> result = new();
             foreach (var process in processesForPage)
             {
                 result.Add(ProcessToPublicTemplateField(process, templates, fieldTemplates, templateParams));
             }
 
+            bool historyNotPublic = (await _registerService.GetCurrentRegister()).HistoryNotPublic;
+
+            var searchOptions = valuesOfInterest
+                .Select(v => new { label = v.Value.Label, fieldName = v.Key, type = v.Value.Type });
+
+            bool includeOldRegisteredFilters = await Repo.AllReadonly<Process>()
+                .AnyAsync(p => p.OldIncomingDate.HasValue || !string.IsNullOrWhiteSpace(p.OldIncomingNumber));
+
+            searchOptions = searchOptions.Append(new { label = "Номер на вписване", fieldName = FormConstants.RegisterNumber, type = nameof(SimpleFormFieldType.Text) });
+            if (includeOldRegisteredFilters)
+            {
+                searchOptions = searchOptions.Append(new
+                {
+                    label = "Стара дата на вписване", fieldName = FormConstants.OldIncomingDate,
+                    type = nameof(SimpleFormFieldType.Date)
+                });
+                searchOptions = searchOptions.Append(new
+                {
+                    label = "Стар номер на вписване", fieldName = FormConstants.OldIncomingNumber,
+                    type = nameof(SimpleFormFieldType.Text)
+                });
+            }
+
             var combinedData = new
             {
-                searchOptions = valuesOfInterest
-                    .Select(v => new { label = v.Value.Label, fieldName = v.Key }).ToArray(),
+                searchOptions = searchOptions.ToArray(),
                 columnData = columnData,
                 data = result,
                 metadata = new
@@ -225,93 +280,194 @@ namespace URegister.Core.Services
                     totalRecordsFiltered = processesOfInterest.Count(),
                     pageNumber = pageNumber,
                     perPage = perPage,
+                    historyNotPublic
                 }
             };
-            return new JsonResult(combinedData);
+            return (new JsonResult(combinedData), result, templates);
         }
 
         private async Task<List<Process>> GetRegistrationProcessListEntity(Guid administrationId,
             string? searchKey,
             string? searchPattern,
             DateTime? toDateUTC,
-            DateTime? fromDateUTC, 
+            DateTime? fromDateUTC,
+            DateTime? searchToDateUTC,
+            DateTime? searchFromDateUTC,
             Dictionary<string, FormField> valuesOfInterest)
         {
             var services = await Repo.AllReadonly<Service>()
                                      .Where(x => x.ServiceTypeId == (int)ServiceTypes.Register ||
                                                  x.ServiceTypeId == (int)ServiceTypes.Change ||
-                                                 x.ServiceTypeId == (int)ServiceTypes.AskForCorrectionError)
+                                                 x.ServiceTypeId == (int)ServiceTypes.AskForCorrectionError || 
+                                                 x.ServiceTypeId == (int)ServiceTypes.Deletion)
                                      .Select(x => x.Id)
                                      .ToListAsync();
             var query = Repo.AllReadonly<Process>()
                .Include(x => x.RegisterItems)
+               .Include(x => x.Service)
                .TagWith(nameof(GetRegistrationProcessListEntity))
                .Where(x => services.Contains(x.ServiceId))
                .Where(x => x.RegisterItems.Any())
                .Where(p => p.StatusId == (int)ProcessStatus.Registered)
                .Where(p => p.TenantId == administrationId);
+
             if (fromDateUTC.HasValue)
             {
-                query = query.Where(p => p.IncomingDate >= fromDateUTC);
+                query = query.Where(p => !p.RegisterDate.HasValue || p.RegisterDate >= fromDateUTC);
             }
 
             if (toDateUTC.HasValue)
             {
-                query = query.Where(p => p.IncomingDate < toDateUTC);
+                query = query.Where(p => !p.RegisterDate.HasValue || p.RegisterDate < toDateUTC);
             }
-            if (!string.IsNullOrEmpty(searchKey) && !string.IsNullOrEmpty(searchPattern))
+
+            if (!string.IsNullOrEmpty(searchKey) && !string.IsNullOrEmpty(searchPattern)
+                                                 || searchToDateUTC != null || searchFromDateUTC != null)
             {
-                var cachedNomenclatures = await formConfigurationPersistenceService.CacheNomenclaturesForValuesOfInterest(valuesOfInterest);
+                var cachedNomenclatures =
+                    await formConfigurationPersistenceService.CacheNomenclaturesForValuesOfInterest(valuesOfInterest);
 
-                bool isSearchPatternValid = FormConfigurationPersistenceService.TryDetermineSearchPattern(searchKey,
-                    searchPattern,
-                    valuesOfInterest,
-                    cachedNomenclatures,
-                    out List<string> searchPatterns);
-
-                if (!isSearchPatternValid)
+                //Търси по поле тип дата
+                if (searchFromDateUTC != null || searchToDateUTC != null)
                 {
-                    return new AutoConstructedList<Process>();
+                    if (searchKey == FormConstants.OldIncomingDate)
+                    {
+                        query = query.Where(p => p.OldIncomingDate.HasValue &&
+                                                 ((!searchToDateUTC.HasValue || p.OldIncomingDate.Value < searchToDateUTC) &&
+                                                 (!searchFromDateUTC.HasValue || p.OldIncomingDate.Value >= searchFromDateUTC)));
+                    }
+                    else
+                    {
+                        query = query.Where(p => p.RegisterItems.Any(ri => ri.Name == searchKey &&
+                                                                           ri.DateTimeValue != null &&
+                                                                           (searchToDateUTC == null ||
+                                                                            ri.DateTimeValue < searchToDateUTC) &&
+                                                                           (searchFromDateUTC == null ||
+                                                                            ri.DateTimeValue >= searchFromDateUTC)
+                        ));
+                    }
                 }
+                else
+                {
+                    if (searchKey == FormConstants.RegisterNumber)
+                    {
+                        query = query.Where(p => searchPattern == p.RegisterNumber);
+                    }
+                    else if (searchKey == FormConstants.OldIncomingNumber)
+                    {
+                        query = query.Where(p => searchPattern == p.OldIncomingNumber);
+                    }
+                    else
+                    {
+                        bool isSearchPatternValid = FormConfigurationPersistenceService.TryDetermineSearchPattern(searchKey,
+                        searchPattern,
+                        valuesOfInterest,
+                        cachedNomenclatures,
+                        out List<string> searchPatterns);
 
-                query = query.Where(p => p.RegisterItems.Any(ri => ri.Name == searchKey &&
-                                                                   (!searchPatterns.Any() || searchPatterns.Any(sp =>
-                                                                       ri.Name == searchKey && EF.Functions.ILike(ri.Value, sp)
-                                                                   ))));
+                        if (!isSearchPatternValid)
+                        {
+                            return new AutoConstructedList<Process>();
+                        }
+
+                        query = query.Where(p => p.RegisterItems.Any(ri => ri.Name == searchKey &&
+                                                                           (!searchPatterns.Any() ||
+                                                                            searchPatterns.Any(sp =>
+                                                                                ri.Name == searchKey &&
+                                                                                EF.Functions.ILike(ri.Value, sp)
+                                                                            ))));
+                    }
+                }
             }
 
             return await query
-                .OrderByDescending(p => p.IncomingDate)
+                .OrderByDescending(p => p.RegisterDate)
                 .ToListAsync();
         }
 
         public Dictionary<string, object> ProcessToPublicTemplateField(
-            Process process, 
-            List<PublicFieldTemplate> templates, 
+            Process process,
+            List<PublicFieldTemplate> templates,
             List<FieldTemplateContentMessage> fieldTemplates,
             List<BlanksTemplateParamVM> templateParams)
         {
             Dictionary<string, object> jsonFields = templates.ToDictionary(k => k.FieldName, k => (object)string.Empty);
 
-            foreach (var template in templates)
+            foreach (var template in templates.Where(t => !string.IsNullOrWhiteSpace(t.Content)))
             {
-                var blank = template.Content;
+                var blank = template.Content ?? string.Empty;
                 blank = ReplaceFormFields(blank, process.RegisterItems, string.Empty, fieldTemplates, true);
                 blank = ReplaceProcessParam(string.Empty, process, blank);
                 (blank, var templateParamErr) = ReplaceFormFieldsNotFound(blank, templateParams, string.Empty);
-                jsonFields[template.FieldName] = blank;
+                jsonFields[template.FieldName] = ReplaceConsequitiveCommas(blank);
             }
             if (!jsonFields.ContainsKey("ProcessId"))
             {
                 jsonFields.Add("ProcessId", process.Id.ToString());
             }
 
-            if (!jsonFields.ContainsKey(nameof(process.IncomingDate)))
+            if (!jsonFields.ContainsKey(nameof(process.RegisterNumber)))
             {
-                jsonFields.Add(nameof(process.IncomingDate), process.IncomingDate);
+                jsonFields.Add(nameof(process.RegisterNumber), process.RegisterNumber);
             }
+
+            if (!jsonFields.ContainsKey(nameof(process.RegisterDate)))
+            {
+                jsonFields.Add(nameof(process.RegisterDate), process.RegisterDate?.ConvertUtcToBGTime());
+            }
+
+            if (!jsonFields.ContainsKey(nameof(process.Service.ServiceTypeId)))
+            {
+                jsonFields.Add(nameof(process.Service.ServiceTypeId), process.Service.ServiceTypeId);
+            }
+
             return jsonFields;
         }
-            
+
+        /// <summary>
+        /// Махам последователни запетаи породени от празни бланки
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        public static string ReplaceConsequitiveCommas(string input)
+        {
+            string pattern = @",(?:\s*,)+\s*";
+
+            return Regex.Replace(input, pattern, m => {
+                if (m.Value.EndsWith(" "))
+                {
+                    return ", ";
+                }
+                return ",";
+            });
+        }
+
+        public IEnumerable<IEnumerable<string>> ProcessForOpenData(List<Dictionary<string, object>> data, List<OpenDataColVM> cols)
+        {
+            List<List<string>> result = new();
+            var resultItem = new List<string>();
+            foreach (var col in cols)
+            {
+                resultItem.Add(col.Label ?? string.Empty);
+            }
+            result.Add(resultItem);
+            foreach (var row in data)
+            {
+                resultItem = new List<string>();
+                foreach (var col in cols)
+                {
+                    if (row.ContainsKey(col.Key!))
+                    {
+                        resultItem.Add(row[col.Key!]?.ToString() ?? string.Empty);
+                    }
+                    else
+                    {
+                        resultItem.Add(string.Empty);
+                    }
+                }
+                result.Add(resultItem);
+            }
+            return result;
+        }
     }
 }

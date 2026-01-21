@@ -100,7 +100,7 @@ namespace URegister.Core.Services
                           .OrderBy(x => x.OrderNum)
                           .TagWith(nameof(GetTemplateList));
             var countAll = await data.CountAsync();
-            var list = data.ToList();
+            
             return request.GetResponseJson(data, countAll);
         }
 

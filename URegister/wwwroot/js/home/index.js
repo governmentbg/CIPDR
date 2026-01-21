@@ -404,3 +404,11 @@ function loadAdministrationRegistries() {
         }
     });
 }
+
+$(function () {
+    const data = localStorage.getItem('iscipr_autosave')
+    debugger
+    if (data) {
+        $('.container-loadautosave').show()
+    }
+});

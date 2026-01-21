@@ -39,6 +39,8 @@ namespace URegister.Core.Models.Process
 
         public bool HasResponse { get; set; }
 
+        public Guid? FileId  { get; set; }
+
         public bool CanAdd { get; set; }
 
         /// <summary>

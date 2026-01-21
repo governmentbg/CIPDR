@@ -68,5 +68,10 @@
         /// Regex шаблон за номер на лична карта
         /// </summary>
         public const string IDCardNumberPattern = @"^([0-9]{9}|[A-Z]{2}[0-9]{7})$";
+
+        /// <summary>
+        /// Regex шаблон отхвърлящ букви на кирилица
+        /// </summary>
+        public const string NoCyrillicLetters = @"^[^А-Яа-яЁё]*$";
     }
 }

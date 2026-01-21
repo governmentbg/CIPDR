@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Contracts;
 using URegister.Infrastructure.Models;
@@ -35,9 +36,13 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <returns></returns>
         public static IServiceCollection AddDbSupport(this IServiceCollection services, IConfiguration config)
         {
+            var dataSource = new NpgsqlDataSourceBuilder(config.GetConnectionString("ObjectCatalogConnection"))
+                .EnableDynamicJson()//Добавено за да работят jsonb полета от колекции във EF 8. За EF 6 няма нужда
+                .Build();
+
             services.AddDbContext<ObjectCatalogDbContext>(options =>
             {
-                options.UseNpgsql(config.GetConnectionString("ObjectCatalogConnection"))
+                options.UseNpgsql(dataSource)
                     .UseSnakeCaseNamingConvention();
             });
 

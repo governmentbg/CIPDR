@@ -1,6 +1,8 @@
 ﻿using DataTables.AspNet.Core;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using System.ComponentModel.DataAnnotations;
 using URegister.Common;
@@ -10,6 +12,7 @@ using URegister.Core.Models.Service;
 using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Model.RegisterForms;
 using URegister.ObjectsCatalog;
+using URegister.Users;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace URegister.Areas.Admin.Controllers
@@ -20,6 +23,7 @@ namespace URegister.Areas.Admin.Controllers
     public class BlanksTemplateController(
         IServiceService serviceService,
         IFormConfigurationPersistenceService formConfigurationPersistenceService,
+        AppUserManager.AppUserManagerClient appUserManager,
         INomenclatureClientService nomenclatureService
         ) : BaseController
     {
@@ -34,7 +38,21 @@ namespace URegister.Areas.Admin.Controllers
         {
             ViewBag.ServiceId_ddl = await serviceService.GetServiceDDL([(int)ServiceTypes.Document]);
             ViewBag.FormParentId_ddl = await formConfigurationPersistenceService.GetFormsDDL();
+            await SetViewBagRoles();
             await nomenclatureService.SetViewBagBlankTemplate(ViewData);
+        }
+
+        [Display(Name = "Задаване на данни за роли")]
+        public async Task SetViewBagRoles()
+        {
+            var roles = await appUserManager.GetRolesAsync(new Empty());
+            var roleId_ddl = roles.Roles.Select(x => new SelectListItem
+            {
+                Value = x.RoleId,
+                Text = x.Name,
+            }).ToList();
+            roleId_ddl.Insert(0, new SelectListItem("Изберете", ""));
+            ViewBag.RoleId_ddl = roleId_ddl;
         }
 
         [Display(Name = "Зареждане на форма за добавяне на нова бланка")]
@@ -121,7 +139,7 @@ namespace URegister.Areas.Admin.Controllers
         }
 
         [Display(Name = "Извличане на полета за формуляр на бланка")]
-        public async Task<JsonResult> GetFormFields(int sourceType, int serviceId, int formParentId)
+        public async Task<JsonResult> GetFormFields(int sourceType, int serviceId, int formParentId, bool numberOnRegister)
         {
             var formModel = await formConfigurationPersistenceService.GetFormViewModel(formParentId);
             var paramList = await serviceService.GetTemplateParam(formModel, string.Empty);
@@ -133,7 +151,7 @@ namespace URegister.Areas.Admin.Controllers
             });
             if (sourceType == (int)BlankSourceType.Certicicate)
             {
-                var certificateService = await serviceService.GetService(serviceId);
+                var certificateService = await serviceService.GetService(serviceId, true);
                 var formModelCertificate = await formConfigurationPersistenceService.GetFormViewModel(certificateService.FormParentId);
                 var paramListCertificate = await serviceService.GetTemplateParam(formModelCertificate, "certificate.");
                 paramListCertificate.Insert(0, new BlanksTemplateParamVM
@@ -149,7 +167,23 @@ namespace URegister.Areas.Admin.Controllers
                     Templates = paramListCertificate
                 });
             }
-                  return Json(paramList);
+            if (sourceType == (int)BlankSourceType.Instruction)
+            {
+                paramList.Insert(0, new BlanksTemplateParamVM
+                {
+                    Name = "InstructionText",
+                    Label = "Текст на указание",
+                });
+            }
+            if (sourceType == (int)BlankSourceType.CertificateOnRegister && numberOnRegister)
+            {
+                paramList.Insert(0, new BlanksTemplateParamVM
+                {
+                    Name = "Process_RegisterCertificateNumber",
+                    Label = "Номер удостоверение при вписване",
+                });
+            }
+            return Json(paramList);
         }
 
         /// <summary>
@@ -185,6 +219,24 @@ namespace URegister.Areas.Admin.Controllers
             }
 
             return Json(null);
+        }
+        /// <summary>
+        /// Partial за подпис 
+        /// </summary>
+        /// <param name="index">индекс в списък</param>
+        /// <param name="prefix">html prefix</param>
+        /// <returns></returns>
+        [Display(Name = "Добавяне на подпис")]
+        public async Task<IActionResult> AddBlankSignature(int index, string prefix, int serviceTypeId)
+        {
+            var model = new BlankSignatureVM
+            {
+                Index = index,
+                OrderNum = index + 1,
+            };
+            ViewData.TemplateInfo.HtmlFieldPrefix = string.IsNullOrEmpty(prefix) ? $"BlankSignatures[{index}]" : $"{prefix}.BlankSignatures[{index}]";
+            await SetViewBagRoles();
+            return PartialView("_Signature", model);
         }
     }
 }

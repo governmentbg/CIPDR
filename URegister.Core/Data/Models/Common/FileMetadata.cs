@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using URegister.Core.Data.Models.Process;
 using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Data.Common;
 
@@ -90,7 +91,61 @@ namespace URegister.Core.Data.Models.Common
         /// <summary>
         /// описание
         /// </summary>
-        [Column("Oписание")]
+        [Comment("Oписание")]
         public string? Description { get; set; }
+
+        /// <summary>
+        /// Подписан от
+        /// </summary>
+        [Comment("Подписан от")]
+        public Guid? SignById { get; set; }
+
+        /// <summary>
+        /// Подписан от
+        /// </summary>
+        [Comment("Подписан от роля")]
+        public Guid? SignByRoleId { get; set; }
+
+        /// <summary>
+        /// Поредност на подписанване
+        /// </summary>
+        [Comment("Поредност на подписанване")]
+        public int SignOrder { get; set; }
+
+        /// <summary>
+        /// Подпечатан
+        /// </summary>
+        [Comment("Подпечатан")]
+        public bool IsStamped { get; set; }
+
+        /// <summary>
+        /// Изпратен ли е към интегратион
+        /// </summary>
+        [Comment("Изпратен ли е към интегратион")]
+        public Guid? OutMessageId { get; set; }
+
+        /// <summary>
+        /// Идентификатор на бланка
+        /// </summary>
+        [Comment("Идентификатор на бланка")]
+        public int? BlanksTemplateId { get; set; }
+
+
+        /// <summary>
+        /// Идентификатор на бланка
+        /// </summary>
+        [Comment("Идентификатор на подписване")]
+        public int? BlankSignatureId { get; set; }
+
+
+        [ForeignKey(nameof(BlankSignatureId))]
+        public virtual BlankSignature? BlankSignature { get; set; }
+
+        [ForeignKey(nameof(BlanksTemplateId))]
+        public virtual BlanksTemplate? BlanksTemplate { get; set; }
+
+
+        [ForeignKey(nameof(OutMessageId))]
+        public virtual OutMessage? OutMessage { get; set; } 
     }
 }

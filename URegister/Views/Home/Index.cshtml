@@ -21,13 +21,18 @@
         Изтегли заявени услуги за обработка
     </div>
 }
+@* <div class="ui button primary container-loadautosave" style="display:none">
+    <a href="@Url.Action("LoadAutoSave", "Process", new { Area = "Admin" })" style="color: white !important;">
+        <i class="arrow right icon"></i> Автоматично записани данни от недовършена форма
+    </a>
+</div> *@
 @if (Model.UserAssignedProcessCount > 0)
 {
     <div class="ui segment">
         <h3>Заявени услуги за обработка</h3>
         <table id="processes_assigned"
                class="ui celled striped very compact table" style="width:100%; padding:0px;"
-               data-url="@Url.Action("GetProcessListAssigned", "Process", new {area="Admin"})"
+               data-url="@Url.Action("GetProcessListAssigned", "Process", new { area = "Admin" })"
                data-applicant="@((register.TypeEntry == RegisterTypeEntry.Applicant).ToString().ToLower())">
         </table>
     </div>

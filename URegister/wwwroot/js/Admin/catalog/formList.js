@@ -55,16 +55,20 @@ function LoadForms() {
                                 let editLink = `<a href='/Admin/Catalog/EditForm?formParentId=${row.parentId}' type='button' class='ui tertiary icon button' data-tooltip='Редактирай'><i class="edit icon"></i></a>`;
                                 let configureLink = `<a href="/Admin/Designer/Index?formParentId=${row.parentId}" type='button' class='ui tertiary icon button' data-tooltip='Конфигуратор'><i class="table icon"></i></a>`;
                                 let jsonImportLink = `<a href="/Admin/Designer/SubmitJson?formId=${data}" type='button' class='ui tertiary icon button' data-tooltip='Подай JSON данни'><i class="file import icon"></i></a>`;
+                                let conditionsLink = `<a href="/Admin/Catalog/FormConditions?formParentId=${row.parentId}" type='button' class='ui tertiary icon button' data-tooltip='Условия към форма'><i class="project diagram icon"></i></a>`;
+                                let calculationsLink = `<a href="/Admin/FieldFormula/Index?formParentId=${row.parentId}" type='button' class='ui tertiary icon button' data-tooltip='Изчисления'><i class="calculator icon"></i></a>`;
                                 let deleteLink = "<a href='javascript:actionWithConfirmation(\"/Admin/Catalog/DeleteForm\", " +
                                     data + ", \"Сигурни ли сте, че искате да изтриете " +
                                     row.title.replace(/"/g, '\\"') +
                                     "?\", null)' type='button' class='ui tertiary icon button' data-tooltip='Изтрий'><i class='red trash alternate icon'></i></button>";
 
+                                let icons = editLink + configureLink + jsonImportLink + conditionsLink + calculationsLink;
+
                                 // Show deleteLink if form is waiting approval (for any user) or if form is approved and user is Global Admin
                                 if (row.waitingApproval || (!row.waitingApproval && isGlobalAdmin)) {
-                                    return editLink + configureLink + jsonImportLink + deleteLink;
+                                    icons = icons + deleteLink;
                                 }
-                                return editLink + configureLink + jsonImportLink;
+                                return icons;
                             }
                         }
                     ]

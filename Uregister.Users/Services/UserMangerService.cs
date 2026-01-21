@@ -86,7 +86,8 @@ namespace Uregister.Users.Services
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Грешка при упълномощаване на потребител");
+                logger.LogError(ex, $"Грешка при упълномощаване на потребител {ex.InnerException?.Message} pid: {authorizeUserData.Pid ?? "липсва"}, registerCode: {authorizeUserData.RegisterCode ?? "липсва"}");
+                
 
                 appUser.Status = new ResultStatus
                 {
@@ -131,6 +132,7 @@ namespace Uregister.Users.Services
                     Position = userData.Position,
                     Enable = false,
                     CreatedAt = DateTime.UtcNow,
+                    ReceiveEmailOnError = userData.ReceiveEmailOnError,
                     Logins = new List<ApplicationUserLogin>
                 {
                     new ApplicationUserLogin
@@ -170,7 +172,8 @@ namespace Uregister.Users.Services
                     await SaveReceiveEFormNotification(applicationUser.Id,
                                                        userData.AdministrationId.ToGuid() ?? Guid.Empty,
                                                        userData.RegisterCode,
-                                                       userData.ReceiveEFormNotification);
+                                                       userData.ReceiveEFormNotification,
+                                                       userData.ReceiveInstructionResponse);
                 }
                 await userRepository.SaveChangesAsync();
                 result.UserId = applicationUser.Id.ToString();
@@ -250,6 +253,7 @@ namespace Uregister.Users.Services
                     appUser.LastName = userData.LastName;
                     appUser.UserName = userData.UserName;
                     appUser.Enable = userData.Enabled;
+                    appUser.ReceiveEmailOnError = userData.ReceiveEmailOnError;
                     appUser.Logins.Clear();
                     appUser.Logins.Add(new ApplicationUserLogin
                     {
@@ -278,7 +282,8 @@ namespace Uregister.Users.Services
                         await SaveReceiveEFormNotification(appUser.Id,
                                                            userData.AdministrationId.ToGuid() ?? Guid.Empty,
                                                            userData.RegisterCode,
-                                                           userData.ReceiveEFormNotification);
+                                                           userData.ReceiveEFormNotification,
+                                                           userData.ReceiveInstructionResponse);
                     }
                     await userRepository.SaveChangesAsync();
                 }
@@ -691,11 +696,29 @@ namespace Uregister.Users.Services
             return false;
         }
 
+        public async Task<bool> GetReceiveInstructionResponse(UserFilter request)
+        {
+            if (!string.IsNullOrEmpty(request.RegisterCode) && !string.IsNullOrEmpty(request.AdministrationId))
+            {
+                var administrationId = request.AdministrationId.ToGuid();
+                var userId = request.Id.ToGuid();
+                return await userRepository.AllReadonly<UserEMailReceive>()
+                                                 .Where(x => x.UserId == userId &&
+                                                             x.RegisterCode == request.RegisterCode &&
+                                                             x.AdministrationId == administrationId)
+                                                 .Select(x => x.ReceiveInstructionResponse)
+                                                 .FirstOrDefaultAsync();
+            }
+            return false;
+        }
+
         public async Task SaveReceiveEFormNotification(
             Guid userId, 
             Guid administrationId, 
             string registerCode,
-            bool receiveEFormNotification)
+            bool receiveEFormNotification,
+            bool receiveInstructionResponse
+            )
         {
             var data = await userRepository.All<UserEMailReceive>()
                                              .Where(x => x.UserId ==  userId &&
@@ -713,18 +736,49 @@ namespace Uregister.Users.Services
                 await userRepository.AddAsync(data);
             }
             data.ReceiveEFormNotification = receiveEFormNotification;
+            data.ReceiveInstructionResponse = receiveInstructionResponse;
             data.ModifiedOn = DateTime.UtcNow;
             data.ModifiedByUserId = userId;
         }
 
-        public async Task<List<UserListData>> GetUserReceiveEmails(UserReceiveEmailsRequest request)
+
+
+        public async Task<List<UserListData>> GetUserReceiveEmails(UserReceiveEmailsRequest request, bool eformNotification, bool instructionResponse)
         {
             var administrationId = request.AdministrationId.ToGuid();
             var mails = userRepository.AllReadonly<UserEMailReceive>()
                                       .Where(x => x.RegisterCode == request.RegisterCode &&
                                                   x.AdministrationId == administrationId);
+            if (eformNotification)
+            {
+                mails = mails.Where(x => x.ReceiveEFormNotification);
+            }
+            if (instructionResponse)
+            {
+                mails = mails.Where(x => x.ReceiveInstructionResponse);
+            }
             return await userRepository.AllReadonly<ApplicationUser>()
                                        .Where(x => mails.Any(m => m.UserId == x.Id))
+                                       .Select(u => new UserListData
+                                       {
+                                           Id = u.Id.ToString(),
+                                           Email = u.Email,
+                                           FirstName = u.FirstName,
+                                           MiddleName = u.MiddleName,
+                                           LastName = u.LastName,
+                                           Enabled = u.Enable,
+                                           RoleName = string.Join(", ", u.UserRoles.Select(r => r.Role.Label + "(" + r.RegisterCode + ")"))
+                                       })
+                                       .ToListAsync();
+        }
+
+        public async Task<List<UserListData>> GetUserReceiveEmailsForSrok(UserReceiveEmailsRequest request)
+        {
+            var administrationId = request.AdministrationId.ToGuid();
+            return await userRepository.AllReadonly<ApplicationUser>()
+                                       .Where(x => x.UserRoles.Any(r => r.Role.Name == UserRoles.Editor && r.RegisterCode == request.RegisterCode) &&
+                                                   x.Claims.Any(c => c.ClaimValue == request.AdministrationId && c.ClaimType == CustomClaimType.AvailableAdministration)
+                                         )
                                        .Select(u => new UserListData
                                        {
                                            Id = u.Id.ToString(),

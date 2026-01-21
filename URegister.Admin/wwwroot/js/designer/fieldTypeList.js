@@ -53,6 +53,13 @@ function LoadFieldTypes() {
                             searchable: true
                         },
                         {
+                            name: 'registerRestrictionCodes',
+                            data: 'registerRestrictionCodes',
+                            title: 'Ограничение за регистри',
+                            orderable: false,
+                            searchable: true
+                        },
+                        {
                             name: 'id',
                             data: 'fieldTypeId',
                             title: 'Действия',
@@ -66,8 +73,9 @@ function LoadFieldTypes() {
                                     "\\\"?\", null)' type='button' class='ui tertiary icon button' data-tooltip='Изтрий'><i class='red trash alternate icon'></i></a>"
                                     :
                                     "";
+                                let editLink = `<a href='/Designer/AddFieldType?fieldType=${row.type}' type='button' class='ui tertiary icon button' data-tooltip='Редактирай'><i class="edit icon"></i></a>`;
 
-                                return configureLink + deleteLink;
+                                return configureLink + editLink + deleteLink;
                             }
                         }
                     ]

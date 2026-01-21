@@ -5,7 +5,6 @@ using URegister.Infrastructure.Extensions;
 using URegister.Infrastructure.Helper;
 using URegister.Infrastructure.Model.RegisterForms;
 using URegister.ObjectsCatalog.Contracts;
-using static FastExpressionCompiler.ExpressionCompiler;
 
 namespace URegister.ObjectsCatalog.Services;
 
@@ -23,7 +22,7 @@ public class ObjectCatalogService(
     /// <param name="request"></param>
     /// <param name="context"></param>
     /// <returns></returns>
-    public override async Task<CatalogFieldsListReply> GetFieldsList(Empty request, ServerCallContext context)
+    public override async Task<CatalogFieldsListReply> GetFieldsList(CatalogFieldsListRequest request, ServerCallContext context)
     {
         var result = new CatalogFieldsListReply()
         {
@@ -32,16 +31,26 @@ public class ObjectCatalogService(
 
         try
         {
-            var types = await objectService.GetFieldTypesAsync();
+            var types = await objectService.GetFieldTypesAsync(request.RegisterCode);
 
-            result.FieldTypes.AddRange(types.Select(t => new CatalogFieldType()
+            foreach (var type in types)
             {
-                Type = t.type,
-                Label = t.label,
-                TemplateName = t.template,
-                IsComplex = t.isComplex,
-                FieldTypeId = t.fieldTypeId
-            }));
+                CatalogFieldType catalogFieldType = new CatalogFieldType()
+                {
+                    Type = type.type,
+                    Label = type.label,
+                    TemplateName = type.template,
+                    IsComplex = type.isComplex,
+                    FieldTypeId = type.fieldTypeId,
+                };
+
+                if (type.registerRestrictionCodes != null)
+                {
+                    catalogFieldType.RegisterRestrictionCodes.AddRange(type.registerRestrictionCodes);
+                }
+
+                result.FieldTypes.Add(catalogFieldType);
+            }
         }
         catch (Exception ex)
         {
@@ -458,6 +467,48 @@ public class ObjectCatalogService(
             logger.LogError(ex, "ObjectCatalogService/DeleteFieldTemplate");
             result = CommonGrpcHelper.CreateStatusInternalServerError(ex);
         }
+        return result;
+    }
+
+    /// <summary>
+    /// Връща тип поле
+    /// </summary>
+    /// <param name="request"></param>
+    /// <param name="context"></param>
+    /// <returns></returns>
+    public override async Task<CatalogFieldTypeReply> GetFieldType(CatalogFieldRequest request, ServerCallContext context)
+    {
+        var result = new CatalogFieldTypeReply()
+        {
+            Status = GetOkResultStatus()
+        };
+
+        try
+        {
+            var fieldType = await objectService.GetFieldTypeByName(request.FieldType);
+
+            if (fieldType == null)
+            {
+                result.Status.Code = ResultCodes.NotFound;
+                result.Status.Message = $"Тип поле {request.FieldType} не е намерено";
+                logger.LogWarning($"Тип поле {request.FieldType} не е намерено в {nameof(GetFieldType)}");
+                return result;
+            }
+
+            result.Label = fieldType.Label;
+            result.Type = fieldType.Name;
+            result.Id = fieldType.Id;
+            if (fieldType.RegisterRestrictionCodes != null)
+            {
+                result.RegisterRestrictionCodes.AddRange(fieldType.RegisterRestrictionCodes);
+            }         
+        }
+        catch (Exception ex)
+        {           
+            logger.LogError(ex, "ObjectCatalogService/GetFieldType");
+            result.Status = CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+
         return result;
     }
 }

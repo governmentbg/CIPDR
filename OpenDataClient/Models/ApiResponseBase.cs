@@ -1,6 +1,6 @@
 ﻿namespace OpenDataClient.Models
 {
-    internal class ApiResponseBase
+    public class ApiResponseBase
     {
         public bool Success { get; set; }
     }

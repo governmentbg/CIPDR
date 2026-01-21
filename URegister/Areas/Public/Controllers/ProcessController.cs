@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using OpenDataClient;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text;
 using URegister.Core.Contracts;
+using URegister.Core.Models.OpenData;
 using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Model.RegisterForms;
 using URegister.RegistersCatalog;
@@ -19,18 +21,24 @@ namespace URegister.Areas.Public.Controllers
         private readonly IProcessTemplateService processTemplateService;
         private readonly RegistersCatalogGrpc.RegistersCatalogGrpcClient _registerGrpcClient;
         private readonly IFormConfigurationPersistenceService _formConfigurationPersistenceService;
+        private readonly IOpenDataClientService openDataService;
+        private readonly IRegisterService registerService;
 
         public ProcessController(ILogger<ProcessController> logger,
             IProcessService processService,
             RegistersCatalogGrpc.RegistersCatalogGrpcClient registerGrpcClient,
             IFormConfigurationPersistenceService formConfigurationPersistenceService,
-            IProcessTemplateService processTemplateService)
+            IProcessTemplateService processTemplateService,
+            IOpenDataClientService _openDataService,
+            IRegisterService registerService)
         {
             _logger = logger;
             _processService = processService;
             _registerGrpcClient = registerGrpcClient;
             _formConfigurationPersistenceService = formConfigurationPersistenceService;
             this.processTemplateService = processTemplateService;
+            openDataService = _openDataService;
+            this.registerService = registerService;
         }
 
         ///// <summary>
@@ -101,6 +109,9 @@ namespace URegister.Areas.Public.Controllers
                 }
 
                 ConcatenateSubfields(formModel.FormFields);
+                IEnumerable<FormField> formModelWithoutEmptyFields = RemoveEmptyFields(formModel.FormFields);
+
+                formModel.FormFields = formModelWithoutEmptyFields.ToList();
 
                 return new JsonResult(formModel);
             }
@@ -109,6 +120,11 @@ namespace URegister.Areas.Public.Controllers
                 _logger.LogError(ex, $"Проблем при изпълнението на {nameof(GetFormModelForSavedData)} с параметри {processId}.");
                 return StatusCode(500);
             }
+        }
+
+        private IEnumerable<FormField> RemoveEmptyFields(List<FormField> formModelFormFields)
+        {
+            return formModelFormFields.Where(f => !string.IsNullOrWhiteSpace(f.Value));
         }
 
         private void ConcatenateSubfields(IEnumerable<FormField> formFields)
@@ -154,8 +170,8 @@ namespace URegister.Areas.Public.Controllers
                     string currentName = enumerator.Current?.Name ?? string.Empty;
 
                     // Use space as separator if previous label ends with "firstNameImmutable" and current label ends with "lastNameImmutable"
-                    string effectiveSeparator = (previousFieldName.EndsWith("firstNameImmutable", StringComparison.OrdinalIgnoreCase)
-                                                 && currentName.EndsWith("lastNameImmutable", StringComparison.OrdinalIgnoreCase))
+                    string effectiveSeparator = (previousFieldName.EndsWith(ComplexFieldsNameConstants.FirstNameImmutable, StringComparison.OrdinalIgnoreCase)
+                                                 && currentName.EndsWith(ComplexFieldsNameConstants.LastNameImmutable, StringComparison.OrdinalIgnoreCase))
                         ? " "
                         : separator;
 
@@ -233,6 +249,8 @@ namespace URegister.Areas.Public.Controllers
         /// <param name="searchPattern">Низ зая търсене</param>
         /// <param name="toDate">До дата на вписване, включително</param>
         /// <param name="fromDate">От дата на вписване, включително</param>
+        /// <param name="toSearchDate">До дата за търсене по критерии от тип дата</param>
+        /// <param name="fromSearchDate">От дата за търсене по критерии от тип дата</param>
         /// <returns></returns>
         [HttpGet("get-registration-processes")]
         [Display(Name = "Извличане на списък с приключени заявени услуги от тип 'Вписване'")]
@@ -244,17 +262,32 @@ namespace URegister.Areas.Public.Controllers
             string searchKey = "",
             string searchPattern = "",
             DateTime? toDate = null,
-            DateTime? fromDate = null)
+            DateTime? fromDate = null,
+            DateTime? toSearchDate = null,
+            DateTime? fromSearchDate = null)
         {
-            var resultTemplates = await processTemplateService.GetRegistrationProcessList(
-             administrationId, skip, take, searchKey, searchPattern, toDate, fromDate);
+            _logger.LogInformation(
+                string.Format("Method: {0}, Parameters: administrationId={1}, skip={2}, take={3}, searchKey={4}, searchPattern={5}, toDate={6}, fromDate={7}, searchToDate={8}, searchFromDate={9}",
+                nameof(GetRegistrationProcessList),
+                administrationId,
+                skip,
+                take,
+                searchKey,
+                searchPattern,
+                toDate?.ToString("o") ?? "null",
+                fromDate?.ToString("o") ?? "null",
+                toSearchDate?.ToString("o") ?? "null",
+                fromSearchDate?.ToString("o") ?? "null"));
+
+            (var resultTemplates, _, _) = await processTemplateService.GetRegistrationProcessList(
+             administrationId, skip, take, searchKey, searchPattern, toDate, fromDate, toSearchDate, fromSearchDate);
             if (resultTemplates != null)
             {
                 return resultTemplates;
             }
 
-            var result = await _formConfigurationPersistenceService.GetRegistrationProcessListWhereSubfieldsAreConcatenated(
-                administrationId, skip, take, searchKey, searchPattern, toDate, fromDate);
+            (var result, _, _) = await _formConfigurationPersistenceService.GetRegistrationProcessListWhereSubfieldsAreConcatenated(
+                administrationId, skip, take, searchKey, searchPattern, toDate, fromDate, toSearchDate, fromSearchDate);
 
             if (result == null)
             {
@@ -262,6 +295,88 @@ namespace URegister.Areas.Public.Controllers
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Извличане на списък с вписани услуги за OpenData
+        /// </summary>
+        /// /// <param name="administrationId">Идентификатор на администрация</param>
+        /// <returns></returns>
+        [HttpGet("get-opendata-processes")]
+        [Display(Name = "Извличане на списък с вписани услуги за OpenData")]
+        //[Authorize]
+        public async Task<IActionResult> GetProcessListOpenData(Guid administrationId, bool redirect)
+        {
+            _logger.LogInformation(
+                string.Format("Method: {0}, Parameters: administrationId={1}",
+                nameof(GetRegistrationProcessList),
+                administrationId));
+            int skip = 0;
+            int take = 10000000;
+            string searchKey = "";
+            string searchPattern = "";
+            DateTime? toDate = null;
+            DateTime? fromDate = null;
+            DateTime? toSearchDate = null;
+            DateTime? fromSearchDate = null;
+            IEnumerable<IEnumerable<string>> request;
+            (var resultTemplates, var data, var templates) = await processTemplateService.GetRegistrationProcessList(
+             administrationId, skip, take, searchKey, searchPattern, toDate, fromDate, toSearchDate, fromSearchDate);
+            if (resultTemplates != null)
+            {
+                request = processTemplateService.ProcessForOpenData(data, templates.Select(x => new OpenDataColVM { Key = x.FieldName, Label = x.Label }).ToList());
+            }
+            else
+            {
+                (_, var dataConcatenated, var fields) = await _formConfigurationPersistenceService.GetRegistrationProcessListWhereSubfieldsAreConcatenated(
+                    administrationId, skip, take, searchKey, searchPattern, toDate, fromDate, toSearchDate, fromSearchDate);
+                request = processTemplateService.ProcessForOpenData(dataConcatenated, fields.Select(x => new OpenDataColVM { Key = x.Key, Label = x.Value.Label}).ToList());
+            }
+            var register = await registerService.GetCurrentRegister();
+            var response = await _registerGrpcClient.GetOpenDataParamAsync(new OpenDataParamRequest
+            {
+                AdministrationId = administrationId.ToString(),
+                RegisterId = register.Id
+            });
+            if (request == null)
+            {
+                return StatusCode(500);
+            }
+            var dataSetId = response.Data.DataSetId;
+            if (string.IsNullOrEmpty(response.Data.DataSetId))
+            {
+                dataSetId = await openDataService.AddDatasetAsync(response.Data.OrganisationId, register.Name, register.Code, response.Data.CategoryId, 1);
+                var responseDataSet = await _registerGrpcClient.SaveOpenDataRegisterAdministrationMetaAsync(new OpenDataRegisterAdministrationMetaSaveRequest
+                {
+                    AdministrationId = administrationId.ToString(),
+                    RegisterId = register.Id,
+                    DataSetId = dataSetId,
+                });
+            }
+            var resourceMetaId = response.Data.ResourceMetaId;
+            if (string.IsNullOrEmpty(response.Data.ResourceMetaId))
+            {
+                var metResponse = await openDataService.AddResourceMetadataAsync(dataSetId ?? string.Empty, $"Вписвания", $"Registered");
+                resourceMetaId = metResponse.Data.Uri; 
+                var responseMeta = await _registerGrpcClient.SaveOpenDataRegisterAdministrationMetaAsync(new OpenDataRegisterAdministrationMetaSaveRequest
+                {
+                    AdministrationId = administrationId.ToString(),
+                    RegisterId = register.Id,
+                    DataSetId = dataSetId,
+                    ResourceMetaId = metResponse.Data.Uri,
+                });
+                await openDataService.AddResourceDataAsync(resourceMetaId, request);
+            } else
+            {
+                await openDataService.UpdateResourceDataAsync(resourceMetaId, request);
+            }
+
+            if (redirect)
+            {
+                TempData[MessageConstant.SuccessMessage] = "Успешeн запис в OpenData";
+                return RedirectToAction("OpenDataAdministration", "Register", new { area = "Admin", administrationId });
+            }
+            return StatusCode(200);
         }
 
         /// <summary>
@@ -356,5 +471,6 @@ namespace URegister.Areas.Public.Controllers
                 return StatusCode(500);
             }
         }
+
     }
 }

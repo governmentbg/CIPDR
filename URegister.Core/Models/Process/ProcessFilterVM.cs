@@ -83,5 +83,9 @@ namespace URegister.Core.Models.Process
         public Guid? AssignedToUserId { get; set; }
 
         public bool ForDeAssignUser { get; set; }
-}
+
+        public bool RegisterServiceHasJustOneStep { get; set; } = false;
+
+        public List<Guid>? ForSignProcessIds { get; set; } = null;
+    }
 }

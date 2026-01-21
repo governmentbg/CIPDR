@@ -13,9 +13,14 @@ namespace URegister.Infrastructure.Services
     {
         public async Task SaveAuditLogGrpc(IAuditInfo auditInfo, List<AuditEntry>? auditEntries)
         {
+            var auditId = auditInfo.Id.ToString();
+            if (auditInfo.Controller == "QUARTZ")
+            {
+                auditId = Guid.NewGuid().ToString();
+            }
             var request = new AuditEntitiesMessage
             {
-                AuditId = auditInfo.Id.ToString(),
+                AuditId = auditId,
             };
             if (!auditInfo.IsSaved)
             {

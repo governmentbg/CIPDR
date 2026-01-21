@@ -1,10 +1,12 @@
 ﻿using DataTables.AspNet.Core;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using OpenDataClient;
 using Org.BouncyCastle.Utilities;
 using System.ComponentModel.DataAnnotations;
 using URegister.Common;
 using URegister.Core.Contracts;
+using URegister.Core.Models.OpenData;
 using URegister.Core.Models.Register;
 using URegister.Core.Services;
 using URegister.Infrastructure.Constants;
@@ -27,6 +29,7 @@ namespace URegister.Admin.Controllers
         IRegisterClientService registerClient,
         RegistersCatalogGrpc.RegistersCatalogGrpcClient registerGrpcClient,
         IntegrationGrpcClient integrationGrpcClient,
+        IOpenDataClientService openDataClient,
         ILogger<RegisterController> logger
         ) : BaseController
     {
@@ -80,7 +83,8 @@ namespace URegister.Admin.Controllers
             var model = new RegisterVM
             {
                 Id = registerId,
-                Name = response.Data.Name
+                Name = response.Data.Name,
+                NameEDelivery = response.Data.NameEDelivery,
             };
             return View(model);
         }
@@ -561,6 +565,83 @@ namespace URegister.Admin.Controllers
             var model = await registerClient.GetRegisterStatus(registerStatusId);
             return View("PreviewStatus", model);
         }
-        
+        /// <summary>
+        /// Параметри на OpenData към администрация
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet]
+        [Display(Name = "Параметри на OpenData към администрация към регистър")]
+        public async Task<IActionResult> OpenDataAdministration(Guid administrationId, int registerId)
+        {
+            var response = await registerGrpcClient.GetOpenDataParamAsync(new OpenDataParamRequest
+            {
+                RegisterId = registerId,
+                AdministrationId = administrationId.ToString(),
+            });
+            var model = new OpenDataAdministrationVM
+            {
+                ApiKey = response.Data.ApiKey,
+                OrganizationId = response.Data.OrganisationId,
+                AdministrationId = administrationId,
+                AdministrationName = response.Data.AdministrationName,
+                FrequencyAdministrationId = response.Data.FrequencyAdministrationId,
+                FrequencyId = response.Data.FrequencyId,
+                RegisterId = registerId
+            };
+            await ViewBagOpenDataAdministration();
+            return View(model);
+        }
+
+        /// <summary>
+        /// Запис параметри на OpenData към администрация
+        /// </summary>
+        /// <returns></returns>
+        [HttpPost]
+        [Display(Name = "Параметри на OpenData към администрация")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> OpenDataAdministration(OpenDataAdministrationVM model)
+        {
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    await registerGrpcClient.SaveOpenDataAdministrationAsync(new OpenDataAdministrationSaveRequest
+                    {
+                        AdministrationId = model.AdministrationId.ToString(),
+                        FrequencyId = model.FrequencyAdministrationId,
+                        OrganisationId = model.OrganizationId,
+                    });
+                    SetSuccessMessage("Успешeн запис");
+                    return RedirectToAction("OpenDataAdministration", new {administrationId = model.AdministrationId, registerId = model.RegisterId});
+                }
+                catch (Exception ex)
+                {
+                    {
+                        logger.LogError(ex, "Проблем при запис на данни за OpenData за администрация");
+                        SetErrorMessage($"Проблем при запис!{Environment.NewLine}{ex.Message}");
+                    }
+                }
+            }
+            await ViewBagOpenDataAdministration();
+            return View(model);
+        }
+
+        private async Task ViewBagOpenDataAdministration()
+        {
+            var ddl = (await openDataClient.GetUserOrganisationsAsync()).Select(x => new SelectListItem
+            {
+                Value = x.Id.ToString(),
+                Text = x.Name
+            })
+            .ToList();
+            ddl.Insert(0,
+                new SelectListItem
+                {
+                    Value = "0",
+                    Text = "Не е избрана организация съответстваща на администрацията",
+                });
+            ViewBag.OrganizationId_ddl = ddl;
+            await nomenclatureClient.SetViewBagOpenDataAdministration(ViewData, true);
+        }
     }
 }

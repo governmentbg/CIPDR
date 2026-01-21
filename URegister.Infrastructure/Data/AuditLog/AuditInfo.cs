@@ -3,6 +3,7 @@
 
 using System;
 using System.Net;
+using System.Reflection;
 using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Contracts;
 
@@ -111,5 +112,23 @@ namespace URegister.Infrastructure.Models
         /// Модул, в който е възникнала операцията
         /// </summary>
         public string AssemblyName { get; set; } = null!;
+
+        public void SetAuditInfoForQuartz(string queue, string method)
+        {
+            Guid userId = Guid.Empty;
+            int regiserId = 0;
+            var administrationId = Guid.Empty;
+            
+            Action = queue;
+            ActivityId = "Job";
+            ActivityFromId = method;
+            AssemblyName = Assembly.GetExecutingAssembly()?.GetName()?.Name!;
+            Method = method;
+            Controller = "QUARTZ";
+            IpAddress = null!;
+            UserId = userId != Guid.Empty ? userId : null;
+            AdministrationId = administrationId != Guid.Empty ? administrationId : Guid.Empty;
+            RegisterId = regiserId;
+        }
     }
 }

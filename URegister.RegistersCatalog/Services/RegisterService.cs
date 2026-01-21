@@ -175,7 +175,8 @@ public class RegisterService(
             reply.Data = new AppAdministration
             {
                 Id = administration.Id.ToString(),
-                Name = administration.Name
+                Name = administration.Name,
+                NameEDelivery = administration.NameEDelivery,
             };
         }
         catch (Exception ex)
@@ -694,5 +695,80 @@ public class RegisterService(
             reply.Status = CommonGrpcHelper.CreateStatusInternalServerError(ex);
         }
         return reply;
+    }
+
+    public override async Task<OpenDataParamResponse> GetOpenDataParam(OpenDataParamRequest request, ServerCallContext context)
+    {
+        var reply = new OpenDataParamResponse
+        {
+            Status = CommonGrpcHelper.CreateStatusOK()
+        };
+        try
+        {
+            reply.Data = await registerInfoService.GetOpenDataParam(request);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, $"RegisterService/{nameof(GetOpenDataParam)}");
+            reply.Status = CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+        return reply;
+
+    }
+
+    public override async Task<ResultStatus> SaveOpenDataRegister(OpenDataRegisterSaveRequest request, ServerCallContext context)
+    {
+        try
+        {
+            await registerInfoService.SaveOpenDataRegister(request);
+}
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "RegisterService/SaveOpenDataRegister");
+            return CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+        return CommonGrpcHelper.CreateStatusOK();
+    }
+
+    public override async Task<ResultStatus> SaveOpenDataAdministration(OpenDataAdministrationSaveRequest request, ServerCallContext context)
+    {
+        try
+        {
+            await registerInfoService.SaveOpenDataAdministration(request);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "RegisterService/SaveOpenDataAdministration");
+            return CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+        return CommonGrpcHelper.CreateStatusOK();
+    }
+
+    public override async Task<ResultStatus> SaveOpenDataRegisterAdministration(OpenDataRegisterAdministrationSaveRequest request, ServerCallContext context)
+    {
+        try
+        {
+            await registerInfoService.SaveOpenDataRegisterAdministration(request);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "RegisterService/SaveOpenDataRegisterAdministration");
+            return CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+        return CommonGrpcHelper.CreateStatusOK();
+    }
+
+    public override async Task<ResultStatus> SaveOpenDataRegisterAdministrationMeta(OpenDataRegisterAdministrationMetaSaveRequest request, ServerCallContext context)
+    {
+        try
+        {
+            await registerInfoService.SaveOpenDataRegisterAdministrationMeta(request);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "RegisterService/SaveOpenDataRegisterAdministrationMeta");
+            return CommonGrpcHelper.CreateStatusInternalServerError(ex);
+        }
+        return CommonGrpcHelper.CreateStatusOK();
     }
 }

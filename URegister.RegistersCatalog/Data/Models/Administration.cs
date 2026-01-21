@@ -36,6 +36,20 @@ namespace URegister.RegistersCatalog.Data.Models
         public string Name { get; set; } = null!;
 
         /// <summary>
+        /// Име английски език
+        /// </summary>
+        [MaxLength(500)]
+        [Comment("Име на английски език")]
+        public string NameEn { get; set; } = null;
+
+        /// <summary>
+        /// Съкратено име на администрация ползва се при пращане на съобщение към ССЕВ
+        /// </summary>
+        [MaxLength(200)]
+        [Comment("Съкратено име на администрация ползва се при пращане на съобщение към ССЕВ")]
+        public string? NameEDelivery { get; set; }
+
+        /// <summary>
         /// Код за връзка с е-форми
         /// </summary>
         [Comment("Код за връзка с е-форми")]
@@ -54,6 +68,12 @@ namespace URegister.RegistersCatalog.Data.Models
         /// </summary>
         [Comment("Идентификатор на организация в  opendata")]
         public int OpenDataOrgId { get; set; }
+
+        /// <summary>
+        /// Автоматично изпращане на данни към OpenData 1 ежедневно 2 седмично 3 месечно
+        /// </summary>
+        [Comment("Автоматично изпращане на данни към OpenData 1 ежедневно 2 седмично 3 месечно")]
+        public int FrequencyId { get; set; }
 
         /// <summary>
         /// Дата на създаване

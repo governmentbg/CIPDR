@@ -10,7 +10,8 @@
                 let columnTitle = $(node).text().trim().toLowerCase();
                 let isActionsColumn = columnTitle === "действия";
                 return !isNoExport && !isActionsColumn;
-            }
+            },
+            orthogonal: 'excel'
         }
     };
 

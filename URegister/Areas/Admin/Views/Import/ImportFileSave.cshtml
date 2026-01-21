@@ -25,7 +25,7 @@
             </div>
             <table id="import"
                    class="ui celled striped very compact table" style="width:100%; padding:0px;"
-                   data-url="@Url.Action("GetImportDataList", "Process")">
+                   data-url="@Url.Action("GetImportDataList", "Import")">
             </table>
             @await Html.PartialAsync("_BackSubmitButton", @Url.Action("ImportFile"))
         </div>

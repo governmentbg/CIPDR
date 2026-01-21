@@ -1,0 +1,39 @@
+﻿@using URegister.Core.Models.OpenData
+@using URegister.Infrastructure.Constants
+@model OpenDataAdministrationVM
+
+@{
+    ViewBag.Title = "Въвеждане на OpenData параметри";
+}
+<div class="ui grid">
+    <form class="ui sixteen wide column" method="post" enctype="multipart/form-data">
+        @Html.HiddenFor(x => x.AdministrationId)
+        @Html.HiddenFor(x => x.RegisterId)
+        <div class="content">
+            <div class="column ui segment green">
+                <div class="ui form">
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            <h3>@Model.AdministrationName</h3>
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.OrganizationId, "DropDownInt")
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.FrequencyAdministrationId, "DropDownInt", new { Ddl = ViewData[$"{InternalNomenclatureTypes.OpenDataPeriod}_ddl"] })
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @await Html.PartialAsync("_BackSubmitButton", @Url.Action("IndexAdministration", "Register", new { RegisterId = Model.RegisterId }))
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

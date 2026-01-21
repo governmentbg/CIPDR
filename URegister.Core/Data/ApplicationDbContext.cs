@@ -43,6 +43,7 @@ namespace URegister.Core.Data
         public DbSet<Service> Services { get; set; }
         public DbSet<ServiceStep> ServiceSteps { get; set; }
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
+        public DbSet<FormCondition> FormConditions { get; set; }
 
         /// <summary>
         /// Регистър
@@ -112,5 +113,10 @@ namespace URegister.Core.Data
         public DbSet<RegixReport> RegixReports { get; set; }
 
         public DbSet<DeadlineDay> DeadlineDays { get; set; }
+        
+        /// <summary>
+        /// Формули за изчисление стойност на полета
+        /// </summary>
+        public DbSet<FieldFormula> FieldFormulas { get; set; }
     }
 }

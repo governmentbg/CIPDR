@@ -38,34 +38,39 @@ namespace Microsoft.Extensions.DependencyInjection
         }
         public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration config)
         {
-            services.AddQuartz(q =>
+            if (File.Exists("quartz_jobs.xml"))
             {
-                q.SchedulerId = Guid.NewGuid().ToString();
-                q.SchedulerName = "IOScheduler";
-                q.UseSimpleTypeLoader();
-                q.UseDefaultThreadPool(tp =>
+                services.AddQuartz(q =>
                 {
-                    tp.MaxConcurrency = 5;
+                    q.SchedulerId = Guid.NewGuid().ToString();
+                    q.SchedulerName = "IOScheduler";
+                    q.UseSimpleTypeLoader();
+                    q.UseDefaultThreadPool(tp =>
+                    {
+                        tp.MaxConcurrency = 5;
+                    });
+                    q.UseInMemoryStore();
+
+
+                    q.UseXmlSchedulingConfiguration(x =>
+                    {
+                        x.Files = new[] { "~/quartz_jobs.xml" };
+                        x.ScanInterval = TimeSpan.FromMinutes(1);
+                        x.FailOnFileNotFound = true;
+                        x.FailOnSchedulingError = true;
+                    });
                 });
-                q.UseInMemoryStore();
 
-
-                q.UseXmlSchedulingConfiguration(x =>
+                services.AddQuartzHostedService(options =>
                 {
-                    x.Files = new[] { "~/quartz_jobs.xml" };
-                    x.ScanInterval = TimeSpan.FromMinutes(1);
-                    x.FailOnFileNotFound = true;
-                    x.FailOnSchedulingError = true;
+                    options.WaitForJobsToComplete = true;
                 });
-            });
 
-            services.AddQuartzHostedService(options =>
-            {
-                options.WaitForJobsToComplete = true;
-            });
-
-            services.AddTransient<EDeliveryReceiveJob>();
-            services.AddTransient<EDeliverySendJob>();
+                services.AddTransient<EDeliveryReceiveJob>();
+                services.AddTransient<EDeliverySendJob>();
+                services.AddTransient<EMailSendJob>();
+                services.AddTransient<EDeliverySendRetryJob>();
+            }
             services.ConfigureEDeliveryClient(new EDeliveryOptions
             {
                 CertPath = config.GetValue<string>("EDelivery:Certificate") ?? string.Empty,
@@ -101,6 +106,13 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddScoped<IEmailSender, EmailSender>();
             services.AddScoped<IEMailService, EMailService>();
             services.AddObjectStore(config);
+
+            services.AddScoped<IAuditLogServiceClient, AuditLogServiceClient>();
+            services.AddScoped<IAuditInfo>(x => new AuditInfo()
+            {
+                TypeAuditTask = TypeAuditTask.GrpcClient,
+                ProjectName = "IntegrationsCatalog"
+            });
 
             return services;
         }

@@ -60,10 +60,12 @@
                             <div class="four wide field">
                                 @Html.EditorFor(model => model.Enabled, "CheckBoxBoolean")
                             </div>
-                            <div class="eight wide field">
+                            <div class="four wide field">
                                 @Html.EditorFor(model => model.ReceiveEFormNotification, "CheckBoxBoolean")
                             </div>
-
+                            <div class="four wide field">
+                                @Html.EditorFor(model => model.ReceiveInstructionResponseNotification, "CheckBoxBoolean")
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -86,7 +88,18 @@
     <div class="header">Избери роля</div>
     <div class="content">
         <div class="ui grid">
-            <div class="sixteen wide column">
+            <div class="eight wide column">
+                <div class="ui form">
+                    <div class="field">
+                        <label for="registriesDropdown">
+                            Регистър<span style="color: red;">*</span>
+                        </label>
+                        <select id="registriesDropdown" class="ui fluid search selection dropdown">
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="eight wide column">
                 <div class="ui form">
                     <div class="field">
                         <label for="rolesDropdown">Роли<span style="color: red;">*</span></label>

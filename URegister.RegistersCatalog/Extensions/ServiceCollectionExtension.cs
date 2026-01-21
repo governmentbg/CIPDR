@@ -29,6 +29,20 @@ namespace Microsoft.Extensions.DependencyInjection
                 ProjectName = "RegisterCatalog"
             });
             services.AddHttpClient();
+            services.AddHttpClient("stampit",client =>
+            {
+                client.BaseAddress = new Uri("https://id.stampit.org/");
+                var cert = File.ReadAllText("stampit.bearer");
+                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {cert}");
+                client.DefaultRequestHeaders.Add("Referer", "https://id.stampit.org/");
+            }).ConfigurePrimaryHttpMessageHandler(() =>
+            {
+                return new HttpClientHandler
+                {
+                    AllowAutoRedirect = false,
+                };
+            });
+
             return services;
         }
 

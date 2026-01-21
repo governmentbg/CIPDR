@@ -1,7 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.Net.Mail;
 using System.ServiceModel.Channels;
+using URegister.Common;
 using URegister.Infrastructure.Constants;
+using URegister.Infrastructure.Extensions;
 using URegister.IntegrationsCatalog.Contracts;
 using URegister.IntegrationsCatalog.Data;
 using URegister.IntegrationsCatalog.Data.Models;
@@ -36,8 +38,73 @@ namespace URegister.IntegrationsCatalog.Services
                 var emailMessage = new EMailMessage
                 {
                     EMail = user.Email,
-                    ErrorMessage = "Получено заявление",
-                    Message = $"{administrationName}<br> ({register.Name}) <br> Вх. № {edeliveryMessage.IncomingNumber} / {edeliveryMessage.IncomingDate}",
+                    Subject = "Получено заявление",
+                    Message = $"В {administrationName}<br> ({register.Name}) <br>" +
+                              $"е постъпило ново заявление за обработка <br>" +
+                              $"Вх. № {edeliveryMessage.IncomingNumber} / {edeliveryMessage.IncomingDate.ConvertUtcToBGTime().Value.ToString(FormattingConstant.DateFormat)}" +
+                              $"Моля, отворете модул „Заявени услуги“ -> \"Управление\" за преглед и последващи действия.",
+                    SourceId = edeliveryMessage.Id,
+                    SourceType = (int)EMailSourceType.ReceivedEForm,
+                    StatusId = (int)EMailStatus.New,
+                };
+                await repo.AddAsync(emailMessage);
+            }
+        }
+
+        public async Task AddEmailOnInstructionResponse(EDeliveryMessage edeliveryMessage)
+        {
+            var registerResponse = await registerGrpcClient.GetRegisterAsync(new GetRegisterRequest
+            {
+                RegisterId = edeliveryMessage.RegisterId ?? 0,
+            });
+            var register = registerResponse.Data;
+            var administrationResponse = await registerGrpcClient.GetAdministrationAsync(new GetAdministrationRequest
+            {
+                AdministrationId = edeliveryMessage.TenantId.ToString(),
+            });
+            string administrationName = administrationResponse.Data.Name;
+            var usersResponse = await appUserManagerClient.UserReceiveEmailsInstructionResponseAsync(new UserReceiveEmailsRequest
+            {
+                RegisterCode = register.Code,
+                AdministrationId = edeliveryMessage.TenantId?.ToString(),
+            });
+            foreach (var user in usersResponse.UserData)
+            {
+                var emailMessage = new EMailMessage
+                {
+                    EMail = user.Email,
+                    Subject = "Получен отговор на указания",
+                    Message = $"В {administrationName}<br> ({register.Name}) <br>" +
+                              $"е постъпил отговор на указания по <br>" +
+                              $"Вх. № {edeliveryMessage.IncomingNumber} / {edeliveryMessage.IncomingDate.ConvertUtcToBGTime().Value.ToString(FormattingConstant.DateFormat)}" +
+                              $"Моля, отворете модул „Заявени услуги“ -> \"Управление\" за преглед и последващи действия.",
+                    SourceId = edeliveryMessage.Id,
+                    SourceType = (int)EMailSourceType.ReceivedEForm,
+                    StatusId = (int)EMailStatus.New,
+                };
+                await repo.AddAsync(emailMessage);
+            }
+        }
+
+        public async Task AddEmailOnError(EDeliveryMessage edeliveryMessage)
+        {
+            var rolesResponse = await appUserManagerClient.GetRolesAsync(new Google.Protobuf.WellKnownTypes.Empty());
+            var role = rolesResponse.Roles.Where(x => x.Name == "GlobalAdmin").First();
+            var usersResponse = await appUserManagerClient.GetUserListAsync(new UserFilter
+            {
+              //  RoleId = role.RoleId,
+                AdministrationId = Guid.Empty.ToString(),
+                DatatableRequest = new DatatableRequest { Length = -1 },
+                ReceiveEmailOnError = true
+            });
+            foreach (var user in usersResponse.Users)
+            {
+                var emailMessage = new EMailMessage
+                {
+                    EMail = user.Email,
+                    Subject = "Проблем при обработка на заявление",
+                    Message = $"Възникна грешка при импорт на подадено заявление № {edeliveryMessage.MessageId}, <br>" +
+                              "чрез еФорми. Необходимо е потребител с роля „Глобален администратор МЕУ“ да извърши проверка на възникналата грешка в модул „Лог на електронните връчвания\".",
                     SourceId = edeliveryMessage.Id,
                     SourceType = (int)EMailSourceType.ReceivedEForm,
                     StatusId = (int)EMailStatus.New,
@@ -47,6 +114,10 @@ namespace URegister.IntegrationsCatalog.Services
         }
         public async Task SendEMails()
         {
+            if (configuration.GetValue<bool>("EDelivery:StopOutMessages"))
+            {
+                return;
+            }
             var messages = await repo.All<EMailMessage>()
                                      .Where(x => x.StatusId == (int)EMailStatus.New)
                                      .ToListAsync();
@@ -69,6 +140,29 @@ namespace URegister.IntegrationsCatalog.Services
                         message.StatusId = (int)EMailStatus.Error;
                     }
                 }
+            }
+            await repo.SaveChangesAsync();
+        }
+
+        public async Task SendEMailsForSrok(string registerCode, string tenantId, string processId, string subject, string messageText)
+        {
+            var usersResponse = await appUserManagerClient.UserReceiveEmailsForSrokAsync(new UserReceiveEmailsRequest
+            {
+                RegisterCode = registerCode,
+                AdministrationId = tenantId,
+            });
+            foreach (var user in usersResponse.UserData)
+            {
+                var emailMessage = new EMailMessage
+                {
+                    EMail = user.Email,
+                    Subject = subject,
+                    Message = messageText,
+                    SourceId = processId.ToGuid(),
+                    SourceType = (int)EMailSourceType.SrokForApplication,
+                    StatusId = (int)EMailStatus.New,
+                };
+                await repo.AddAsync(emailMessage);
             }
             await repo.SaveChangesAsync();
         }

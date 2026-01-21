@@ -23,7 +23,7 @@ namespace URegister.Core.Models.Service
         public string Name
         {
             get => _name;
-            set => _name = value.Trim();
+            set => _name = value?.Trim() ?? string.Empty;
         }
 
         /// <summary>
@@ -54,5 +54,20 @@ namespace URegister.Core.Models.Service
         /// </summary>
         [Display(Name = "Номер на услуга в е-формите")]
         public string? EFormCode { get; set; }
+
+
+        public bool IsForCertificateOnRegister()
+        {
+            return ServiceTypeId == (int)ServiceTypes.Register ||
+                   ServiceTypeId == (int)ServiceTypes.Change ||
+                   ServiceTypeId == (int)ServiceTypes.AskForCorrectionError;
+
+        }
+
+        public bool IsCertificate()
+        {
+            return ServiceTypeId == (int)ServiceTypes.Document;
+
+        }
     }
 }

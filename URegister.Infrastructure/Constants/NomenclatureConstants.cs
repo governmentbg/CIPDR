@@ -19,6 +19,7 @@ namespace URegister.Infrastructure.Constants
         public const string CidType = "CL0012";
         public const string Status = "CL0010";
         public const string RegixRequestType = "IN0001";
+        public const string Currency = "CL0037";
     }
     public static class InternalNomenclatureTypes
     {
@@ -33,7 +34,8 @@ namespace URegister.Infrastructure.Constants
         public const string DeadlineType = "I0010";
         public const string CalendarDayKind = "I0011";
         public const string DeadlineDayType = "I0012";
-        public const string CooordinationStatusType = "I0013";
+        public const string CoordinationStatusType = "I0013";
+        public const string OpenDataPeriod = "I0014";
     }
 
     public static class PersonTypeValue
@@ -62,10 +64,12 @@ namespace URegister.Infrastructure.Constants
         public const int EIK = 3;
     }
 
-    public static class PersonRole
+    public enum PersonRole
     {
-        public const int Partida = 1;
-        public const int Applicant = 2;
+        [Description("Партида")]
+        Partida = 1,
+        [Description("Заявител")]
+        Applicant = 2
     }
 
     public static class RegisterConstants
@@ -117,6 +121,13 @@ namespace URegister.Infrastructure.Constants
         ForCoordination = 7,
         [Description("Съгласуван")]
         Coordination = 8,
+        [Description("В процес на подписване")]
+        Signing = 9,
+        [Description("Указания в процес на подписване")]
+        InstructionSigning = 10,
+        [Description("Отхвърлен в процес на подписване")]
+        RefusedSigning = 11,
+
     }
 
     public enum CodeableConceptStatus
@@ -163,6 +174,8 @@ namespace URegister.Infrastructure.Constants
         EIK = 1,
         [Description("БУЛСТАТ")]
         BULSTAT = 2,
+        [Description("Чуждестранно ЮЛ")]
+        ForeignCompany = 3
     }
 
     /// <summary>
@@ -754,7 +767,7 @@ namespace URegister.Infrastructure.Constants
         [Description("Удостоверение")]
         Certicicate = 1,
         [Description("Удостоверение при вписване")]
-        CerticicateOnRegister = 2,
+        CertificateOnRegister = 2,
         [Description("Отказ")]
         Refuse = 3,
         [Description("Указание")]
@@ -797,7 +810,6 @@ namespace URegister.Infrastructure.Constants
         OutInstruction = 13,
         [Description("Вписване")]
         RegisterApplication = 14,
-
         [Description("Друго")]
         Other = 99,
     }
@@ -815,7 +827,7 @@ namespace URegister.Infrastructure.Constants
         [Description("Заявление")]
         Application = 1,
         [Description("Декларация")]
-        Deklar = 2,
+        Declaration = 2,
         [Description("Прикачен файл")]
         AttachedFile = 3,
     }
@@ -823,7 +835,7 @@ namespace URegister.Infrastructure.Constants
     public enum IntegrationSourceType
     {
         [Description("Отговор на указания")]
-        InstructionResponce = 4,
+        InstructionResponse = 4,
         [Description("Указания")]
         Instruction = 13,
         [Description("Удостоверение")]
@@ -852,6 +864,11 @@ namespace URegister.Infrastructure.Constants
         public const string OnEmail = "0006-000076";
     }
     public static class CalendarDayKind
+    {
+        public const string WorkDay = "1";
+        public const string NotWorkingDay = "2";
+    }
+    public static class DeadlineDayType
     {
         public const string WorkDay = "1006-130001";
         public const string CalendarDay = "1006-130002";
@@ -897,5 +914,32 @@ namespace URegister.Infrastructure.Constants
     {
         [Description("Нов/за изпращане")]
         ReceivedEForm = 1,
+        [Description("Предупрежедение за настъпил срок за вписване на заявление")]
+        SrokForApplication = 71,
+
+    }
+
+    public enum Currency
+    {
+        [Description("Български лев")]
+        BGN = 1,
+        [Description("Евро")]
+        EUR = 2,
+    }
+
+    public enum OpenDataPeriod
+    {
+        [Description("Не се изпраща")]
+        Not = -1,
+
+        [Description("Като администрацията")]
+        Administration = 0,
+
+        [Description("Ежедневно")]
+        Day = 1,
+        [Description("Седмично")]
+        Week = 2,
+        [Description("Седмично")]
+        Month = 3,
     }
 }

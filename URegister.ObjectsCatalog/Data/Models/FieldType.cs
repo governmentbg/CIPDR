@@ -1,5 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using URegister.Infrastructure.Constants;
 using URegister.Infrastructure.Data.Common;
 
 namespace URegister.ObjectsCatalog.Data.Models
@@ -53,5 +55,12 @@ namespace URegister.ObjectsCatalog.Data.Models
         /// Списък от конфигурации за типа
         /// </summary>
         public List<Field> Fields { get; set; } = new List<Field>();
+
+        /// <summary>
+        /// Списък на регистрите, за които полето е достъпно. Празен списък означава достъпно за всички
+        /// </summary>
+        [Comment("Списък на регистрите, за които полето е достъпно. Празен списък означава достъпно за всички")]
+        [Column(TypeName = AttributeConstants.Jsonb)]
+        public List<string>? RegisterRestrictionCodes { get; set; } = new();
     }
 }

@@ -17,7 +17,7 @@ namespace URegister.IntegrationsCatalog.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.10")
+                .HasAnnotation("ProductVersion", "8.0.19")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -226,10 +226,25 @@ namespace URegister.IntegrationsCatalog.Migrations
                         .HasColumnName("deleted_on")
                         .HasComment("Дата на изтриване");
 
+                    b.Property<int>("ErrorCountSend")
+                        .HasColumnType("integer")
+                        .HasColumnName("error_count_send")
+                        .HasComment("Брой повторения при грешно изпращане");
+
                     b.Property<string>("ErrorMessage")
                         .HasColumnType("text")
                         .HasColumnName("error_message")
                         .HasComment("Грешка");
+
+                    b.Property<string>("FileName")
+                        .HasColumnType("text")
+                        .HasColumnName("file_name")
+                        .HasComment("Име на файл");
+
+                    b.Property<string>("FileUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("file_url")
+                        .HasComment("URL на файл");
 
                     b.Property<DateTime?>("IncomingDate")
                         .HasColumnType("timestamp with time zone")
@@ -256,6 +271,11 @@ namespace URegister.IntegrationsCatalog.Migrations
                         .HasColumnName("message_id")
                         .HasComment("Идентификатор на съобщение");
 
+                    b.Property<string>("MessageText")
+                        .HasColumnType("text")
+                        .HasColumnName("message_text")
+                        .HasComment("Текст на съобщението при изпращане");
+
                     b.Property<int>("MessageTypeId")
                         .HasColumnType("integer")
                         .HasColumnName("message_type_id")
@@ -281,10 +301,20 @@ namespace URegister.IntegrationsCatalog.Migrations
                         .HasColumnName("process_id")
                         .HasComment("Идентификатор на заявена услуга, по-която е качен файла");
 
+                    b.Property<int?>("ProfileId")
+                        .HasColumnType("integer")
+                        .HasColumnName("profile_id")
+                        .HasComment("Профил ИД в ССЕВ");
+
                     b.Property<int?>("RegisterId")
                         .HasColumnType("integer")
                         .HasColumnName("register_id")
                         .HasComment("Идентификатор на регистър");
+
+                    b.Property<string>("RegisterNumber")
+                        .HasColumnType("text")
+                        .HasColumnName("register_number")
+                        .HasComment("Номер на вписване което се променя");
 
                     b.Property<string>("Rnu")
                         .HasColumnType("text")
@@ -315,6 +345,16 @@ namespace URegister.IntegrationsCatalog.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("step_id")
                         .HasComment("Стъпка");
+
+                    b.Property<string>("SubjectText")
+                        .HasColumnType("text")
+                        .HasColumnName("subject_text")
+                        .HasComment("Subject на съобщението при изпращане");
+
+                    b.Property<int>("TemplateId")
+                        .HasColumnType("integer")
+                        .HasColumnName("template_id")
+                        .HasComment("Темплейт на съобщение");
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")

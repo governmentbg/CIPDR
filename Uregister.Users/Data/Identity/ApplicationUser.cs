@@ -16,5 +16,6 @@ namespace Uregister.Users.Data.Identity
         public string Position { get; set; } = null!;
         public bool Enable { get; set; }
         public DateTime CreatedAt { get; set; }
-    }
+        public bool ReceiveEmailOnError { get; set; }
+}
 }

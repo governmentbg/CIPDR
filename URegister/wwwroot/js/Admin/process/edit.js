@@ -9,3 +9,16 @@
         .closest('.dateonly-calendar')
         .calendar('set date', deadlineDate);
 }
+
+function autoSaveForm() {
+    try {
+        const data = getFormData($('#submit'));
+        localStorage.setItem('iscipr_autosave', JSON.stringify(data))
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+$(function () {
+    setInterval(() => autoSaveForm(), 10000);
+});

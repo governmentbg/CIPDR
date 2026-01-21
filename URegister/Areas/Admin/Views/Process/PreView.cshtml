@@ -8,6 +8,7 @@
 <div class="ui segments">
     <div class="ui green clearing segment">
         <form action="@Url.Action("AddStep")" method="post" id="submit" novalidate enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
             @Html.HiddenFor(m => m.ProcessId)
             @Html.HiddenFor(m => m.ServiceStepId)
             @Html.HiddenFor(m => m.ServiceId)
@@ -16,6 +17,18 @@
             @Html.HiddenFor(m => m.SelectedType)
             @Html.HiddenFor(m => m.DontUploadFilesToStorage)
             @Html.HiddenFor(m => m.UserTimeZoneOffsetInMinutes)
+            @Html.HiddenFor(m => m.ConditionTree)
+            @if (!string.IsNullOrEmpty(Model.ProcessInfo?.ReasonForRejection))
+            {
+                <div class="content">
+                    <div class="ui form">
+                        <div class="field">
+                            <label asp-for="@Model.ProcessInfo.ReasonForRejection">Причина за прекратяване</label>
+                            <textarea asp-for="@Model.ProcessInfo.ReasonForRejection" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+            }
             @{
                 ViewData.TemplateInfo.HtmlFieldPrefix = string.IsNullOrEmpty(htmlFieldPrefix) ? "ProcessInfo" : $"{htmlFieldPrefix}.ProcessInfo";
                 await Html.RenderPartialAsync("_ProcessInfo", Model.ProcessInfo);

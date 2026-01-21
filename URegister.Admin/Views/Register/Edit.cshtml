@@ -48,6 +48,11 @@
                         </div>
                     </div>
                     <div class="fields">
+                        <div class="sixteen wide field">
+                            @Html.EditorFor(model => model.Administration.NameEn, "String", new { @class = "company-name" })
+                        </div>
+                    </div>
+                    <div class="fields">
                         <div class='eight wide field'>
                             @Html.EditorFor(model => model.Manager.Phone, "String", new { @class = "phone" })
                         </div>
@@ -98,6 +103,11 @@
                         </div>
                     </div>
                     <div class="fields">
+                        <div class='sixteen wide field'>
+                            @Html.EditorFor(model => model.NameEn, "String" + editorDisabled)
+                        </div>
+                    </div>
+                    <div class="fields">
                         <div class="sixteen wide field">
                             @Html.EditorFor(model => model.Description,"TextArea" + editorDisabled)
                         </div>
@@ -108,14 +118,17 @@
                         </div>
                     </div>
                     <div class="fields">
-                        <div class='four wide field'>
+                        <div class='three wide field'>
                             @Html.EditorFor(model => model.Type, "DropDown" + editorDisabled, new { Ddl = ViewData[$"{InternalNomenclatureTypes.RegisterType}_ddl"] })
                         </div>
-                        <div class='four wide field'>
+                        <div class='three wide field'>
                             @Html.EditorFor(model => model.TypeEntry, "DropDown" + editorDisabled, new { Ddl = ViewData[$"{InternalNomenclatureTypes.RegisterEntryType}_ddl"] })
                         </div>
-                        <div class='eight wide field'>
+                        <div class='seven wide field'>
                             @Html.EditorFor(model => model.IdentitySecurityLevel, "DropDown" + editorDisabled, new { Ddl = ViewData[$"{InternalNomenclatureTypes.RegisterIdentitySecurityLevel}_ddl"] })
+                        </div>
+                        <div class='three wide field'>
+                            @Html.EditorFor(model => model.HistoryNotPublic, "CheckBoxBoolean" + editorDisabled)
                         </div>
                     </div>
                 </div>
